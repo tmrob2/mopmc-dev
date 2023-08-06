@@ -6,8 +6,8 @@ list(
         "${dir}/ExplicitModelBuilder.h"
         "${dir}/TransitionMatrixBuilder.cpp"
         "${dir}/TransitionMatrixBuilder.h"
-        "${dir}/RewardModelBuilder.h"
         "${dir}/RewardModelBuilder.cpp"
+        "${dir}/RewardModelBuilder.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

@@ -12,6 +12,7 @@
 #include <storm/models/sparse/StandardRewardModel.h>
 #include <storm/storage/sparse/StateStorage.h>
 #include "TransitionMatrixBuilder.h"
+#include "RewardModelBuilder.h"
 
 #include <deque>
 
@@ -35,7 +36,7 @@ namespace mopmc {
 
         void buildMatrices(
             SparseMatrixBuilder& transitionMatrixBuilder,
-            std::vector<storm::builder::RewardModelBuilder<typename RewardModelType::ValueType>>& rewardModelBuilders,
+            std::vector<mopmc::RewardModelBuilder<ValueType>>& rewardModelBuilders,
             storm::builder::StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder
         );
 
