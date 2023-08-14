@@ -9,16 +9,32 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # search for Storm library
 find_package(storm REQUIRED)
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
 # specify source files
 set(Sources)
+set(TestSources)
 add_subdirectory(src)
-set(storm_SOURCE "/home/thomas/storm")
+add_subdirectory(test)
 # set executable
 add_executable(${PROJECT_NAME} "${Sources}")
 
+set(ProjectTests "${PROJECT_NAME}_tests")
+set(EigenSource /home/thomas/eigen-3.4.0)
+add_executable(ProjectTests "${TestSources}")
+
+enable_testing()
+
+# Google test framework
+add_subdirectory(googletest)
+
 # Set include directories and dependencies
-target_include_directories(${PROJECT_NAME} PUBLIC src ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} ${storm_SOURCE})
+target_include_directories(${PROJECT_NAME} PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE src)
 target_link_libraries(${PROJECT_NAME} PRIVATE storm storm-parsers)
+target_include_directories(ProjectTests PRIVATE test)
+target_link_libraries(ProjectTests PRIVATE GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(ProjectTests)
 # Note that other libraries/includes from Storm might need to be added depending on the used functionality.
 # For example, to enable counterexamples, include directory ${storm-counterexamples_INCLUDE_DIR} and link library storm-counterexamples need to be added.

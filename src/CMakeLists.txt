@@ -1,5 +1,5 @@
 # Sub dir needs to be at the top of the parent file
-add_subdirectory(storm-src)
+add_subdirectory(mopmc-src)
 
 set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 

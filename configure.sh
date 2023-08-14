@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd build ; cmake ..
+cd build ; cmake -G Ninja ..

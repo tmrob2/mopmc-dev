@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd build ; make
+cd build ; ninja -j42

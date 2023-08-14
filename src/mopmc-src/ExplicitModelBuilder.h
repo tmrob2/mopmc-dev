@@ -11,8 +11,10 @@
 #include <storm/settings/SettingsManager.h>
 #include <storm/models/sparse/StandardRewardModel.h>
 #include <storm/storage/sparse/StateStorage.h>
-#include "TransitionMatrixBuilder.h"
-#include "RewardModelBuilder.h"
+
+//#include "deprecated/TransitionMatrixBuilder.h"
+//#include "deprecated/RewardModelBuilder.h"
+#include "SparseModel.h"
 
 #include <deque>
 
@@ -20,7 +22,7 @@
 namespace mopmc {
     typedef storm::storage::BitVector CompressedState;
     
-    template<typename ValueType, typename RewardModelType=storm::models::sparse::StandardRewardModel<ValueType>, typename StateType=uint32_t>
+    template<typename ValueType, typename StateType=uint32_t>
     class ExplicitModelBuilder {
     public:
         struct Options {
@@ -30,17 +32,18 @@ namespace mopmc {
             storm::builder::ExplorationOrder explorationOrder;
         };
 
-        ExplicitModelBuilder(std::shared_ptr<storm::generator::NextStateGenerator<double, uint32_t>> const& generator,
+        explicit ExplicitModelBuilder(std::shared_ptr<storm::generator::NextStateGenerator<double, uint32_t>> const& generator,
                              Options const& options = Options()) : 
                              generator {generator }, options { options }, stateStorage {generator -> getStateSize() } {}
 
         void buildMatrices(
-            SparseMatrixBuilder& transitionMatrixBuilder,
-            std::vector<mopmc::RewardModelBuilder<ValueType>>& rewardModelBuilders,
+            mopmc::sparse::SparseModelBuilder<ValueType>& spMatBuilder,
             storm::builder::StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder
         );
 
         storm::storage::sparse::StateStorage<StateType>& getStateStorage();
+
+        storm::models::sparse::StateLabeling buildStateLabelling();
     private:
         std::shared_ptr<storm::generator::NextStateGenerator<double, uint32_t>> generator;
         Options options;
@@ -63,6 +66,9 @@ namespace mopmc {
     };
 
     bool check(std::string const& path_to_model, std::string const& property_string);
+
+    template<typename ValueType>
+    storm::models::sparse::StateLabeling buildStateLabelling();
 }
 
 #endif //MOPMC_EXPLICITMODELBUILDER_H

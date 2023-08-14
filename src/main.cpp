@@ -1,7 +1,7 @@
 #include <storm/api/storm.h>
 #include <storm/utility/initialize.h>
 
-#include "storm-src/ExplicitModelBuilder.h"
+#include "mopmc-src/ExplicitModelBuilder.h"
 
 
 int main (int argc, char *argv[]) {

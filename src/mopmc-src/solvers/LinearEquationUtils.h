@@ -1,0 +1,9 @@
+//
+// Created by thomas on 12/08/23.
+//
+
+#ifndef MOPMC_LINEAREQATIONUTILS_H
+#define MOPMC_LINEAREQATIONUTILS_H
+
+
+#endif //MOPMC_LINEAREQATIONUTILS_H
