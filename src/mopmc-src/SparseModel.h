@@ -71,15 +71,15 @@ public:
     std::pair<SpMat,std::unordered_map<uint_fast64_t, uint_fast64_t>>
         getDTMCSubMatrix(storm::storage::BitVector const& maybeStates);
 
-    Eigen::VectorXd bVector(
-            storm::storage::BitVector const& prob1States,
-            SpMat const& backwardTransitions,
-            uint_fast64_t dim,
-            std::unordered_map<uint_fast64_t, uint_fast64_t>& compressedStateMap);
+    Eigen::Matrix<ValueType, Eigen::Dynamic, 1> bVector(
+        storm::storage::BitVector const& prob1States,
+        SpMat const& backwardTransitions,
+        uint_fast64_t dim,
+        std::unordered_map<uint_fast64_t, uint_fast64_t>& compressedStateMap);
 
-    Eigen::VectorXd solverHelper(
+    Eigen::Matrix<ValueType, Eigen::Dynamic, 1> solverHelper(
         SpMat const& subMatrix,
-        Eigen::VectorXd const& b);
+        Eigen::Matrix<ValueType, Eigen::Dynamic, 1> const& b);
     
 
 private:

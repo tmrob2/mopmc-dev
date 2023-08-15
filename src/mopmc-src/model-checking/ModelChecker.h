@@ -44,7 +44,7 @@ public:
         storm::modelchecker::CheckTask<storm::logic::StateFormula, ValueType> const &checkTask
     );
 
-    void checkProbabilityOperatorFormula(
+    std::unique_ptr<storm::modelchecker::CheckResult> checkProbabilityOperatorFormula(
         storm::Environment const& env,
         storm::modelchecker::CheckTask<storm::logic::ProbabilityOperatorFormula, ValueType> const& checkTask);
 
@@ -60,12 +60,11 @@ public:
         storm::Environment const& env,
         storm::modelchecker::CheckTask<storm::logic::EventuallyFormula, ValueType> const& checkTask);
         
-    void computeUntilProbabilities(
+    std::unique_ptr<storm::modelchecker::CheckResult> computeUntilProbabilities(
         storm::Environment const& env,
         storm::modelchecker::CheckTask<storm::logic::UntilFormula, ValueType> const& checkTask);
 
-    void computeUntilProbabilitiesHelper(
-        storm::Environment const& env,
+    std::vector<ValueType> computeUntilProbabilitiesHelper(
         storm::storage::BitVector const& relevantValues,
         mopmc::sparse::SparseModelBuilder<ValueType>& spModel,
         storm::storage::BitVector const& phiStates,

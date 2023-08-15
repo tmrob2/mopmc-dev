@@ -103,7 +103,7 @@ namespace mopmc::sparse{
     }
 
     template <typename ValueType>
-    Eigen::VectorXd SparseModelBuilder<ValueType>::bVector(
+    Eigen::Matrix<ValueType, Eigen::Dynamic, 1> SparseModelBuilder<ValueType>::bVector(
             storm::storage::BitVector const& prob1States,
             SpMat const& backwardTransitions,
             uint_fast64_t dim,
@@ -150,9 +150,9 @@ namespace mopmc::sparse{
     }
 
     template<typename ValueType>
-    Eigen::VectorXd SparseModelBuilder<ValueType>::solverHelper(
+    Eigen::Matrix<ValueType, Eigen::Dynamic, 1> SparseModelBuilder<ValueType>::solverHelper(
         SpMat const& subMatrix,
-        Eigen::VectorXd const& b){
+        Eigen::Matrix<ValueType, Eigen::Dynamic, 1> const& b){
         
         // construct an Identity matrix
         SpMat identity(subMatrix.rows(), subMatrix.rows());
@@ -166,7 +166,7 @@ namespace mopmc::sparse{
 
         Eigen::BiCGSTAB<SpMat> solver;
         solver.compute(Z);
-        Eigen::VectorXd x = solver.solve(b);
+        Eigen::Matrix<ValueType, Eigen::Dynamic, 1> x = solver.solve(b);
         std::cout << "Current solution: " << x.transpose() << std::endl; 
         std::cout << "#iterations:     " << solver.iterations() << std::endl;
         std::cout << "estimated error: " << solver.error()      << std::endl;

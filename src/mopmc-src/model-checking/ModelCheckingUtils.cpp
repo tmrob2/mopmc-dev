@@ -122,6 +122,15 @@ storm::storage::BitVector mopmc::sparseutils::getOneStep(
     return oneStepStates;
 }
 
+template <typename T>
+void mopmc::sparseutils::setVector(std::vector<T>& vectorToUpdate, storm::storage::BitVector const& updatePositions,
+               Eigen::Matrix<T, Eigen::Dynamic, 1> solverResult){
+    uint_fast64_t oldPosition = 0;
+    for(uint_fast64_t pos: updatePositions) {
+        vectorToUpdate[pos] = solverResult[oldPosition++];
+    }
+}
+
 // Explicit Instantiations
 template storm::storage::BitVector mopmc::sparseutils::findStatesProbEq1<double>(
     typename mopmc::sparse::SparseModelBuilder<double>::SpMat const& backwardTransitions,
@@ -147,3 +156,9 @@ template storm::storage::BitVector mopmc::sparseutils::getOneStep<double>(
     typename mopmc::sparse::SparseModelBuilder<double>::SpMat const& backwardTransitions,
     storm::storage::BitVector const& psiStates
 );
+
+template void mopmc::sparseutils::setVector<double>(
+    std::vector<double> &vectorToUpdate,const storm::storage::BitVector &updatePositions,
+    Eigen::Matrix<double, Eigen::Dynamic, 1> solverResult);
+
+

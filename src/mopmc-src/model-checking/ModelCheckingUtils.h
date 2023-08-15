@@ -40,6 +40,10 @@ storm::storage::BitVector getOneStep(
     storm::storage::BitVector const& psiStates
 );
 
+template <typename T>
+void setVector(std::vector<T>& vectorToUpdate, storm::storage::BitVector const& updatePositions,
+               Eigen::Matrix<T, Eigen::Dynamic, 1>);
+
 } // sparseutils
 } // mopmc
 

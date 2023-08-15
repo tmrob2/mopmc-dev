@@ -1,0 +1,17 @@
+// A simple example to demonstrate if the MPD is working as expected
+mdp
+
+module simple
+
+    x :[0..3] init 0;
+
+    [] x=0 -> 0.75:(x'=2) + 0.25:(x'=3);
+    [] x=0 -> 0.5:(x'=1) + 0.5:(x'=2);
+    [] x=1 -> 0.5:(x'=0) + 0.5:(x'=3);
+    [] x=2 -> 1:(x'=2);
+    [] x=3 -> 1:(x'=3);
+
+endmodule
+
+label "success" = x=2;
+label "fail" = x=3;

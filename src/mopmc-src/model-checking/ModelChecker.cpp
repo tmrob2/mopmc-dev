@@ -10,10 +10,13 @@
 #include <storm/logic/FormulaInformation.h>
 #include <storm/logic/BooleanLiteralFormula.h>
 #include <storm/modelchecker/results/ExplicitQualitativeCheckResult.h>
+#include <storm/modelchecker/results/ExplicitQuantitativeCheckResult.h>
 #include <storm/solver/LinearEquationSolver.h>
 #include <storm/modelchecker/hints/ModelCheckerHint.h>
 #include <storm/modelchecker/hints/ExplicitModelCheckerHint.h>
 #include <storm/utility/vector.h>
+#include "storm/modelchecker/results/QualitativeCheckResult.h"
+#include "storm/modelchecker/results/QuantitativeCheckResult.h"
 #include <storm/solver/SolveGoal.h>
 
 #include <memory>
@@ -42,7 +45,7 @@ namespace model_checking{
     std::unique_ptr<storm::modelchecker::CheckResult> DTMCModelSolver<ValueType>::check(
             storm::modelchecker::CheckTask<storm::logic::Formula, ValueType> const& checkTask) {
         storm::Environment env;
-        this -> check(env, checkTask);
+        return this -> check(env, checkTask);
     }
 
     template <typename ValueType>
@@ -64,9 +67,11 @@ namespace model_checking{
             storm::modelchecker::CheckTask<storm::logic::StateFormula, ValueType> const& checkTask) {
         storm::logic::StateFormula const& stateFormula = checkTask.getFormula();
 
+        std::cout << "Is bound set? " << checkTask.isBoundSet() << "\n";
+
         if (stateFormula.isProbabilityOperatorFormula()) {
             std::cout << "A new probability formula\n";
-            this ->checkProbabilityOperatorFormula(
+            return this ->checkProbabilityOperatorFormula(
                     env,
                     checkTask.substituteFormula(stateFormula.asProbabilityOperatorFormula()));
         } else if (stateFormula.isBinaryStateFormula()) {
@@ -88,12 +93,17 @@ namespace model_checking{
     }
 
     template <typename ValueType>
-    void DTMCModelSolver<ValueType>::checkProbabilityOperatorFormula(
+    std::unique_ptr<storm::modelchecker::CheckResult> DTMCModelSolver<ValueType>::checkProbabilityOperatorFormula(
             const storm::Environment &env,
             const storm::modelchecker::CheckTask<storm::logic::ProbabilityOperatorFormula, ValueType> &checkTask) {
         storm::logic::ProbabilityOperatorFormula const& stateFormula = checkTask.getFormula();
         // call computeProbabilities here
         std::unique_ptr<storm::modelchecker::CheckResult> result = this ->computeProbabilities(env, checkTask.substituteFormula(stateFormula.getSubformula()));
+        if (checkTask.isBoundSet()) {
+            return result ->asQuantitativeCheckResult<ValueType>().compareAgainstBound(checkTask.getBoundComparisonType(), checkTask.getBoundThreshold());
+        } else {
+            return result;
+        }
     }
 
     template <typename ValueType>
@@ -106,7 +116,7 @@ namespace model_checking{
             << ", Has qualitative Result " << (formula.hasQualitativeResult() ? "yes" : "no") << "\n";
 
         std::cout << "Is reachability formula? "
-        << (formula.isReachabilityProbabilityFormula() ? "yes" : "no") << "\n";
+            << (formula.isReachabilityProbabilityFormula() ? "yes" : "no") << "\n";
 
         // basically before the until formula can be initiated there are some transformations
         // which need to be done. Then I think the model checking goes into a generic LTL checking
@@ -136,11 +146,11 @@ namespace model_checking{
         storm::modelchecker::CheckTask<storm::logic::EventuallyFormula, ValueType> const& checkTask){
         storm::logic::EventuallyFormula const& pathFormula = checkTask.getFormula();
         storm::logic::UntilFormula newFormula(storm::logic::Formula::getTrueFormula(), pathFormula.getSubformula().asSharedPointer());
-        this -> computeUntilProbabilities(env, checkTask.substituteFormula(newFormula));
+        return this -> computeUntilProbabilities(env, checkTask.substituteFormula(newFormula));
     }
 
     template <typename ValueType>
-    void DTMCModelSolver<ValueType>::computeUntilProbabilities(
+    std::unique_ptr<storm::modelchecker::CheckResult> DTMCModelSolver<ValueType>::computeUntilProbabilities(
         storm::Environment const& env,
         storm::modelchecker::CheckTask<storm::logic::UntilFormula, ValueType> const& checkTask) {
         // First a recursive call on all of the left sub formulas probably until
@@ -167,8 +177,7 @@ namespace model_checking{
         std::cout << "Is explicit model checker hint? " <<
             (checkTask.getHint().isExplicitModelCheckerHint() ? "yes" : "no\n");
 
-        this->computeUntilProbabilitiesHelper(
-            env,
+        std::vector<ValueType> result = this->computeUntilProbabilitiesHelper(
             spModel.getInitialStates(),
             spModel,
             phiStates,
@@ -176,14 +185,14 @@ namespace model_checking{
             checkTask.getHint()
         );
 
-        std::cout << "Reached the end without returning ptr, I should fail now bye 0/ \n";
+        return std::unique_ptr<storm::modelchecker::CheckResult>(
+            new storm::modelchecker::ExplicitQuantitativeCheckResult<ValueType>(std::move(result)));
     }
 
     template <typename ValueType>
-    void DTMCModelSolver<ValueType>::computeUntilProbabilitiesHelper(
-        storm::Environment const& env,
+    std::vector<ValueType> DTMCModelSolver<ValueType>::computeUntilProbabilitiesHelper(
         storm::storage::BitVector const& relevantValues,
-        mopmc::sparse::SparseModelBuilder<ValueType> &spModel,
+        mopmc::sparse::SparseModelBuilder<ValueType>& spModel,
         storm::storage::BitVector const& phiStates,
         storm::storage::BitVector const& psiStates,
         storm::modelchecker::ModelCheckerHint const& hint) {
@@ -227,16 +236,24 @@ namespace model_checking{
                 
                 std::cout << "Reduced Linear System:\n" << returnPair.first.toDense() << std::endl;
                 std::cout << "Row size: " << returnPair.first.outerSize() << "\n";
-                Eigen::VectorXd b = spModel.bVector(statesWithProb1,
-                                spModel.getBackwardTransitions(),
-                                returnPair.first.outerSize(),
-                                returnPair.second);
+                // Compute b - or the one step states
+                Eigen::Matrix<ValueType, Eigen::Dynamic, 1> b = spModel.bVector(
+                    statesWithProb1,
+                    spModel.getBackwardTransitions(),
+                    returnPair.first.outerSize(),
+                    returnPair.second);
                 std::cout << "b: " << b.transpose() << std::endl;
                 
-                Eigen::VectorXd x = spModel.solverHelper(returnPair.first, b);
-                
+                Eigen::Matrix<ValueType, Eigen::Dynamic, 1> x = spModel.solverHelper(returnPair.first, b);
+                mopmc::sparseutils::setVector(result, maybeStates, x);
+                std::cout << "Full Result: ";
+                for (ValueType v: result) {
+                    std::cout << v << ", ";
+                }
+                std::cout << "\n";
             }
         }
+        return result;
     }
 
 

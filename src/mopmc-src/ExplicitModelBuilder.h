@@ -37,7 +37,7 @@ namespace mopmc {
                              generator {generator }, options { options }, stateStorage {generator -> getStateSize() } {}
 
         void buildMatrices(
-            mopmc::sparse::SparseModelBuilder<ValueType>& spMatBuilder,
+            mopmc::sparse::SparseModelBuilder<ValueType>& spModelBuilder,
             storm::builder::StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder
         );
 
@@ -66,7 +66,6 @@ namespace mopmc {
     };
 
     bool check(std::string const& path_to_model, std::string const& property_string);
-
     template<typename ValueType>
     storm::models::sparse::StateLabeling buildStateLabelling();
 }

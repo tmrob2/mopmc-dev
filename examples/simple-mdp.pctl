@@ -1,0 +1,1 @@
+multi(P>0.5 [ F "success" ], P < 0.5 [ F "fail" ])

@@ -29,15 +29,34 @@
 #include <stdexcept>
 #include <iostream>
 
-typedef storm::models::sparse::Dtmc<double> Dtmc;
-typedef storm::modelchecker::SparseDtmcPrctlModelChecker<Dtmc> DtmcModelChecker;
+/*
+ * Calls storm::model_checker::AbstractModelChecker<ModelType = DTMC>::check(
+ *  Environment const& env, CheckTask<storm::logic::Formula, ValueType> const& checkTask)
+ * Within the above, storm checks what type of formula is input by the user
+ *   storm::logic::Formula const& formula = checkTask.getFormula();
+ * If the formula is a state formula then we proceed, otherwise we throw an error
+ *
+ *  At this point we move to AbstractModelChecker::checkStateFormula, where storm then
+ *  determines what type of formula it is -> as we will only be dealing with
+ *  LTL probability formula, the mompmc code will just do stateFormula.isBooleanLiteralFormula()
+ *  check an then progresses to this->checkProbabilityOperatorFormula(
+ *      env, checkTask.substituteFormula(stateFormula.asProbabilityOperatorFormula())
+ *
+ * In the above storm computes this->computeProbabilities(
+ *  env, checkTask.substituteFormula(stateFormula.getSubformula()))
+ *
+ * computeProbabilities() is just a strategy function which calls the right modelBuilder checking
+ * routine based on the type of formula. There are some checks to do here:
+ *  1.
+ */
 
 bool mopmc::check(std::string const& path_to_model, std::string const& property_string) {
     
     // Assumes that the modelBuilder is in the prism program language format and parses the program.
     auto program = storm::parser::PrismParser::parse(path_to_model);
     // Code snippet assumes a Dtmc
-    assert(program.getModelType() == storm::prism::Program::ModelType::DTMC);
+    //assert(program.getModelType() == storm::prism::Program::ModelType::DTMC);
+    std::cout << "Model Type: " << program.getModelType() << std::endl;
     // Then parse the properties, passing the program to give context to some potential variables.
     auto properties = storm::api::parsePropertiesForPrismProgram(property_string, program);
     // Translate properties into the more low-level formulae.
@@ -80,13 +99,17 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
 
     stateAndChoiceInformationBuilder.setBuildStateValuations(generator->getOptions().isBuildStateValuationsSet());
 
+
     modelBuilder.buildMatrices(spModel, stateAndChoiceInformationBuilder);
+
     // Build the state labelling after the all of the states have been explored and the hashmap of
     // seached states has been filled in.
     spModel.setStateLabels(modelBuilder.buildStateLabelling());
 
     auto& transitionMatrix = spModel.getSparseMatrix();
     std::cout << transitionMatrix.toDense() << std::endl;
+    std::cout << "Matrix transpose: \n";
+    std::cout << transitionMatrix.transpose().toDense() << std::endl;
     // Ok now that we have these three we can start investigating the build matrices routine
     //Create a callback for the nest-state generator to enable it to request the index of the states
 
@@ -98,26 +121,7 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
     storm::logic::Formula const& form = abstractFormula.getFormula();
     std::cout << "state formula: " << (form.isStateFormula() ? "yes" : "no") << "\n";
 
-    /*
-     * Calls storm::model_checker::AbstractModelChecker<ModelType = DTMC>::check(
-     *  Environment const& env, CheckTask<storm::logic::Formula, ValueType> const& checkTask)
-     * Within the above, storm checks what type of formula is input by the user
-     *   storm::logic::Formula const& formula = checkTask.getFormula();
-     * If the formula is a state formula then we proceed, otherwise we throw an error
-     *
-     *  At this point we move to AbstractModelChecker::checkStateFormula, where storm then
-     *  determines what type of formula it is -> as we will only be dealing with
-     *  LTL probability formula, the mompmc code will just do stateFormula.isBooleanLiteralFormula()
-     *  check an then progresses to this->checkProbabilityOperatorFormula(
-     *      env, checkTask.substituteFormula(stateFormula.asProbabilityOperatorFormula())
-     *
-     * In the above storm computes this->computeProbabilities(
-     *  env, checkTask.substituteFormula(stateFormula.getSubformula()))
-     *
-     * computeProbabilities() is just a strategy function which calls the right modelBuilder checking
-     * routine based on the type of formula. There are some checks to do here:
-     *  1.
-     */
+
     storm::modelchecker::CheckTask<storm::logic::StateFormula, double> const& checkTask =
             abstractFormula.substituteFormula(form.asStateFormula());
 
@@ -127,13 +131,17 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
     std::cout << "Formula type: " << 
         (stateFormula.isProbabilityOperatorFormula() ? "yes" : "no") << "\n";
 
+    std::cout << "Multi-objective: " << (stateFormula.isMultiObjectiveFormula() ? "yes" : "no") << std::endl;
+
+    /*
     // At this point I think it is clear that mopmc needs to create its own AbstractModelChecker
     // class which inherits from storm AbstractModelChecker
 
     // make sure the spModel has a getNumberOfStatesMethod
     mopmc::model_checking::DTMCModelSolver<double> dtmcSolver(spModel);
 
-    dtmcSolver.check(storm::modelchecker::CheckTask<>(*(formulae[0]), true));
+    std::unique_ptr<storm::modelchecker::CheckResult> result =
+            dtmcSolver.check(storm::modelchecker::CheckTask<>(*(formulae[0]), true));
 
     //auto checker = std::make_shared<DtmcModelChecker>(*modelBuilder);
     // Create a check task with the formula. Run this task with the modelBuilder checker.
@@ -141,15 +149,20 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
     //assert(result->isExplicitQuantitativeCheckResult());
     // Use that we know that the modelBuilder checker produces an explicit quantitative result
     //auto quantRes = result->asExplicitQuantitativeCheckResult<double>();
+    // TODO handle both qualitative and quantitative results
+    std::cout << "Is explicit quant result? " << result->isExplicitQuantitativeCheckResult() << std::endl;
+    std::cout << "Is explicit qual result? " << result->isExplicitQualitativeCheckResult() << std::endl;
+    auto qualresult = result->asExplicitQualitativeCheckResult();
+    std::cout << "Result: " << (qualresult[*spModel.getInitialStates().begin()] ? "true" : "false") << std::endl;
     // Now compare the result at the first initial state of the modelBuilder with 0.5.
-    //return quantRes[*modelBuilder->getInitialStates().begin()] > 0.5;
-    
+    //return quantRes[*spModel.getInitialStates().begin()] > 0.5;
+    */
     return true;
 }
 
 template<typename ValueType, typename StateType>
 void mopmc::ExplicitModelBuilder<ValueType, StateType>::buildMatrices(
-    mopmc::sparse::SparseModelBuilder<ValueType>& spMatBuilder,
+    mopmc::sparse::SparseModelBuilder<ValueType>& spModelBuilder,
     storm::builder::StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder
 ) {
     // Create a callback function for the next state generator to enable it to request the index of states
@@ -292,15 +305,15 @@ void mopmc::ExplicitModelBuilder<ValueType, StateType>::buildMatrices(
     for (auto t : tripletList) {
         std::cout << "(" << t.row() << "," << t.col() << "," << t.value() << "), ";
     }
-    spMatBuilder.setNumberOfStates(numberOfExploredStates);
-    spMatBuilder.setNumberOfTransitions(numberOfTransitions);
+    spModelBuilder.setNumberOfStates(numberOfExploredStates);
+    spModelBuilder.setNumberOfTransitions(numberOfTransitions);
     std::cout << "\n";
     std::cout << "Number of rows: " << currentRow << ", Number of cols: " << numberOfExploredStates << "\n";
     //Eigen::SparseMatrix<ValueType> mat(currentRow , numberOfExploredStates);
     //mat.setFromTriplets(tripletList.begin(), tripletList.end());
     //std::cout << mat.toDense() << std::endl;
-    //spMatBuilder.constructTransitionMatrixFromTriplet(tripletList);
-    spMatBuilder.constructMatrixFromTriplet(
+    //spModelBuilder.constructTransitionMatrixFromTriplet(tripletList);
+    spModelBuilder.constructMatrixFromTriplet(
         currentRow, numberOfExploredStates,tripletList,
         mopmc::sparse::MatrixType::Transition);
 }
