@@ -58,6 +58,10 @@ public:
 
     const storm::storage::BitVector & getInitialStates() const;
 
+    void setNewIndexMap(uint_fast64_t state, uint_fast64_t index);
+
+    std::unordered_map<uint_fast64_t, uint_fast64_t>& getStateActionMapping();
+
     void setNumberOfTransitions(uint_fast64_t numTransition);
 
     void setStateLabels(const storm::models::sparse::StateLabeling& sLabels);
@@ -90,7 +94,7 @@ private:
     SpMat rewardMatrix;
     storm::models::sparse::StateLabeling stateLabels;
     // For MDPs
-    std::unordered_map<int, int> adjustedStateAction;
+    std::unordered_map<uint_fast64_t , uint_fast64_t> stateActionMapping;
     std::unordered_map<int, int> enabledActions;
 };
 

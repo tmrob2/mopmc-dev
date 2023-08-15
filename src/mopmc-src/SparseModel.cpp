@@ -71,6 +71,16 @@ namespace mopmc::sparse{
     }
 
     template <typename ValueType>
+    void SparseModelBuilder<ValueType>::setNewIndexMap(uint_fast64_t state, uint_fast64_t index) {
+        this -> stateActionMapping[index] = state;
+    }
+
+    template <typename ValueType>
+    std::unordered_map<uint_fast64_t, uint_fast64_t>& SparseModelBuilder<ValueType>::getStateActionMapping() {
+        return this -> stateActionMapping;
+    }
+
+    template <typename ValueType>
     std::pair<typename SparseModelBuilder<ValueType>::SpMat, std::unordered_map<uint_fast64_t, uint_fast64_t>>
             SparseModelBuilder<ValueType>::getDTMCSubMatrix(
         const storm::storage::BitVector &maybeStates) {

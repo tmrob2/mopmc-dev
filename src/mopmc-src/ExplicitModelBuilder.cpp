@@ -133,7 +133,7 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
 
     std::cout << "Multi-objective: " << (stateFormula.isMultiObjectiveFormula() ? "yes" : "no") << std::endl;
 
-    /*
+
     // At this point I think it is clear that mopmc needs to create its own AbstractModelChecker
     // class which inherits from storm AbstractModelChecker
 
@@ -156,8 +156,8 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
     std::cout << "Result: " << (qualresult[*spModel.getInitialStates().begin()] ? "true" : "false") << std::endl;
     // Now compare the result at the first initial state of the modelBuilder with 0.5.
     //return quantRes[*spModel.getInitialStates().begin()] > 0.5;
-    */
-    return true;
+
+    //return true;
 }
 
 template<typename ValueType, typename StateType>
@@ -224,7 +224,7 @@ void mopmc::ExplicitModelBuilder<ValueType, StateType>::buildMatrices(
                 }
 
                 tripletList.emplace_back(currentRow, currentIndex, static_cast<ValueType>(1.0));
-
+                spModelBuilder.setNewIndexMap(currentIndex, currentRow);
                 /*
                 for(auto& rewardModelBuilder : rewardModelBuilders) {
                     if (rewardModelBuilder.hasStateRewards()) {
@@ -287,9 +287,12 @@ void mopmc::ExplicitModelBuilder<ValueType, StateType>::buildMatrices(
                     ++choiceRewardIt;
                 }
                 */
+                spModelBuilder.setNewIndexMap(currentIndex, currentRow);
                 ++currentRow;
                 firstChoiceOfStates = false;
             }
+            // Probably missing a trick here with the rowGroup however, the state-index
+            // mapping is the way I like to do it
             ++currentRowGroup;
         }
         ++numberOfExploredStates;

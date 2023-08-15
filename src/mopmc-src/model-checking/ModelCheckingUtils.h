@@ -16,6 +16,7 @@ storm::storage::BitVector findStatesProbGreater0(
     typename mopmc::sparse::SparseModelBuilder<T>::SpMat const& backwardTransitions,
     storm::storage::BitVector const& phiStates,
     storm::storage::BitVector const& psiStates,
+    std::unordered_map<uint_fast64_t , uint_fast64_t>& stateIndexMapping,
     bool useStepBound = false,
     uint_fast64_t maximalSteps = 0
 );
@@ -24,19 +25,21 @@ template <typename T>
 storm::storage::BitVector findStatesProbEq1(
     typename mopmc::sparse::SparseModelBuilder<T>::SpMat const& backwardTransitions,
     storm::storage::BitVector const& psiStates,
-    storm::storage::BitVector const& statesWithProbGe0
+    storm::storage::BitVector const& statesWithProbGe0,
+    std::unordered_map<uint_fast64_t , uint_fast64_t>& stateIndexMapping
 );
 
 template <typename T>
 std::pair<storm::storage::BitVector, storm::storage::BitVector> performProb01(
     typename mopmc::sparse::SparseModelBuilder<T>::SpMat const& backwardTransitions,
     storm::storage::BitVector const& phiStates,
-    storm::storage::BitVector const& psiStates
+    storm::storage::BitVector const& psiStates,
+    std::unordered_map<uint_fast64_t , uint_fast64_t>& stateIndexMapping
 );
 
 template <typename T>
 storm::storage::BitVector getOneStep(
-    typename mopmc::sparse::SparseModelBuilder<T>::SpMat const& beackwardTransitions,
+    typename mopmc::sparse::SparseModelBuilder<T>::SpMat const& backwardTransitions,
     storm::storage::BitVector const& psiStates
 );
 

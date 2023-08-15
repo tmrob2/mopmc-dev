@@ -207,7 +207,8 @@ namespace model_checking{
             std::cout << "computing the states with probability > 0\n";
             std::pair<storm::storage::BitVector, storm::storage::BitVector> statesWithProb01 =
                     mopmc::sparseutils::performProb01<ValueType>(spModel.getBackwardTransitions(),
-                                                                 phiStates, psiStates);
+                                                                 phiStates, psiStates,
+                                                                 spModel.getStateActionMapping());
             statesWithProb0 = std::move(statesWithProb01.first);
             statesWithProb1 = std::move(statesWithProb01.second);
             maybeStates = ~(statesWithProb0 | statesWithProb1);
