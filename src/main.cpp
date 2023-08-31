@@ -18,7 +18,9 @@ int main (int argc, char *argv[]) {
     // Call function
     // Keep this for now to prototype but clean up with automatic model
     // selection later on once everything is finished.
-    auto result = mopmc::check(argv[1], argv[2]);
+    //auto result = mopmc::check(argv[1], argv[2]);
+    mopmc::stormCheck(argv[1], argv[2]);
     // And print result
-    std::cout << "Result > 0.5? " << (result ? "yes" : "no") << std::endl;
+    //std::cout << "Result > 0.5? " << (result ? "yes" : "no") << std::endl;
+    return 0;
 }

@@ -2,7 +2,7 @@
 // Created by thomas on 9/08/23.
 //
 #include "ModelChecker.h"
-#include "ModelCheckingUtils.h"
+#include "GraphAnalysis.h"
 #include <storm/modelchecker/CheckTask.h>
 #include <storm/logic/Formulas.h>
 #include <storm/modelchecker/results/CheckResult.h>
@@ -206,9 +206,7 @@ namespace model_checking{
             // Get all the states that have probability 0 and 1 of satisfying the until formula
             std::cout << "computing the states with probability > 0\n";
             std::pair<storm::storage::BitVector, storm::storage::BitVector> statesWithProb01 =
-                    mopmc::sparseutils::performProb01<ValueType>(spModel.getBackwardTransitions(),
-                                                                 phiStates, psiStates,
-                                                                 spModel.getStateActionMapping());
+                    mopmc::graph::performProb01<ValueType>(spModel, phiStates, psiStates);
             statesWithProb0 = std::move(statesWithProb01.first);
             statesWithProb1 = std::move(statesWithProb01.second);
             maybeStates = ~(statesWithProb0 | statesWithProb1);
@@ -230,28 +228,23 @@ namespace model_checking{
                 // First get the correct submatrix
                 // do (I - A)
                 std::cout << "Constructing sub-matrix\n";
-                std::cout << std::endl;
+                //std::cout << std::endl;
                 
                 std::pair<Eigen::SparseMatrix<ValueType>, std::unordered_map<uint_fast64_t, uint_fast64_t>>
                     returnPair = this -> spModel.getDTMCSubMatrix(maybeStates);
                 
-                std::cout << "Reduced Linear System:\n" << returnPair.first.toDense() << std::endl;
-                std::cout << "Row size: " << returnPair.first.outerSize() << "\n";
+                //std::cout << "Reduced Linear System:\n" << returnPair.first.toDense() << std::endl;
+                //std::cout << "Row size: " << returnPair.first.outerSize() << "\n";
                 // Compute b - or the one step states
                 Eigen::Matrix<ValueType, Eigen::Dynamic, 1> b = spModel.bVector(
                     statesWithProb1,
                     spModel.getBackwardTransitions(),
                     returnPair.first.outerSize(),
                     returnPair.second);
-                std::cout << "b: " << b.transpose() << std::endl;
+                //std::cout << "b: " << b.transpose() << std::endl;
                 
                 Eigen::Matrix<ValueType, Eigen::Dynamic, 1> x = spModel.solverHelper(returnPair.first, b);
-                mopmc::sparseutils::setVector(result, maybeStates, x);
-                std::cout << "Full Result: ";
-                for (ValueType v: result) {
-                    std::cout << v << ", ";
-                }
-                std::cout << "\n";
+                mopmc::graph::setVector(result, maybeStates, x);
             }
         }
         return result;
@@ -293,7 +286,10 @@ namespace model_checking{
             throw std::runtime_error("The property refers to an unknown label");
         }
         std::cout << "State Label Formula: " << stateFormula.getLabel() << std::endl;
-        std::cout << "|States|: " << spModel.getStates(stateFormula.getLabel()).size() << std::endl;
+        std::cout << "|States|: " << spModel.getStates(stateFormula.getLabel()).getNumberOfSetBits() << "/"
+        << spModel.getNumberOfStates() << std::endl;
+
+
         return std::unique_ptr<storm::modelchecker::CheckResult>(
             new storm::modelchecker::ExplicitQualitativeCheckResult(
                 spModel.getStates(stateFormula.getLabel())

@@ -3,7 +3,7 @@
 //
 
 #include "SparseModel.h"
-#include "model-checking/ModelCheckingUtils.h"
+#include "model-checking/GraphAnalysis.h"
 #include <Eigen/Sparse>
 #include <Eigen/IterativeLinearSolvers>
 #include <vector>
@@ -66,26 +66,77 @@ namespace mopmc::sparse{
     }
 
     template <typename ValueType>
+    typename SparseModelBuilder<ValueType>::SpMat const& SparseModelBuilder<ValueType>::getTransitionMatrix() {
+        return this -> transitionMatrix;
+    }
+
+    template <typename ValueType>
     const storm::storage::BitVector& SparseModelBuilder<ValueType>::getInitialStates() const {
         return this -> getStates("init");
     }
 
     template <typename ValueType>
-    void SparseModelBuilder<ValueType>::setNewIndexMap(uint_fast64_t state, uint_fast64_t index) {
-        this -> stateActionMapping[index] = state;
+    std::unordered_map<uint_fast64_t, std::vector<uint_fast64_t>> const& SparseModelBuilder<ValueType>::getStateActionMapping() {
+        return this -> stateActionMapping;
     }
 
     template <typename ValueType>
-    std::unordered_map<uint_fast64_t, uint_fast64_t>& SparseModelBuilder<ValueType>::getStateActionMapping() {
-        return this -> stateActionMapping;
+    void SparseModelBuilder<ValueType>::addNewActionToState(uint_fast64_t state, uint_fast64_t action_index) {
+        auto it = this -> stateActionMapping.find(state);
+        if (it != stateActionMapping.end()) {
+            it->second.push_back(action_index);
+        } else {
+            this->stateActionMapping[state] = {action_index};
+        }
+    };
+
+    template<typename ValueType>
+    const std::vector<uint_fast64_t> & SparseModelBuilder<ValueType>::getNumberActionsForState(uint_fast64_t state) {
+        return this -> stateActionMapping[state];
+    }
+
+    template<typename ValueType>
+    std::unordered_map<uint_fast64_t, uint_fast64_t>& SparseModelBuilder<ValueType>::getReverseStateActionMapping() {
+        return this -> reverseStateActionMapping;
+    };
+
+    template <typename ValueType>
+    void SparseModelBuilder<ValueType>::insertReverseStateActionMap(uint_fast64_t state, uint_fast64_t actionIndex) {
+        reverseStateActionMapping[actionIndex] = state;
+    };
+
+    template <typename ValueType>
+    std::vector<uint_fast64_t>& SparseModelBuilder<ValueType>::getActionsForState(uint_fast64_t state) {
+        return this->stateActionMapping[state];
+    }
+
+    template<typename ValueType>
+    void SparseModelBuilder<ValueType>::insertRewardModel(
+        std::string rewardModelName,
+        storm::models::sparse::StandardRewardModel<ValueType> rewardModel) {
+        this->rewardModels.emplace(rewardModelName, rewardModel);
+    }
+
+    template<typename ValueType>
+    storm::models::sparse::StandardRewardModel<ValueType>& SparseModelBuilder<ValueType>::getRewardModel(
+            std::string rewardModelName) {
+        return this->rewardModels[rewardModelName];
+    }
+
+    template <typename ValueType>
+    std::vector<std::string> SparseModelBuilder<ValueType>::getRewardModelNames(){
+        std::vector<std::string> keys;
+        for(auto it = this->rewardModels.begin(); it != this->rewardModels.end(); ++it){
+            const std::string& key = it->first;
+            keys.push_back(key);
+        }
+        return keys;
     }
 
     template <typename ValueType>
     std::pair<typename SparseModelBuilder<ValueType>::SpMat, std::unordered_map<uint_fast64_t, uint_fast64_t>>
             SparseModelBuilder<ValueType>::getDTMCSubMatrix(
         const storm::storage::BitVector &maybeStates) {
-
-        // keep track of the initial state mappings from full to sub-matrix.
 
         uint_fast64_t subMatrixSize = maybeStates.getNumberOfSetBits();
         std::cout << "Sub matrix size: " << subMatrixSize << "\n";
@@ -112,6 +163,42 @@ namespace mopmc::sparse{
         return std::make_pair(subMatrix, subMatMap);
     }
 
+    template<typename ValueType>
+    void SparseModelBuilder<ValueType>::getMDPSubMatrix(
+        const storm::storage::BitVector &subsystemStates,
+        const storm::storage::BitVector &subsystemActions) {
+
+        uint_fast64_t matrixRows = subsystemActions.getNumberOfSetBits();
+        uint_fast64_t matrixCols = subsystemStates.getNumberOfSetBits();
+
+        std::unordered_map<uint_fast64_t, uint_fast64_t> subStateMap;
+        std::unordered_map<uint_fast64_t, uint_fast64_t> subActionMap;
+        uint_fast64_t newStateIndex = 0;
+        uint_fast64_t newActionIndex = 0;
+        for(uint_fast64_t state: subsystemStates) {
+            subStateMap.emplace(state, newStateIndex);
+            newStateIndex++;
+        }
+        for(uint_fast64_t action: subsystemActions) {
+            subActionMap.emplace(action, newActionIndex);
+            newActionIndex++;
+        }
+        SpMat subMatrix(matrixRows, matrixCols);
+        for(uint_fast64_t state: subsystemStates) {
+            std::vector<uint_fast64_t> const& actions = this->getActionsForState(state);
+            for(uint_fast64_t action : actions ) {
+               if(subsystemActions[action]) {
+                   typename SpMat::InnerIterator it(this->transitionMatrix, action);
+                   for(; it; ++it){
+                       subMatrix.insert(subActionMap[it.row()],subStateMap[it.col()]) = it.value();
+                   }
+               }
+            }
+        }
+        subMatrix.makeCompressed();
+        this -> transitionMatrix = subMatrix;
+    }
+
     template <typename ValueType>
     Eigen::Matrix<ValueType, Eigen::Dynamic, 1> SparseModelBuilder<ValueType>::bVector(
             storm::storage::BitVector const& prob1States,
@@ -122,7 +209,7 @@ namespace mopmc::sparse{
         // for each row which leads to a state in the prob1states
         // first get the one-step states:
         // once we have these states it is from these rows
-        storm::storage::BitVector oneStepStates = mopmc::sparseutils::getOneStep<ValueType>(
+        storm::storage::BitVector oneStepStates = mopmc::graph::getOneStep<ValueType>(
             backwardTransitions, prob1States
         );
 

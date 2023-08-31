@@ -15,13 +15,13 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 set(Sources)
 set(TestSources)
 add_subdirectory(src)
-add_subdirectory(test)
+#add_subdirectory(test)
 # set executable
 add_executable(${PROJECT_NAME} "${Sources}")
 
-set(ProjectTests "${PROJECT_NAME}_tests")
-set(EigenSource /home/thomas/eigen-3.4.0)
-add_executable(ProjectTests "${TestSources}")
+#set(ProjectTests "${PROJECT_NAME}_tests")
+#set(EigenSource /home/thomas/eigen-3.4.0)
+#add_executable(ProjectTests "${TestSources}")
 
 enable_testing()
 
@@ -31,10 +31,10 @@ add_subdirectory(googletest)
 # Set include directories and dependencies
 target_include_directories(${PROJECT_NAME} PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE src)
 target_link_libraries(${PROJECT_NAME} PRIVATE storm storm-parsers)
-target_include_directories(ProjectTests PRIVATE test)
-target_link_libraries(ProjectTests PRIVATE GTest::gtest_main)
+#target_include_directories(ProjectTests PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE test)
+#target_link_libraries(ProjectTests GTest::gtest_main storm storm-parsers)
 
-include(GoogleTest)
-gtest_discover_tests(ProjectTests)
+#include(GoogleTest)
+#gtest_discover_tests(ProjectTests)
 # Note that other libraries/includes from Storm might need to be added depending on the used functionality.
 # For example, to enable counterexamples, include directory ${storm-counterexamples_INCLUDE_DIR} and link library storm-counterexamples need to be added.

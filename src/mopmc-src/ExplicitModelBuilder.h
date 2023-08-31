@@ -11,9 +11,8 @@
 #include <storm/settings/SettingsManager.h>
 #include <storm/models/sparse/StandardRewardModel.h>
 #include <storm/storage/sparse/StateStorage.h>
-
-//#include "deprecated/TransitionMatrixBuilder.h"
-//#include "deprecated/RewardModelBuilder.h"
+#include <storm/builder/StateAndChoiceInformationBuilder.h>
+#include <storm/builder/RewardModelBuilder.h>
 #include "SparseModel.h"
 
 #include <deque>
@@ -38,6 +37,7 @@ namespace mopmc {
 
         void buildMatrices(
             mopmc::sparse::SparseModelBuilder<ValueType>& spModelBuilder,
+            std::vector<storm::builder::RewardModelBuilder<ValueType>>& rewardModelBuilders,
             storm::builder::StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder
         );
 
@@ -68,6 +68,8 @@ namespace mopmc {
     bool check(std::string const& path_to_model, std::string const& property_string);
     template<typename ValueType>
     storm::models::sparse::StateLabeling buildStateLabelling();
+
+    bool stormCheck(std::string const& path_to_model, std::string const& property_string);
 }
 
 #endif //MOPMC_EXPLICITMODELBUILDER_H

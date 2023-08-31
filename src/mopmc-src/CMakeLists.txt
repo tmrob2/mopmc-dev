@@ -6,10 +6,6 @@ list(
         APPEND Sources
         "${dir}/ExplicitModelBuilder.cpp"
         "${dir}/ExplicitModelBuilder.h"
-        #"${dir}/TransitionMatrixBuilder.cpp"
-        #"${dir}/TransitionMatrixBuilder.h"
-        #"${dir}/RewardModelBuilder.cpp"
-        #"${dir}/RewardModelBuilder.h"
         "${dir}/SparseModel.cpp"
         "${dir}/SparseModel.h"
 )
