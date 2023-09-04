@@ -2,8 +2,8 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(
         APPEND Sources
-        "${dir}/LinearEquationUtils.cpp"
-        "${dir}/LinearEquationUtils.h"
+        "${dir}/OptimalPolicy.cpp"
+        "${dir}/OptimalPolicy.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

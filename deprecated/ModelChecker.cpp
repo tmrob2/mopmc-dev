@@ -15,8 +15,8 @@
 #include <storm/modelchecker/hints/ModelCheckerHint.h>
 #include <storm/modelchecker/hints/ExplicitModelCheckerHint.h>
 #include <storm/utility/vector.h>
-#include "storm/modelchecker/results/QualitativeCheckResult.h"
-#include "storm/modelchecker/results/QuantitativeCheckResult.h"
+#include <storm/modelchecker/results/QualitativeCheckResult.h>
+#include <storm/modelchecker/results/QuantitativeCheckResult.h>
 #include <storm/solver/SolveGoal.h>
 
 #include <memory>

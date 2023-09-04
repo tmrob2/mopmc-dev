@@ -2,7 +2,7 @@
 // Created by thomas on 12/08/23.
 //
 #include <storm/storage/BitVector.h>
-#include "../SparseModel.h"
+#include "SparseModel.h"
 #include <Eigen/Sparse>
 #include "GraphAnalysis.h"
 

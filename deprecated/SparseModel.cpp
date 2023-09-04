@@ -3,7 +3,7 @@
 //
 
 #include "SparseModel.h"
-#include "model-checking/GraphAnalysis.h"
+#include "GraphAnalysis.h"
 #include <Eigen/Sparse>
 #include <Eigen/IterativeLinearSolvers>
 #include <vector>

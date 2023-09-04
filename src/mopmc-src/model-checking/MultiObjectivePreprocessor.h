@@ -15,7 +15,7 @@
 #include <storm/environment/Environment.h>
 #include <storm/modelchecker/multiobjective/Objective.h>
 
-#include "mopmc-src/SparseModel.h"
+#include "../../../deprecated/SparseModel.h"
 
 namespace mopmc {
 namespace stormtest {
@@ -32,16 +32,24 @@ namespace stormtest {
          * @param originalModel The considered model
          * @param originalFormula the considered formula. The subformulas should only contain one OperatorFormula at top level.
          */
-        //static ReturnType
-        static void preprocess(
+        /*static ReturnType preprocess(
             storm::Environment const &env,
             SparseModelType const &originalModel,
-            storm::logic::MultiObjectiveFormula const &originalFormula
-            //mopmc::sparse::SparseModelBuilder<double>& spModel
-            );
+            storm::logic::MultiObjectiveFormula const &originalFormula);
+        */
+
+        static ReturnType preprocess(
+            storm::Environment const &env,
+            SparseModelType &originalModel,
+            storm::logic::MultiObjectiveFormula const &originalFormula);
+
+        /*static storm::storage::BitVector getOnlyReachableViaPhi(
+            SparseModelType const& model,
+            storm::storage::BitVector const& phi);
+        */
 
         static storm::storage::BitVector getOnlyReachableViaPhi(
-            SparseModelType const& model,
+            SparseModelType& model,
             storm::storage::BitVector const& phi);
 
     private:
@@ -60,7 +68,7 @@ namespace stormtest {
             // If set, some states have been merged to a deadlock state with this label.
             boost::optional<std::string> deadlockLabel;
 
-            PreprocessorData(std::shared_ptr<SparseModelType> model);
+            explicit PreprocessorData(std::shared_ptr<SparseModelType> model);
         };
 
         /*!
@@ -134,7 +142,7 @@ namespace stormtest {
          * Builds the result from preprocessing
          */
         static ReturnType
-        buildResult(SparseModelType const &originalModel, storm::logic::MultiObjectiveFormula const &originalFormula,
+        buildResult(SparseModelType &originalModel, storm::logic::MultiObjectiveFormula const &originalFormula,
                     PreprocessorData &data);
 
         /*!

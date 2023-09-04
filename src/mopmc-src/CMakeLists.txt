@@ -6,8 +6,8 @@ list(
         APPEND Sources
         "${dir}/ExplicitModelBuilder.cpp"
         "${dir}/ExplicitModelBuilder.h"
-        "${dir}/SparseModel.cpp"
-        "${dir}/SparseModel.h"
+        "${dir}/SparseModel2.cpp"
+        "${dir}/SparseModel2.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

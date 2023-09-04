@@ -10,7 +10,7 @@
 #include <storm/modelchecker/results/CheckResult.h>
 #include <storm/environment/Environment.h>
 #include <storm/solver/SolveGoal.h>
-#include "../SparseModel.h"
+#include "SparseModel.h"
 
 #include <memory>
 

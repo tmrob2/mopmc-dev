@@ -5,7 +5,7 @@
 #ifndef MOPMC_MULTIOBJECTIVE_H
 #define MOPMC_MULTIOBJECTIVE_H
 
-#include "../SparseModel.h"
+#include "SparseModel.h"
 #include <storm/builder/RewardModelBuilder.h>
 #include <storm/logic/MultiObjectiveFormula.h>
 #include <boost/optional.hpp>

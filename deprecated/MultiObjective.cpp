@@ -2,15 +2,11 @@
 // Created by thomas on 18/08/23.
 //
 #include "MultiObjective.h"
-#include "../SparseModel.h"
-#include "ModelChecker.h"
-#include "GraphAnalysis.h"
 #include <storm/storage/BitVector.h>
 #include <storm/logic/OperatorFormula.h>
 #include <storm/modelchecker/results/ExplicitQualitativeCheckResult.h>
 #include <storm/modelchecker/results/ExplicitQuantitativeCheckResult.h>
 #include <storm/models/sparse/StandardRewardModel.h>
-#include "mopmc-src/SparseModel.h"
 #include <storm/utility/vector.h>
 #include <storm/utility/FilteredRewardModel.h>
 
@@ -100,7 +96,7 @@ void mopmc::multiobj::reduceStates(mopmc::sparse::SparseModelBuilder<T> &spModel
 
             auto const& baseRewardModel = spModel.getRewardModel(opFormula->asRewardOperatorFormula().getRewardModelName());
             if (pathFormula.isEventuallyFormula()){
-                auto const& rewardModel = storm::utility::createFilteredRewardModel(baseRewardModel, true, pathFormula.asEventuallyFormula());
+                auto const& rewardModel = storm::utility::createFilteredRewardModel(baseRewardModel, false, pathFormula.asEventuallyFormula());
 
                 std::function<bool(T const&)> const& filter = storm::utility::isZero<T>;
 

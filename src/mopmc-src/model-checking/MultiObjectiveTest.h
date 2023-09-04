@@ -8,7 +8,6 @@
 #include <memory>
 #include <storm/environment/Environment.h>
 #include <storm/logic/MultiObjectiveFormula.h>
-#include "mopmc-src/SparseModel.h"
 
 namespace mopmc {
     namespace stormtest{
@@ -16,10 +15,8 @@ namespace mopmc {
         //std::unique_ptr<storm::modelchecker::CheckResult>
         void performMultiObjectiveModelChecking(
             storm::Environment env,
-            SparseModelType const& model,
-            storm::logic::MultiObjectiveFormula const& formula
-            //mopmc::sparse::SparseModelBuilder<double>& spMat
-            );
+            SparseModelType& model,
+            storm::logic::MultiObjectiveFormula const& formula);
     }
 }
 

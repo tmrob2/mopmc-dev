@@ -8,8 +8,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # search for Storm library
-find_package(storm REQUIRED)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+#find_package(storm REQUIRED)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+set(storm_INCLUDE_DIR, "/home/thomas/storm/build/storm")
+set(storm-parsers_INCLUDE_DIR, "/home/thomas/storm/build/storm-parsers")
 
 # specify source files
 set(Sources)
@@ -18,7 +20,7 @@ add_subdirectory(src)
 #add_subdirectory(test)
 # set executable
 add_executable(${PROJECT_NAME} "${Sources}")
-
+find_package(storm REQUIRED)
 #set(ProjectTests "${PROJECT_NAME}_tests")
 #set(EigenSource /home/thomas/eigen-3.4.0)
 #add_executable(ProjectTests "${TestSources}")
@@ -29,7 +31,7 @@ enable_testing()
 add_subdirectory(googletest)
 
 # Set include directories and dependencies
-target_include_directories(${PROJECT_NAME} PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE src)
+target_include_directories(${PROJECT_NAME} PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} PRIVATE src)
 target_link_libraries(${PROJECT_NAME} PRIVATE storm storm-parsers)
 #target_include_directories(ProjectTests PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE test)
 #target_link_libraries(ProjectTests GTest::gtest_main storm storm-parsers)

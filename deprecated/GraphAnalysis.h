@@ -6,7 +6,7 @@
 #define MOPMC_GRAPHANALYSIS_H
 
 #include <storm/storage/BitVector.h>
-#include "../SparseModel.h"
+#include "SparseModel.h"
 #include <Eigen/Sparse>
 #include <boost/optional/optional.hpp>
 
