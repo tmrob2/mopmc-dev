@@ -26,6 +26,7 @@ bool mopmc::stormCheck(std::string const& path_to_model, std::string const& prop
         storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
 
     mopmc::stormtest::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
+    return true;
 }
 
 

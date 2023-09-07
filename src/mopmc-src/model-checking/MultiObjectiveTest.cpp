@@ -5,12 +5,12 @@
 #include <memory>
 #include <storm/modelchecker/multiobjective/multiObjectiveModelChecking.h>
 #include <storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h>
-//#include <storm/modelchecker/multiobjective/multiObjectiveModelChecking.h>
+#include <storm/modelchecker/multiobjective/pcaa/SparsePcaaQuery.h>
+#include <storm/modelchecker/multiobjective/pcaa/SparsePcaaAchievabilityQuery.h>
 #include "MultiObjectiveTest.h"
 #include "MultiObjectivePreprocessor.h"
 #include <storm/models/sparse/Mdp.h>
-#include "../SparseModel2.h"
-#include "../solvers/OptimalPolicy.h"
+#include "StandardMdpPcaaChecker.h"
 
 namespace mopmc {
     namespace stormtest {
@@ -33,28 +33,25 @@ namespace mopmc {
 
             result.preprocessedModel->printModelInformationToStream(outputStream);
 
-            // ok so the next thing to do is implement value iteration using sparse matrices to solve this system
-            mopmc::sparsemodel::SparseModelBuilder<SparseModelType> spModel(result);
+            storm::modelchecker::multiobjective::MultiObjectiveMethod method = env.modelchecker().multi().getMethod();
+            switch(method) {
+                case storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa:
+                    std::cout << "Pcaa\n";
+                    break;
+                default:
+                    std::cout << "Some other multi-objective method";
+            }
 
-            // construct a problem
-            std::vector<typename SparseModelType::ValueType>
-                    x_(spModel.getTransitionMatrix().cols(), static_cast<typename SparseModelType::ValueType>(0.0));
-            std::vector<typename SparseModelType::ValueType>
-                    y_(spModel.getTransitionMatrix().rows(), static_cast<typename SparseModelType::ValueType>(0.0));
-            Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(x_.data(), x_.size());
-            Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> y(y_.data(), y_.size());
-            std::vector<uint_fast64_t> pi(spModel.getNumberOfStates());
+            std::cout << "Trivial objectives: " << (result.containsOnlyTrivialObjectives() ? "yes" : "no") << "\n";
 
-            std::cout << "Number of reward models " << spModel.getRewardModelNames().size() << "\n";
-            double initVal = 1.0 / static_cast<double>(spModel.getRewardModelNames().size());
-            std::vector<typename SparseModelType::ValueType>
-                    w_(spModel.getRewardModelNames().size(), static_cast<typename SparseModelType::ValueType>(initVal));
-            Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> w(w_.data(), w_.size());
+            mopmc::multiobjective::StandardMdpPcaaChecker<SparseModelType> mdpChecker(result);
 
-            mopmc::solver::Problem<SparseModelType> problem(
-                    spModel,static_cast<typename SparseModelType::ValueType>(0.0001), x, y, pi,
-                    result.objectives[0].formula->getOptimalityType());
-            mopmc::solver::optimalPolicy(problem, w);
+            // just make up some initial weight vector
+            std::vector<typename SparseModelType::ValueType> w
+                {static_cast<typename SparseModelType::ValueType>(0.5),
+                 static_cast<typename SparseModelType::ValueType>(0.5)};
+            mdpChecker.check(w);
+
         }
 
         template void mopmc::stormtest::performMultiObjectiveModelChecking(
