@@ -12,6 +12,7 @@
 #include <vector>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+#include <storm/solver/AbstractEquationSolver.h>
 
 namespace mopmc {
 namespace multiobjective {
@@ -29,6 +30,26 @@ public:
 
     void check(std::vector<typename SparseModelType::ValueType> &w);
 
+    void unboundedWeightPhase(storm::Environment const& env,
+                              std::vector<typename SparseModelType::ValueType> const& weightVector);
+
+    boost::optional<typename SparseModelType::ValueType> computeWeightedResultBound(
+            bool lower, std::vector<typename SparseModelType::ValueType> const& weightVector, storm::storage::BitVector const& objectiveFilter) const;
+
+    void setBoundsToSolver(storm::solver::AbstractEquationSolver<typename SparseModelType::ValueType>& solver, bool requiresLower,
+                           bool requiresUpper, std::vector<typename SparseModelType::ValueType> const& weightVector,
+                           storm::storage::BitVector const& objectiveFilter,
+                           storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitions,
+                           storm::storage::BitVector const& rowsWithSumLessOne,
+                           std::vector<typename SparseModelType::ValueType> const& rewards);
+
+    void computeAndSetBoundsToSolver(storm::solver::AbstractEquationSolver<typename SparseModelType::ValueType>& solver,
+                                     bool requiresLower,
+                                     bool requiresUpper,
+                                     storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitions,
+                                     storm::storage::BitVector const& rowsWithSumLessOne,
+                                     std::vector<typename SparseModelType::ValueType> const& rewards) const;
+
 private:
 
     void updateEcQuotient(std::vector<typename SparseModelType::ValueType> &weightedRewardVector);
@@ -36,10 +57,6 @@ private:
     std::vector<storm::modelchecker::multiobjective::Objective<typename SparseModelType::ValueType>> objectives;
 
     void toEigenSparseMatrix();
-
-    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> eigenInducedTransitionMatrix(
-        Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>& fullTransitionSystem,
-        std::vector<uint64_t>& chosenActions);
 
     Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> makeEigenIdentityMatrix();
 
@@ -103,6 +120,7 @@ private:
 
     boost::optional<EcQuotient> ecQuotient;
 
+    std::vector<typename SparseModelType::ValueType> weightedResult;
 };
 }
 }

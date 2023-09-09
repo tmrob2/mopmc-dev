@@ -4,8 +4,8 @@ list(
         APPEND Sources
         "${dir}/Geometry.cpp"
         "${dir}/Geometry.h"
-        "${dir}/ValueIteration.h"
-        "${dir}/ValueIteration.cpp"
+        "${dir}/IterativeSolver.h"
+        "${dir}/IterativeSolver.cpp"
         "${dir}/InducedEquationSolver.h"
         "${dir}/InducedEquationSolver.cpp"
 )

@@ -50,7 +50,7 @@ namespace mopmc {
             std::vector<typename SparseModelType::ValueType> w
                 {static_cast<typename SparseModelType::ValueType>(0.5),
                  static_cast<typename SparseModelType::ValueType>(0.5)};
-            mdpChecker.check(w);
+            mdpChecker.unboundedWeightPhase(env, w);
 
         }
 

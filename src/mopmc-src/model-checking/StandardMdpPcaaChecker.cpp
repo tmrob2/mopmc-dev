@@ -8,8 +8,11 @@
 #include <storm/transformer/GoalStateMerger.h>
 #include <storm/utility/vector.h>
 #include <set>
+#include <storm/solver/MinMaxLinearEquationSolver.h>
 #include "../solvers/InducedEquationSolver.h"
-#include "../solvers/ValueIteration.h"
+#include "../solvers/IterativeSolver.h"
+#include <storm/modelchecker/prctl/helper/DsMpiUpperRewardBoundsComputer.h>
+#include <storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h>
 
 namespace mopmc{
 
@@ -205,6 +208,171 @@ void StandardMdpPcaaChecker<SparseModelType>::updateEcQuotient(std::vector<typen
 }
 
 template <typename SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightPhase(const storm::Environment &env,
+                                                                   const std::vector<typename SparseModelType::ValueType> &weightVector) {
+    auto totalRewardObjectives = objectivesWithNoUpperTimeBound;
+    std::vector<typename SparseModelType::ValueType> weightedRewardVector(
+            transitionMatrix.getRowCount(), storm::utility::zero<typename SparseModelType::ValueType>());
+    for (auto objIndex: totalRewardObjectives){
+        typename SparseModelType::ValueType weight = storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType());
+        storm::utility::vector::addScaledVector(weightedRewardVector, actionRewards[objIndex], weight);
+    }
+
+    updateEcQuotient(weightedRewardVector);
+    // Set up the choice values
+    storm::utility::vector::selectVectorValues(ecQuotient->auxChoiceValues, ecQuotient->ecqToOriginalChoiceMapping, weightedRewardVector);
+    std::map<uint64_t, uint64_t> ecqStateToOptimalMecMap;
+    storm::solver::GeneralMinMaxLinearEquationSolverFactory<typename SparseModelType::ValueType> solverFactory;
+    std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<typename SparseModelType::ValueType>> solver = solverFactory.create(env, ecQuotient->matrix);
+    solver->setTrackScheduler(true);
+    solver->setHasUniqueSolution(true);
+    solver->setOptimizationDirection(storm::solver::OptimizationDirection::Maximize);
+    auto req = solver->getRequirements(env, storm::solver::OptimizationDirection::Maximize);
+    setBoundsToSolver(*solver, req.lowerBounds(), req.upperBounds(), weightVector, objectivesWithNoUpperTimeBound, ecQuotient->matrix,
+                      ecQuotient->rowsWithSumLessOne, ecQuotient->auxChoiceValues);
+    if (solver->hasLowerBound()) {
+        req.clearLowerBounds();
+    }
+    if (solver->hasUpperBound()) {
+        req.clearUpperBounds();
+    }
+    if (req.validInitialScheduler()) {
+        solver->setInitialScheduler(computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne));
+        req.clearValidInitialScheduler();
+    }
+    if(req.hasEnabledCriticalRequirement()) {
+        std::stringstream ss;
+        ss << "Solver requirements " + req.getEnabledRequirementsAsString() + " not checked.";
+        throw std::runtime_error(ss.str());
+    }
+    solver->setRequirementsChecked(true);
+
+    // Use the (0...0) vector as initial guess for the solution.
+    std::fill(ecQuotient->auxStateValues.begin(), ecQuotient->auxStateValues.end(), storm::utility::zero<typename SparseModelType::ValueType>());
+
+    solver->solveEquations(env, ecQuotient->auxStateValues, ecQuotient->auxChoiceValues);
+    this->weightedResult = std::vector<typename SparseModelType::ValueType>(transitionMatrix.getRowGroupCount());
+    solver->getSchedulerChoices();
+}
+
+template<class SparseModelType>
+boost::optional<typename SparseModelType::ValueType> StandardMdpPcaaChecker<SparseModelType>::computeWeightedResultBound(
+        bool lower, std::vector<typename SparseModelType::ValueType> const& weightVector, storm::storage::BitVector const& objectiveFilter) const {
+    auto result = storm::utility::zero<typename SparseModelType::ValueType>();
+    for (auto objIndex : objectiveFilter) {
+        boost::optional<typename SparseModelType::ValueType> const& objBound =
+                (lower == storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType()))
+                ? this->objectives[objIndex].upperResultBound : this->objectives[objIndex].lowerResultBound;
+        if (objBound) {
+            if (storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType())) {
+                result -= objBound.get() * weightVector[objIndex];
+            } else {
+                result += objBound.get() * weightVector[objIndex];
+            }
+        } else {
+            // If there is an objective without the corresponding bound we can not give guarantees for the weighted sum
+            return boost::none;
+        }
+    }
+    return result;
+}
+
+template<class SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::setBoundsToSolver(
+        storm::solver::AbstractEquationSolver<typename SparseModelType::ValueType>& solver,
+        bool requiresLower,
+        bool requiresUpper, std::vector<typename SparseModelType::ValueType> const& weightVector,
+        storm::storage::BitVector const& objectiveFilter,
+        storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitions,
+        storm::storage::BitVector const& rowsWithSumLessOne,
+        std::vector<typename SparseModelType::ValueType> const& rewards) {
+    // Check whether bounds are already available
+    boost::optional<typename SparseModelType::ValueType> lowerBound = this->computeWeightedResultBound(true, weightVector, objectiveFilter & ~lraObjectives);
+    if (lowerBound) {
+        if (!lraObjectives.empty()) {
+            auto min = std::min_element(lraMecDecomposition->auxMecValues.begin(), lraMecDecomposition->auxMecValues.end());
+            if (min != lraMecDecomposition->auxMecValues.end()) {
+                lowerBound.get() += *min;
+            }
+        }
+        solver.setLowerBound(lowerBound.get());
+    }
+    boost::optional<typename SparseModelType::ValueType> upperBound = this->computeWeightedResultBound(false, weightVector, objectiveFilter);
+    if (upperBound) {
+        if (!lraObjectives.empty()) {
+            auto max = std::max_element(lraMecDecomposition->auxMecValues.begin(), lraMecDecomposition->auxMecValues.end());
+            if (max != lraMecDecomposition->auxMecValues.end()) {
+                upperBound.get() += *max;
+            }
+        }
+        solver.setUpperBound(upperBound.get());
+    }
+
+    if ((requiresLower && !solver.hasLowerBound()) || (requiresUpper && !solver.hasUpperBound())) {
+        computeAndSetBoundsToSolver(solver, requiresLower, requiresUpper, transitions, rowsWithSumLessOne, rewards);
+    }
+}
+
+template<class SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::computeAndSetBoundsToSolver(storm::solver::AbstractEquationSolver<typename SparseModelType::ValueType>& solver,
+                                                                          bool requiresLower,
+                                                                          bool requiresUpper,
+                                                                          storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitions,
+                                                                          storm::storage::BitVector const& rowsWithSumLessOne,
+                                                                          std::vector<typename SparseModelType::ValueType> const& rewards) const {
+    // Compute the one step target probs
+    std::vector<typename SparseModelType::ValueType> oneStepTargetProbs(transitions.getRowCount(), storm::utility::zero<typename SparseModelType::ValueType>());
+    for (auto row : rowsWithSumLessOne) {
+        oneStepTargetProbs[row] = storm::utility::one<typename SparseModelType::ValueType>() - transitions.getRowSum(row);
+    }
+
+    if (requiresLower && !solver.hasLowerBound()) {
+        // Compute lower bounds
+        std::vector<typename SparseModelType::ValueType> negativeRewards;
+        negativeRewards.reserve(transitions.getRowCount());
+        uint64_t row = 0;
+        for (auto const& rew : rewards) {
+            if (rew < storm::utility::zero<typename SparseModelType::ValueType>()) {
+                negativeRewards.resize(row, storm::utility::zero<typename SparseModelType::ValueType>());
+                negativeRewards.push_back(-rew);
+            }
+            ++row;
+        }
+        if (!negativeRewards.empty()) {
+            negativeRewards.resize(row, storm::utility::zero<typename SparseModelType::ValueType>());
+            std::vector<typename SparseModelType::ValueType> lowerBounds =
+                    storm::modelchecker::helper::DsMpiMdpUpperRewardBoundsComputer<typename SparseModelType::ValueType>(transitions, negativeRewards, oneStepTargetProbs)
+                            .computeUpperBounds();
+            storm::utility::vector::scaleVectorInPlace(lowerBounds, -storm::utility::one<typename SparseModelType::ValueType>());
+            solver.setLowerBounds(std::move(lowerBounds));
+        } else {
+            solver.setLowerBound(storm::utility::zero<typename SparseModelType::ValueType>());
+        }
+    }
+
+    // Compute upper bounds
+    if (requiresUpper && !solver.hasUpperBound()) {
+        std::vector<typename SparseModelType::ValueType> positiveRewards;
+        positiveRewards.reserve(transitions.getRowCount());
+        uint64_t row = 0;
+        for (auto const& rew : rewards) {
+            if (rew > storm::utility::zero<typename SparseModelType::ValueType>()) {
+                positiveRewards.resize(row, storm::utility::zero<typename SparseModelType::ValueType>());
+                positiveRewards.push_back(rew);
+            }
+            ++row;
+        }
+        if (!positiveRewards.empty()) {
+            positiveRewards.resize(row, storm::utility::zero<typename SparseModelType::ValueType>());
+            solver.setUpperBound(
+                    storm::modelchecker::helper::BaierUpperRewardBoundsComputer<typename SparseModelType::ValueType>(transitions, positiveRewards, oneStepTargetProbs).computeUpperBound());
+        } else {
+            solver.setUpperBound(storm::utility::zero<typename SparseModelType::ValueType>());
+        }
+    }
+}
+
+template <typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::check(std::vector<typename SparseModelType::ValueType> &w){
     Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> wEig(w.data(), w.size());
     // do one multiplication of the rewards matrix and the weight vector
@@ -228,12 +396,14 @@ void StandardMdpPcaaChecker<SparseModelType>::check(std::vector<typename SparseM
     toEigenSparseMatrix(); // The transition matrix is now an Eigen matrix
     // compute the value of the initial policy, which is an induced DTMC
     Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(ecQuotient->auxStateValues.data(), ecQuotient->auxStateValues.size());
-    Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> b(ecQuotient->auxStateValues.data(), ecQuotient->auxStateValues.size());
-    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> dtmc = eigenInducedTransitionMatrix(
-        eigenTransitionMatrix, initSch);
 
-    mopmc::solver::linsystem::solverHelper(b, x, dtmc, identity);
-
+    mopmc::solver::iter::policyIteration<SparseModelType>(
+            eigenTransitionMatrix,
+            identity,
+            x,
+            ecQuotient->auxChoiceValues,
+            initSch,
+            ecQuotient->matrix.getRowGroupIndices());
 
 };
 
@@ -335,24 +505,6 @@ void StandardMdpPcaaChecker<SparseModelType>::computeSchedulerProb1(
     }
 
 }
-
-template <typename SparseModelType>
-Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> StandardMdpPcaaChecker<SparseModelType>::eigenInducedTransitionMatrix(
-    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>& fullTransitionSystem,
-    std::vector<uint64_t>& chosenActions) {
-
-    assert(chosenActions.size() == ecQuotient->matrix.getColumnCount());
-    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> subMatrix(chosenActions.size(), chosenActions.size());
-    for(uint_fast64_t state = 0; state < ecQuotient->matrix.getColumnCount(); ++state) {
-        typename Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>::InnerIterator it(fullTransitionSystem, chosenActions[state]);
-        for (; it; ++it) {
-            subMatrix.insert(state, it.col()) = it.value();
-        }
-    }
-
-    subMatrix.makeCompressed();
-    return subMatrix;
-};
 
 template class StandardMdpPcaaChecker<storm::models::sparse::Mdp<double>>;
 
