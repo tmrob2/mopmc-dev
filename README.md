@@ -1,32 +1,51 @@
-# storm-project-starter-cpp
-Starter project for the C++ API of [Storm](https://www.stormchecker.org).
+# MOPMC with LTL Property Specifications
+Multi-objective Probabilistic Model Checking built on a C++ API of [Storm](https://www.stormchecker.org).
+This project is built on the Storm project and to use it, Storm model checker needs to be build from 
+**source** with all dependencies. See [Storm](https://www.stormchecker.org) for installation details.
 
 ## Getting Started
-Before starting, make sure that Storm is installed. If not, see the [documentation](https://www.stormchecker.org/documentation/obtain-storm/build.html) for details on how to install Storm. It is necessary to build Storm from source, i.e. a Homebrew installation will most likely not work.
+Before starting, make sure that Storm is installed. If not, see the [documentation](https://www.stormchecker.org/documentation/obtain-storm/build.html).
 
-First, configure and compile the project. Therefore, execute
+This project uses cmake which should be bundled with Ninja. If Ninja is available you will be able 
+to make use of the convenient configurations and build script.
+
+First, clone and `cd` into the project then configure and compile the project. Execute
 ```
 mkdir build
-cd build
-cmake ..
-make
-cd ..
+./configure.sh
+./build.sh
 ```
 
 Then, run the executable using 
 ```
-./build/storm-project-starter examples/die.pm examples/die.pctl
+./build/mopmc examples/multiobj_scheduler05.nm examples/multiobj_scheduler05.pctl
 ```
-The answer should be no.
 
-Then, run the executable using 
-```
-./build/storm-project-starter examples/die.pm examples/die2.pctl
-```
-The answer should be yes.
+This project only computes multi-objective model checking of convex queries.
 
-## What is next?
-You are all set to implement your own tools on top of Storm.
-Note that you might need to add additional Storm libraries as dependencies in [CMake](CMakeLists.txt).
+## Development
 
-Feel free to contribute your new algorithms to Storm, such that others can enjoy them.
+`src/main.cpp` is the entry point of the project. 
+
+The first call is to `mopmc::stormCheck` which parses a model as a Prism model along with 
+properties from a `.pctl` file. These are argument inputs with the first being model and the
+second being property inputs. 
+
+After constructing the model call `mopmc::stormtest::performMultiObjectiveModelChecking` which
+initiates model checking for the model and properties input. This function first preprocesses
+constructs a `class` `SparseMultiObjectivePreprocessor` and various member functions located in
+`src/mopmc-src/model-checking/MultiObjectivePreprocessor.cpp(h)`
+
+After preprocessing a new multi-objective model-checking class is constructed which 
+is used to solve the problem. This is called `mopmc::multiobjective::StandardMdpPcaaChecker`
+located in `src/mopmc-src/model-checking/StandardMdpPcaaChecker.cpp(h)`. This class sets up 
+the model checker and does any further processing of the model according to 
+weight vectors. 
+
+Algorithm 1 is called in this class also using `StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver`.
+This function makes a call to a header `src/mopmc-src/solvers/ConvexQuery.cpp(h)` which contains
+the auxiliary functions.  
+
+
+
+

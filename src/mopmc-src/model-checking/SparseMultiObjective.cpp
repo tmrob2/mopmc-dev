@@ -33,15 +33,6 @@ void performMultiObjectiveModelChecking(
 
     result.preprocessedModel->printModelInformationToStream(outputStream);
 
-    storm::modelchecker::multiobjective::MultiObjectiveMethod method = env.modelchecker().multi().getMethod();
-    switch(method) {
-        case storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa:
-            std::cout << "Pcaa\n";
-            break;
-        default:
-            std::cout << "Some other multi-objective method";
-    }
-
     std::cout << "Trivial objectives: " << (result.containsOnlyTrivialObjectives() ? "yes" : "no") << "\n";
 
     mopmc::multiobjective::StandardMdpPcaaChecker<SparseModelType> mdpChecker(result);

@@ -211,6 +211,7 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
         constraints[objIndex] = objectives[objIndex].formula->template getThresholdAs<T>();
     }
 
+    // set z* to the bounds of the problem.
     std::vector<T> zStar = constraints;
     std::vector<T> fxStar = mopmc::solver::convex::ReLU(xStar, constraints);
     std::vector<T> fzStar = mopmc::solver::convex::ReLU(zStar, constraints);
