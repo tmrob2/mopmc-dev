@@ -1,1 +1,1 @@
-multi(R{"time"}<=10.0 [ F "tasks_complete" ], R{"energy"}<=1.45 [  F "tasks_complete" ])
+multi(R{"time"}<=12.0 [ F "tasks_complete" ], R{"energy"}<=1.45 [  F "tasks_complete" ])

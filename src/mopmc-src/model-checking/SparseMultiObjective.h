@@ -2,8 +2,8 @@
 // Created by thomas on 20/08/23.
 //
 
-#ifndef MOPMC_MULTIOBJECTIVETEST_H
-#define MOPMC_MULTIOBJECTIVETEST_H
+#ifndef MOPMC_SPARSEMULTIOBJECTIVE_H
+#define MOPMC_SPARSEMULTIOBJECTIVE_H
 #include <iostream>
 #include <memory>
 #include <storm/environment/Environment.h>
@@ -23,4 +23,4 @@ namespace mopmc {
 
 
 
-#endif //MOPMC_MULTIOBJECTIVETEST_H
+#endif //MOPMC_SPARSEMULTIOBJECTIVE_H

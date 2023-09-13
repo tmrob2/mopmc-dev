@@ -6,12 +6,13 @@
 #include <storm-parsers/parser/PrismParser.h>
 #include <storm/storage/prism/Program.h>
 #include "ExplicitModelBuilder.h"
-#include "model-checking/MultiObjectiveTest.h"
+#include "model-checking/SparseMultiObjective.h"
 #include <string>
 #include <iostream>
 #include <storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h>
 #include <storm/environment/Environment.h>
 #include <storm/models/sparse/Mdp.h>
+#include <storm/modelchecker/multiobjective/multiObjectiveModelChecking.h>
 
 
 bool mopmc::stormCheck(std::string const& path_to_model, std::string const& property_string) {

@@ -22,7 +22,7 @@
 
 #include "../../../deprecated/GraphAnalysis.h"
 #include "../../../deprecated/MultiObjective.h"
-#include "MultiObjectiveTest.h"
+#include "SparseMultiObjective.h"
 
 namespace mopmc {
     namespace stormtest {

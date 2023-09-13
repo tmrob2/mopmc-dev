@@ -2,8 +2,8 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(
         APPEND Sources
-        "${dir}/Geometry.cpp"
-        "${dir}/Geometry.h"
+        "${dir}/ConvexQuery.cpp"
+        "${dir}/ConvexQuery.h"
         "${dir}/IterativeSolver.h"
         "${dir}/IterativeSolver.cpp"
         "${dir}/InducedEquationSolver.h"
