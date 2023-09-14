@@ -107,6 +107,11 @@ private:
                                storm::storage::BitVector const& consideredStates, storm::storage::BitVector const& statesToAvoid,
                                storm::storage::BitVector const& allowedChoices, std::vector<uint64_t>& choices) const;
 
+    void toEigenSparseMatrix();
+
+    void reduceMatrixToDTMC(Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> &b,
+                            std::vector<uint64_t> const& scheduler);
+
     storm::storage::SparseMatrix<typename SparseModelType::ValueType> transitionMatrix;
     // The initial state of the considered model
     uint64_t initialState{};

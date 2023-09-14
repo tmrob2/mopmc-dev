@@ -238,7 +238,6 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
 
         }
         // if the w generated is already contained with W
-        W.push_back(w);
         if (wSet.find(w) != wSet.end()) {
             std::cout << "W already in set => W ";
             for(auto val: w) {
@@ -247,10 +246,16 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
             std::cout << "\n";
             break;
         } else {
+            W.push_back(w);
             wSet.insert(w);
         }
         // compute a new supporting hyperplane
-        check(env, W[iteration]);
+        std::cout << "w["<< iteration << "]: ";
+        for (auto val: W[iteration]) {
+            std::cout << val << ",";
+        }
+        std::cout << "\n";
+        check(env, W.back());
 
         for (uint64_t objIndex = 0; objIndex < w.size(); ++objIndex) {
             std::cout << "Obj " << objIndex << " result " << objectiveResults[objIndex][initialState] << "\n";
@@ -289,9 +294,8 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
                     Phi.size(),
                     constraints,
                     1.e-4);
-        } else {
-            ++iteration;
         }
+        ++iteration;
 
         std::cout << "x*: ";
         for (auto val: xStar) {
@@ -348,39 +352,23 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
     storm::utility::vector::selectVectorValues(ecQuotient->auxChoiceValues, ecQuotient->ecqToOriginalChoiceMapping, weightedRewardVector);
     std::map<uint64_t, uint64_t> ecqStateToOptimalMecMap;
     if (!lraObjectives.empty()) {
-        // We also need to assign a value for each ecQuotientChoice that corresponds to "staying" in the eliminated EC. (at this point these choices should all
-        // have a value of zero). Since each of the eliminated ECs has to contain *at least* one LRA EC, we need to find the largest value among the contained
-        // LRA ECs
-        storm::storage::BitVector foundEcqChoices(ecQuotient->matrix.getRowCount(), false);  // keeps track of choices we have already seen before
-        for (uint64_t mecIndex = 0; mecIndex < lraMecDecomposition->mecs.size(); ++mecIndex) {
-            auto const& mec = lraMecDecomposition->mecs[mecIndex];
-            auto const& mecValue = lraMecDecomposition->auxMecValues[mecIndex];
-            uint64_t ecqState = ecQuotient->originalToEcqStateMapping[mec.begin()->first];
-            if (ecqState >= ecQuotient->matrix.getRowGroupCount()) {
-                // The mec was not part of the ecquotient. This means that it must have value 0.
-                // No further processing is needed.
-                continue;
-            }
-            uint64_t ecqChoice = ecQuotient->ecqStayInEcChoices.getNextSetIndex(ecQuotient->matrix.getRowGroupIndices()[ecqState]);
-            STORM_LOG_ASSERT(ecqChoice < ecQuotient->matrix.getRowGroupIndices()[ecqState + 1],
-                             "Unable to find choice that represents staying inside the (eliminated) ec.");
-            auto& ecqChoiceValue = ecQuotient->auxChoiceValues[ecqChoice];
-            auto insertionRes = ecqStateToOptimalMecMap.emplace(ecqState, mecIndex);
-            if (insertionRes.second) {
-                // We have seen this ecqState for the first time.
-                STORM_LOG_ASSERT(storm::utility::isZero(ecqChoiceValue),
-                                 "Expected a total reward of zero for choices that represent staying in an EC for ever.");
-                ecqChoiceValue = mecValue;
-            } else {
-                if (mecValue > ecqChoiceValue) {  // found a larger value
-                    ecqChoiceValue = mecValue;
-                    insertionRes.first->second = mecIndex;
-                }
-            }
-        }
+        throw std::runtime_error("This framework does not deal with LRA");
     }
 
-    storm::solver::GeneralMinMaxLinearEquationSolverFactory<typename SparseModelType::ValueType> solverFactory;
+    std::vector<uint64_t> scheduler = computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne);
+    Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> b(ecQuotient->matrix.getRowGroupCount());
+    Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(ecQuotient->auxStateValues.data(), ecQuotient->auxStateValues.size());
+    std::cout << "|b|: " << b.size() << "\n";
+    reduceMatrixToDTMC(b, scheduler);
+    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> I = makeEigenIdentityMatrix();
+    // compute the state value vector for the initial scheduler
+    mopmc::solver::linsystem::solverHelper(b, x, eigenTransitionMatrix, I);
+    // convert the transition matrix to a sparse eigen matrix for VI
+    toEigenSparseMatrix();
+    mopmc::solver::iter::valueIteration(eigenTransitionMatrix, x, ecQuotient->auxChoiceValues,
+                                        scheduler, ecQuotient->matrix.getRowGroupIndices());
+
+    /*storm::solver::GeneralMinMaxLinearEquationSolverFactory<typename SparseModelType::ValueType> solverFactory;
     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<typename SparseModelType::ValueType>> solver = solverFactory.create(env, ecQuotient->matrix);
     solver->setTrackScheduler(true);
     solver->setHasUniqueSolution(true);
@@ -409,10 +397,10 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
     std::fill(ecQuotient->auxStateValues.begin(), ecQuotient->auxStateValues.end(), storm::utility::zero<typename SparseModelType::ValueType>());
 
     solver->solveEquations(env, ecQuotient->auxStateValues, ecQuotient->auxChoiceValues);
+    */
     this->weightedResult = std::vector<typename SparseModelType::ValueType>(transitionMatrix.getRowGroupCount());
 
-    transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, solver->getSchedulerChoices(), ecqStateToOptimalMecMap, this->weightedResult,
-                                        this->optimalChoices);
+    transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, scheduler, ecqStateToOptimalMecMap, this->weightedResult, this->optimalChoices);
 }
 
 template<typename SparseModelType>
@@ -507,6 +495,7 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
         storm::Environment const& env,
         std::vector<typename SparseModelType::ValueType> const& weightVector) {
     if (objectivesWithNoUpperTimeBound.getNumberOfSetBits() == 1 && storm::utility::isOne(weightVector[*objectivesWithNoUpperTimeBound.begin()])) {
+        std::cout << "number of set bits is 1\n";
         uint_fast64_t objIndex = *objectivesWithNoUpperTimeBound.begin();
         objectiveResults[objIndex] = weightedResult;
         if (storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType())) {
@@ -997,6 +986,56 @@ void StandardMdpPcaaChecker<SparseModelType>::transformEcqSolutionToOriginalMode
     unprocessedStates &= ~ecStatesToReach;
     // Set a scheduler for the remaining states
     computeSchedulerProb1(transitionMatrix, backwardsTransitions, unprocessedStates, ecStatesToReach, originalOptimalChoices);
+}
+
+template<typename SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::toEigenSparseMatrix() {
+    std::vector<Eigen::Triplet<typename SparseModelType::ValueType>> triplets;
+    triplets.reserve(ecQuotient->matrix.getNonzeroEntryCount());
+
+    for(uint_fast64_t row = 0; row < ecQuotient->matrix.getRowGroupCount(); ++row) {
+        for(auto element : ecQuotient->matrix.getRow(row)) {
+            triplets.emplace_back(row, element.getColumn(), element.getValue());
+        }
+    }
+
+    Eigen::SparseMatrix<typename SparseModelType::ValueType,  Eigen::RowMajor> result =
+            Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>(
+                    ecQuotient->matrix.getRowCount(), ecQuotient->matrix.getColumnCount()
+            );
+    result.setFromTriplets(triplets.begin(), triplets.end());
+    result.makeCompressed();
+    this->eigenTransitionMatrix = std::move(result);
+}
+
+template <typename SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::reduceMatrixToDTMC(
+        Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> &b,
+        std::vector<uint64_t> const& scheduler) {
+    std::cout << "Storm matrix: " << ecQuotient->matrix.getRowGroupCount() << "\n";
+    std::cout << "EC num choices: " << eigenTransitionMatrix.rows() << "\n";
+    std::cout << "Scheduler size: " << scheduler.size() << "\n";
+    auto rowGroupIndexIt = ecQuotient->matrix.getRowGroupIndices().begin();
+    uint_fast64_t n = ecQuotient->matrix.getRowGroupCount();
+    std::cout << "Matrix dimensions: (" << n << ", " << n <<")\n";
+    std::cout << "Ecq choice values size: " << ecQuotient->auxChoiceValues.size() << "\n";
+    auto policyChoiceIt = scheduler.begin();
+    SpMat subMatrix(n, n);
+    for (uint_fast64_t state = 0; state < n; ++state ) {
+        uint_fast64_t row = (*rowGroupIndexIt) + (*policyChoiceIt);
+
+        b[state] = ecQuotient->auxChoiceValues[row];
+
+        ++rowGroupIndexIt;
+        ++policyChoiceIt;
+        for(auto const& entry : ecQuotient->matrix.getRow(row)) {
+            //std::cout << "state: " << state << " action: " << *policyChoiceIt <<
+            //          " row: " << state << " col: " << entry.getColumn() << " value: " << entry.getValue() << "\n";
+            subMatrix.insert(state, entry.getColumn()) = entry.getValue();
+        }
+    }
+    subMatrix.makeCompressed();
+    this->eigenTransitionMatrix = std::move(subMatrix);
 }
 
 template class StandardMdpPcaaChecker<storm::models::sparse::Mdp<double>>;

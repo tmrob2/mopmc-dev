@@ -25,12 +25,16 @@ void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionS
         }
         R(i) = r[i];
     }
-    ValueType eps;
+    ValueType eps = std::numeric_limits<ValueType>::max();
     // compute y = r + P.x
     Eigen::Index maxRow;
-
-    for(uint_fast64_t i = 0; i < 200; ++ i) {
+    uint_fast64_t iterations = 0;
+    do {
+        //std::cout << "init state value: " << x[0] << "\n";
         y = R;
+        for (uint_fast64_t i = 0 ; i < y.size(); ++i) {
+            std::cout << y[i] << "\n";
+        }
         y += transitionSystem * x;
         // compute the new x
         nextBestPolicy(y, x, pi, rowGroupIndices);
@@ -38,9 +42,9 @@ void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionS
         // compute the error
         eps = computeEpsilon(x, xprev, maxRow);
         xprev = x;
-        std::cout << "Eps[" << i << "]: " << eps << " maxRow: " << maxRow << " action: "<< pi[maxRow] << "\n";
-    }
-
+        std::cout << "Eps[" << iterations << "]: " << eps << " maxRow: " << maxRow << " action: "<< pi[maxRow] << "\n";
+        ++iterations;
+    } while (iterations < 1);//eps > 1e-6);
 }
 
 template <typename ValueType>
@@ -52,12 +56,13 @@ bool nextBestPolicy(Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &y,
     for (uint_fast64_t state = 0; state < x.size(); ++state) {
         uint_fast64_t actionBegin = rowGroupIndices[state];
         uint_fast64_t actionEnd = rowGroupIndices[state+1];
-        auto maxValue = static_cast<double>(x[state]);
+        ValueType maxValue = std::numeric_limits<ValueType>::min(); //x[state];
         uint64_t maxIndex = pi[state];
-        for (uint_fast64_t action = actionBegin; action < actionEnd; ++action) {
-            if (y[state] > maxValue) {
+        for (uint_fast64_t action = 0; action < (actionEnd - actionBegin); ++action) {
+            //std::cout << "y: " << y[actionBegin + action] << "max " << maxValue << "\n";
+            if (y[actionBegin + action] > maxValue) {
                 maxIndex = action;
-                maxValue = y[state];
+                maxValue = y[actionBegin+action];
             }
         }
         //std::cout << "x' " << maxValue << " xold: " << x[state]<<"\n";
