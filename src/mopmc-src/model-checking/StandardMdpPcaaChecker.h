@@ -30,15 +30,15 @@ public:
     void initialiseModelTypeSpecificData(SparseModelType& model);
 
     void unboundedWeightedPhase(storm::Environment const& env,
-                                std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
-                                std::vector<typename SparseModelType::ValueType> const& weightVector);
+                                                 std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
+                                                 std::vector<typename SparseModelType::ValueType> const& weightVector);
+
+    void unboundedIndividualPhase(storm::Environment const& env,
+                                  std::vector<std::vector<typename SparseModelType::ValueType>>& rewardModels);
 
     void computeSchedulerFinitelyOften(storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitionMatrix,
                                        storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& backwardTransitions, storm::storage::BitVector const& finitelyOftenChoices,
                                        storm::storage::BitVector safeStates, std::vector<uint64_t>& choices);
-
-    void unboundedIndividualPhase(storm::Environment const& env,
-                                  std::vector<typename SparseModelType::ValueType> const& weightVector);
 
     void check(storm::Environment const& env, std::vector<typename SparseModelType::ValueType> const& weightVector);
 

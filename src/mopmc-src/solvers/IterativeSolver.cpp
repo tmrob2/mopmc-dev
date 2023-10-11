@@ -13,7 +13,8 @@ namespace solver::iter {
 template <typename ValueType>
 void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionSystem,
                     Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x,
-                    std::vector<ValueType> &r, std::vector<uint64_t> &pi,
+                    std::vector<ValueType> &r,
+                    std::vector<uint64_t> &pi,
                     std::vector<typename storm::storage::SparseMatrix<ValueType>::index_type> const& rowGroupIndices){
     // Instantiate y and xprev
     Eigen::Matrix<ValueType, Eigen::Dynamic, 1> xprev = Eigen::Matrix<ValueType, Eigen::Dynamic, 1>::Zero(x.size());
@@ -29,22 +30,49 @@ void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionS
     // compute y = r + P.x
     Eigen::Index maxRow;
     uint_fast64_t iterations = 0;
+
     do {
-        //std::cout << "init state value: " << x[0] << "\n";
         y = R;
-        for (uint_fast64_t i = 0 ; i < y.size(); ++i) {
-            std::cout << y[i] << "\n";
-        }
+
         y += transitionSystem * x;
         // compute the new x
         nextBestPolicy(y, x, pi, rowGroupIndices);
-
         // compute the error
         eps = computeEpsilon(x, xprev, maxRow);
         xprev = x;
-        std::cout << "Eps[" << iterations << "]: " << eps << " maxRow: " << maxRow << " action: "<< pi[maxRow] << "\n";
+        std::cout << "Eps[" << iterations << "]: " << eps << "\n";
         ++iterations;
-    } while (iterations < 1);//eps > 1e-6);
+    } while (eps > 1e-6);
+}
+
+template <typename ValueType>
+void objValueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionSystem,
+                       Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &x,
+                       Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &R){
+    // Instantiate y and xprev
+    Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> y =
+            Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic>::Zero(R.rows(), R.cols());
+    ValueType eps = std::numeric_limits<ValueType>::max();
+    // compute Y = Y + P.X
+    uint_fast64_t iterations = 0;
+    do {
+        y = R;
+
+        y += transitionSystem * x;
+
+        // compute the error
+        //std::cout << "x size: (" << x.rows() << ", " << x.cols() <<"), y: (" << y.rows() << ", " << y.cols() << ")\n";
+        eps = computeEpsilonMatrix(x, y);
+        /*for(uint_fast64_t i = 0; i < x.rows(); ++i) {
+            std::cout << x(i) << " " << y(i) << "\n";
+        }*/
+        //std::cout << "Eps[" << iterations << "]: " << eps << "\n";
+        x = y;
+        if (iterations > 10000) {
+            break;
+        }
+        ++iterations;
+    } while (eps > 1e-6);
 }
 
 template <typename ValueType>
@@ -56,7 +84,7 @@ bool nextBestPolicy(Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &y,
     for (uint_fast64_t state = 0; state < x.size(); ++state) {
         uint_fast64_t actionBegin = rowGroupIndices[state];
         uint_fast64_t actionEnd = rowGroupIndices[state+1];
-        ValueType maxValue = std::numeric_limits<ValueType>::min(); //x[state];
+        ValueType maxValue = x[state];
         uint64_t maxIndex = pi[state];
         for (uint_fast64_t action = 0; action < (actionEnd - actionBegin); ++action) {
             //std::cout << "y: " << y[actionBegin + action] << "max " << maxValue << "\n";
@@ -77,6 +105,19 @@ ValueType computeEpsilon(Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>>
                          Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &xprev,
                          Eigen::Index &maxRow){
      return (x - xprev).maxCoeff(&maxRow);
+}
+
+template <typename ValueType>
+ValueType computeEpsilonMatrix(Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &x,
+                               Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &y){
+    auto z = y - x;
+    double maxElement = std::numeric_limits<double>::min();
+    for(uint_fast64_t i = 0; i < z.rows(); ++i) {
+        if(z(i) > maxElement) {
+            maxElement = z(i);
+        }
+    }
+    return maxElement;
 }
 
 template <typename SparseModelType, typename ValueType>
@@ -129,8 +170,13 @@ void policyIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transition
 // Explicit instantiation
 template void valueIteration(Eigen::SparseMatrix<double, Eigen::RowMajor> &transitionSystem,
                              Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>> &x,
-                             std::vector<double> &r, std::vector<uint64_t> &pi,
+                             std::vector<double> &r,
+                             std::vector<uint64_t> &pi,
                              std::vector<typename storm::storage::SparseMatrix<double>::index_type> const& rowGroupIndices);
+
+template void objValueIteration(Eigen::SparseMatrix<double, Eigen::RowMajor> &transitionSystem,
+                                Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& x,
+                                Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& R);
 
 template void policyIteration<storm::models::sparse::Mdp<double>>(
     Eigen::SparseMatrix<double, Eigen::RowMajor> &transitionSystem,

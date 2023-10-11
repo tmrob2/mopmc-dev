@@ -3,7 +3,6 @@
 //
 #include "MultiObjectivePreprocessor.h"
 #include <storm/storage/SchedulerClass.h>
-#include "../../../deprecated/ModelChecker.h"
 #include <storm/environment/Environment.h>
 #include <storm/models/sparse/Mdp.h>
 #include <storm/transformer/MemoryIncorporation.h>
@@ -19,9 +18,6 @@
 #include <storm/logic/OperatorFormula.h>
 #include <storm/utility/vector.h>
 #include <storm/models/sparse/MarkovAutomaton.h>
-
-#include "../../../deprecated/GraphAnalysis.h"
-#include "../../../deprecated/MultiObjective.h"
 #include "SparseMultiObjective.h"
 
 namespace mopmc {
@@ -108,6 +104,10 @@ namespace mopmc {
                 if(opFormula ->isProbabilityOperatorFormula()) {
                     if (pathFormula.isUntilFormula()) {
                         std::cout << "Path formula is until formula\n";
+                        auto lhs = mc.check(pathFormula.asUntilFormula().getLeftSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
+                        auto rhs = mc.check(pathFormula.asUntilFormula().getRightSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
+                        absorbingStatesForSubFormula = storm::utility::graph::performProb0A(backwardTransitions, lhs, rhs);
+                        absorbingStatesForSubFormula |= getOnlyReachableViaPhi(*model, ~lhs | rhs);
                     } else if (pathFormula.isBoundedUntilFormula()) {
                         std::cout<< "Bounded until formula\n";
                     } else if (pathFormula.isGloballyFormula()) {

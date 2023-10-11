@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd build ; cmake -G Ninja ..
+cd build ; cmake .. -Wno-dev

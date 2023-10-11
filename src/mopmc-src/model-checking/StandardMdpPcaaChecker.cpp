@@ -16,6 +16,8 @@
 #include <storm/solver/LinearEquationSolver.h>
 #include "../solvers/ConvexQuery.h"
 #include <random>
+#include "../solvers/SolverHelper.h"
+#include "../solvers/CuVISolver.h"
 
 namespace mopmc{
 
@@ -180,7 +182,7 @@ void StandardMdpPcaaChecker<SparseModelType>::check(const storm::Environment &en
     }
     unboundedWeightedPhase(env, weightedRewardVector, weightVector);
 
-    unboundedIndividualPhase(env, weightVector);
+    unboundedIndividualPhase(env, actionRewards);
 }
 
 
@@ -320,13 +322,12 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
         fDiff = mopmc::solver::convex::diff(fxStar, fzStar);
         std::cout << " L1Norm: " << fDiff << "\n";
     } while (fDiff > static_cast<T>(0.));
-
 }
 
 template<class SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Environment const& env,
-                                                                              std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
-                                                                              std::vector<typename SparseModelType::ValueType> const& weightVector) {
+                                                                     std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
+                                                                     std::vector<typename SparseModelType::ValueType> const& weightVector) {
     // Catch the case where all values on the RHS of the MinMax equation system are zero.
     if (this->objectivesWithNoUpperTimeBound.empty() ||
         ((this->lraObjectives.empty() || !storm::utility::vector::hasNonZeroEntry(lraMecDecomposition->auxMecValues)) &&
@@ -355,7 +356,7 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
         throw std::runtime_error("This framework does not deal with LRA");
     }
 
-    std::vector<uint64_t> scheduler = computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne);
+    std::vector<uint64_t > scheduler = computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne);
     Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> b(ecQuotient->matrix.getRowGroupCount());
     Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(ecQuotient->auxStateValues.data(), ecQuotient->auxStateValues.size());
     std::cout << "|b|: " << b.size() << "\n";
@@ -365,42 +366,64 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
     mopmc::solver::linsystem::solverHelper(b, x, eigenTransitionMatrix, I);
     // convert the transition matrix to a sparse eigen matrix for VI
     toEigenSparseMatrix();
-    mopmc::solver::iter::valueIteration(eigenTransitionMatrix, x, ecQuotient->auxChoiceValues,
-                                        scheduler, ecQuotient->matrix.getRowGroupIndices());
-
-    /*storm::solver::GeneralMinMaxLinearEquationSolverFactory<typename SparseModelType::ValueType> solverFactory;
-    std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<typename SparseModelType::ValueType>> solver = solverFactory.create(env, ecQuotient->matrix);
-    solver->setTrackScheduler(true);
-    solver->setHasUniqueSolution(true);
-    solver->setOptimizationDirection(storm::solver::OptimizationDirection::Maximize);
-    auto req = solver->getRequirements(env, storm::solver::OptimizationDirection::Maximize);
-    setBoundsToSolver(*solver, req.lowerBounds(), req.upperBounds(), weightVector, objectivesWithNoUpperTimeBound, ecQuotient->matrix,
-                      ecQuotient->rowsWithSumLessOne, ecQuotient->auxChoiceValues);
-    if (solver->hasLowerBound()) {
-        req.clearLowerBounds();
-    }
-    if (solver->hasUpperBound()) {
-        req.clearUpperBounds();
-    }
-    if (req.validInitialScheduler()) {
-        solver->setInitialScheduler(computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne));
-        req.clearValidInitialScheduler();
-    }
-    if ( req.hasEnabledCriticalRequirement()) {
-        std::stringstream ss;
-        ss << "Solver requirements " + req.getEnabledRequirementsAsString() + " not checked.";
-        throw std::runtime_error(ss.str());
-    }
-    solver->setRequirementsChecked(true);
-
-    // Use the (0...0) vector as initial guess for the solution.
-    std::fill(ecQuotient->auxStateValues.begin(), ecQuotient->auxStateValues.end(), storm::utility::zero<typename SparseModelType::ValueType>());
-
-    solver->solveEquations(env, ecQuotient->auxStateValues, ecQuotient->auxChoiceValues);
-    */
+    // This computation can be done on the GPU.
+    //mopmc::solver::iter::valueIteration(eigenTransitionMatrix, x, ecQuotient->auxChoiceValues,
+    //                                    scheduler, ecQuotient->matrix.getRowGroupIndices());
+    std::vector<int> rowGroupIndices(ecQuotient->matrix.getRowGroupIndices().begin(), ecQuotient->matrix.getRowGroupIndices().end());
+    std::vector<int> scheduler2(scheduler.begin(), scheduler.end());
+    mopmc::solver::cuda::valueIteration(eigenTransitionMatrix, ecQuotient->auxStateValues,ecQuotient->auxChoiceValues,
+                                        scheduler2, rowGroupIndices);
+    std::transform(scheduler2.begin(), scheduler2.end(),
+                   scheduler.begin(), [](int x){ return static_cast<uint_fast64_t>(x);});
     this->weightedResult = std::vector<typename SparseModelType::ValueType>(transitionMatrix.getRowGroupCount());
 
-    transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, scheduler, ecqStateToOptimalMecMap, this->weightedResult, this->optimalChoices);
+    // construct a deterministic choice transition system.
+
+    this->optimalChoices = std::move(scheduler);
+    /*for (int i = 0 ; i < 100 ; ++i) {
+        std::cout << optimalChoices[i] << " ";
+    }*/
+    //std::cout << "Finished VI\n";
+
+}
+
+template<class SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
+    storm::Environment const& env,
+    std::vector<std::vector<typename SparseModelType::ValueType>>& rewardModels) {
+
+    // so with the eigen transition matrix choose those rows which correspond to the optimal actions
+    // for each reward model
+    //transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, scheduler, ecqStateToOptimalMecMap, this->weightedResult, this->optimalChoices);
+
+    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> subMatrix =
+        mopmc::solver::helper::eigenInducedTransitionMatrix<SparseModelType>(
+            ecQuotient->matrix,
+            //b,
+            //subB,
+            optimalChoices,
+            ecQuotient->matrix.getRowGroupIndices());
+    std::vector<std::vector<typename SparseModelType::ValueType>> inducedRewardModels(objectives.size());
+
+    Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, Eigen::Dynamic> R(optimalChoices.size(), objectives.size());
+    Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, Eigen::Dynamic> X =
+        Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, Eigen::Dynamic>::Zero(optimalChoices.size(), objectives.size());
+
+    // This is where the multi-processing component comes in
+    for (uint_fast64_t k = 0; k < objectives.size(); ++k) {
+        std::vector<typename SparseModelType::ValueType> subB(optimalChoices.size());
+        std::vector<typename SparseModelType::ValueType> b(ecQuotient->auxChoiceValues.size());
+        storm::utility::vector::selectVectorValues(b,
+                                                   ecQuotient->ecqToOriginalChoiceMapping,
+                                                   rewardModels[k]);
+        mopmc::solver::helper::inducedRewards(b, subB, optimalChoices, ecQuotient->matrix.getRowGroupIndices());
+        for (uint_fast64_t i = 0; i < subB.size(); ++i) {
+            R(i, k) = subB[i];
+            //std::cout << "R[" << i << "," << k << "]= " << subB[i] <<", ";
+        }
+        //std::cout << "\n";
+    }
+    mopmc::solver::iter::objValueIteration(subMatrix, X, R);
 }
 
 template<typename SparseModelType>
@@ -429,17 +452,7 @@ void StandardMdpPcaaChecker<SparseModelType>::updateEcQuotient(std::vector<typen
     storm::storage::BitVector newTotalReward0Choices = storm::utility::vector::filterZero(weightedRewardVector);
     storm::storage::BitVector zeroLraRewardChoices(weightedRewardVector.size(), true);
     if (lraMecDecomposition) {
-        for (uint64_t mecIndex = 0; mecIndex < lraMecDecomposition->mecs.size(); ++mecIndex) {
-            if (!storm::utility::isZero(lraMecDecomposition->auxMecValues[mecIndex])) {
-                // The mec has a non-zero value, so flag all its choices as non-zero
-                auto const& mec = lraMecDecomposition->mecs[mecIndex];
-                for (auto const& stateChoices : mec) {
-                    for (auto const& choice : stateChoices.second) {
-                        zeroLraRewardChoices.set(choice, false);
-                    }
-                }
-            }
-        }
+       throw std::runtime_error("LRA not considered.");
     }
     storm::storage::BitVector newReward0Choices = newTotalReward0Choices & zeroLraRewardChoices;
     if (!ecQuotient || ecQuotient->origReward0Choices != newReward0Choices) {
@@ -485,119 +498,6 @@ void StandardMdpPcaaChecker<SparseModelType>::updateEcQuotient(std::vector<typen
         ecQuotient->rowsWithSumLessOne = std::move(rowsWithSumLessOne);
         ecQuotient->auxStateValues.resize(ecQuotient->matrix.getRowGroupCount());
         ecQuotient->auxChoiceValues.resize(ecQuotient->matrix.getRowCount());
-    }
-}
-
-
-
-template<class SparseModelType>
-void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
-        storm::Environment const& env,
-        std::vector<typename SparseModelType::ValueType> const& weightVector) {
-    if (objectivesWithNoUpperTimeBound.getNumberOfSetBits() == 1 && storm::utility::isOne(weightVector[*objectivesWithNoUpperTimeBound.begin()])) {
-        std::cout << "number of set bits is 1\n";
-        uint_fast64_t objIndex = *objectivesWithNoUpperTimeBound.begin();
-        objectiveResults[objIndex] = weightedResult;
-        if (storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType())) {
-            storm::utility::vector::scaleVectorInPlace(objectiveResults[objIndex], -storm::utility::one<typename SparseModelType::ValueType>());
-        }
-        for (uint_fast64_t objIndex2 = 0; objIndex2 < this->objectives.size(); ++objIndex2) {
-            if (objIndex != objIndex2) {
-                objectiveResults[objIndex2] = std::vector<typename SparseModelType::ValueType>(
-                        transitionMatrix.getRowGroupCount(), storm::utility::zero<typename SparseModelType::ValueType>());
-            }
-        }
-    } else {
-        storm::storage::SparseMatrix<typename SparseModelType::ValueType> deterministicMatrix = transitionMatrix.selectRowsFromRowGroups(this->optimalChoices, false);
-        storm::storage::SparseMatrix<typename SparseModelType::ValueType> deterministicBackwardTransitions = deterministicMatrix.transpose();
-        std::vector<typename SparseModelType::ValueType> deterministicStateRewards(deterministicMatrix.getRowCount());  // allocate here
-        storm::solver::GeneralLinearEquationSolverFactory<typename SparseModelType::ValueType> linearEquationSolverFactory;
-
-        auto infiniteHorizonHelper = createDetInfiniteHorizonHelper(deterministicMatrix);
-        infiniteHorizonHelper.provideBackwardTransitions(deterministicBackwardTransitions);
-
-        // We compute an estimate for the results of the individual objectives which is obtained from the weighted result and the result of the objectives
-        // computed so far. Note that weightedResult = Sum_{i=1}^{n} w_i * objectiveResult_i.
-        std::vector<typename SparseModelType::ValueType> weightedSumOfUncheckedObjectives = weightedResult;
-        typename SparseModelType::ValueType sumOfWeightsOfUncheckedObjectives = storm::utility::vector::sum_if(weightVector, objectivesWithNoUpperTimeBound);
-
-        for (uint_fast64_t const& objIndex : storm::utility::vector::getSortedIndices(weightVector)) {
-            auto const& obj = this->objectives[objIndex];
-            if (objectivesWithNoUpperTimeBound.get(objIndex)) {
-                offsetsToUnderApproximation[objIndex] = storm::utility::zero<typename SparseModelType::ValueType>();
-                offsetsToOverApproximation[objIndex] = storm::utility::zero<typename SparseModelType::ValueType>();
-                if (lraObjectives.get(objIndex)) {
-                    throw std::runtime_error("LRA are not dealt with in this framework.");
-                } else {  // i.e. a total reward objective
-                    storm::utility::vector::selectVectorValues(deterministicStateRewards, this->optimalChoices, transitionMatrix.getRowGroupIndices(),
-                                                               actionRewards[objIndex]);
-                    storm::storage::BitVector statesWithRewards = ~storm::utility::vector::filterZero(deterministicStateRewards);
-                    // As maybestates we pick the states from which a state with reward is reachable
-                    storm::storage::BitVector maybeStates = storm::utility::graph::performProbGreater0(
-                            deterministicBackwardTransitions, storm::storage::BitVector(deterministicMatrix.getRowCount(), true), statesWithRewards);
-
-                    // Compute the estimate for this objective
-                    if (!storm::utility::isZero(weightVector[objIndex])) {
-                        objectiveResults[objIndex] = weightedSumOfUncheckedObjectives;
-                        typename SparseModelType::ValueType scalingFactor = storm::utility::one<typename SparseModelType::ValueType>() / sumOfWeightsOfUncheckedObjectives;
-                        if (storm::solver::minimize(obj.formula->getOptimalityType())) {
-                            scalingFactor *= -storm::utility::one<typename SparseModelType::ValueType>();
-                        }
-                        storm::utility::vector::scaleVectorInPlace(objectiveResults[objIndex], scalingFactor);
-                        storm::utility::vector::clip(objectiveResults[objIndex], obj.lowerResultBound, obj.upperResultBound);
-                    }
-                    // Make sure that the objectiveResult is initialized correctly
-                    objectiveResults[objIndex].resize(transitionMatrix.getRowGroupCount(), storm::utility::zero<typename SparseModelType::ValueType>());
-
-                    if (!maybeStates.empty()) {
-                        bool needEquationSystem =
-                                linearEquationSolverFactory.getEquationProblemFormat(env) == storm::solver::LinearEquationSolverProblemFormat::EquationSystem;
-                        storm::storage::SparseMatrix<typename SparseModelType::ValueType> submatrix =
-                                deterministicMatrix.getSubmatrix(true, maybeStates, maybeStates, needEquationSystem);
-                        if (needEquationSystem) {
-                            // Converting the matrix from the fixpoint notation to the form needed for the equation
-                            // system. That is, we go from x = A*x + b to (I-A)x = b.
-                            submatrix.convertToEquationSystem();
-                        }
-
-                        // Prepare solution vector and rhs of the equation system.
-                        std::vector<typename SparseModelType::ValueType> x = storm::utility::vector::filterVector(objectiveResults[objIndex], maybeStates);
-                        std::vector<typename SparseModelType::ValueType> b = storm::utility::vector::filterVector(deterministicStateRewards, maybeStates);
-
-                        // Now solve the resulting equation system.
-                        std::unique_ptr<storm::solver::LinearEquationSolver<typename SparseModelType::ValueType>> solver = linearEquationSolverFactory.create(env, submatrix);
-                        auto req = solver->getRequirements(env);
-                        solver->clearBounds();
-                        storm::storage::BitVector submatrixRowsWithSumLessOne = deterministicMatrix.getRowFilter(maybeStates, maybeStates) % maybeStates;
-                        submatrixRowsWithSumLessOne.complement();
-                        this->setBoundsToSolver(*solver, req.lowerBounds(), req.upperBounds(), objIndex, submatrix, submatrixRowsWithSumLessOne, b);
-                        if (solver->hasLowerBound()) {
-                            req.clearLowerBounds();
-                        }
-                        if (solver->hasUpperBound()) {
-                            req.clearUpperBounds();
-                        }
-                        if(req.hasEnabledCriticalRequirement()){
-                            std::cout << "Solver requirements " + req.getEnabledRequirementsAsString() + " not checked.\n";
-                        }
-
-                        solver->solveEquations(env, x, b);
-                        // Set the result for this objective accordingly
-                        storm::utility::vector::setVectorValues<typename SparseModelType::ValueType>(objectiveResults[objIndex], maybeStates, x);
-                    }
-                    storm::utility::vector::setVectorValues<typename SparseModelType::ValueType>(
-                            objectiveResults[objIndex], ~maybeStates, storm::utility::zero<typename SparseModelType::ValueType>());
-                }
-                // Update the estimate for the next objectives.
-                if (!storm::utility::isZero(weightVector[objIndex])) {
-                    storm::utility::vector::addScaledVector(weightedSumOfUncheckedObjectives, objectiveResults[objIndex], -weightVector[objIndex]);
-                    sumOfWeightsOfUncheckedObjectives -= weightVector[objIndex];
-                }
-            } else {
-                objectiveResults[objIndex] = std::vector<typename SparseModelType::ValueType>(
-                        transitionMatrix.getRowGroupCount(), storm::utility::zero<typename SparseModelType::ValueType>());
-            }
-        }
     }
 }
 

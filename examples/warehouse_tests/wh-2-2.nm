@@ -1,0 +1,65 @@
+mdp
+
+//constants
+const int n = 5;
+const int numAgents = 2;
+const int numTasks = 2;
+const int initX0 = 0;
+const int initY0 = 0;
+const int initX1 = 0;
+const int initY1 = 2;
+
+formula left = max(0, x - 1);
+formula right = min(n - 1, x + 1);
+formula up = min(n - 1, y + 1);
+formula down = max(0, y - 1);
+
+formula init0 = x = initX0 & y = initY0;
+formula init1 = x = initX1 & y = initY1;
+formula agentInit = init0 | init1;
+
+formula task0Obj = x = 2 & y = 2;
+formula task1Obj = x = 2 & y = 1;
+formula taskIdle = t = 0 | t = 3;
+formula taskComplete = t = 3;
+formula missionComplete = t = 3 & active_task = 1;
+module warehouse
+	t: [0..3];
+	active_agent: [0..numAgents - 1] init 0;
+	active_task: [0..numTasks - 1] init 0;
+	x: [0..n] init 0;
+	y: [0..n] init 0;
+
+	// Switch transitions handing the current task over to the next agent
+	[] (agentInit & taskIdle & active_agent < numAgents - 1) -> 1: (active_agent' = active_agent + 1) & (x' = 2) & (y' = 2);
+	//if the current task has been completed then a new task is activated
+	[] (agentInit & taskComplete & active_task < numTasks - 1) ->1: (active_task' = active_task + 1) & (t' = 0) & (active_agent' = 0);
+
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (x' = right);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (x' = left);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (y' = up);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (y' = down);
+	//Task Components
+	[] (agentInit & t = 0) -> 1 : (t' = 1) ;
+	[] (task0Obj & t = 1 & active_task = 0) -> 1 : (t' = 2);
+	[] (task1Obj & t = 1 & active_task = 1) -> 1 : (t' = 2);
+	[] (x = 0 & y = 0 & t = 2) -> 1 : (t' = 3);
+endmodule
+
+label "finish" = t=2 & active_task = 1;
+
+rewards "movement_cost1"
+	t > 0 & !missionComplete & active_task = 0 : 1;
+endrewards
+
+rewards "movement_cost2"
+	t > 0 & !missionComplete & active_task = 1 : 1;
+endrewards
+
+rewards "task_prob1"
+	t > 0 & !missionComplete & active_task = 0 : 1;
+endrewards
+
+rewards "task_prob2"
+	t > 0 & !missionComplete & active_task = 1 : 1;
+endrewards

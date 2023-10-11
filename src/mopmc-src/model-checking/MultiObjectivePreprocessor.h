@@ -15,8 +15,6 @@
 #include <storm/environment/Environment.h>
 #include <storm/modelchecker/multiobjective/Objective.h>
 
-#include "../../../deprecated/SparseModel.h"
-
 namespace mopmc {
 namespace stormtest {
 

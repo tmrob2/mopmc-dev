@@ -46,6 +46,10 @@ Algorithm 1 is called in this class also using `StandardMdpPcaaChecker<SparseMod
 This function makes a call to a header `src/mopmc-src/solvers/ConvexQuery.cpp(h)` which contains
 the auxiliary functions.  
 
+```c++
+import <stdio>
+```
+
 
 
 

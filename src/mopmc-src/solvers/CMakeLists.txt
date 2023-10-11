@@ -8,6 +8,10 @@ list(
         "${dir}/IterativeSolver.cpp"
         "${dir}/InducedEquationSolver.h"
         "${dir}/InducedEquationSolver.cpp"
+        "${dir}/SolverHelper.h"
+        "${dir}/SolverHelper.cpp"
+        "${dir}/CuVISolver.h"
+        "${dir}/CuVISolver.cpp"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)
