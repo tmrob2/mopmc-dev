@@ -424,6 +424,9 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
         //std::cout << "\n";
     }
     mopmc::solver::iter::objValueIteration(subMatrix, X, R);
+    for (uint k = 0; k < objectives.size(); ++k) {
+        std::cout << "X[" << k << "]: " << X(0, k) << " ";
+    }
 }
 
 template<typename SparseModelType>

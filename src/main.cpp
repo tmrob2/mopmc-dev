@@ -1,6 +1,7 @@
 #include <storm/api/storm.h>
 #include <storm/utility/initialize.h>
 #include <filesystem>
+//#include <storm/settings/
 
 #include "mopmc-src/ExplicitModelBuilder.h"
 
@@ -15,6 +16,7 @@ int main (int argc, char *argv[]) {
     storm::utility::setUp();
     // Set some settings objects.
     storm::settings::initializeAll("storm-starter-project", "storm-starter-project");
+    //storm::settings::
 
     // Accepts Prism file format
     mopmc::stormCheck(argv[1], argv[2]);
