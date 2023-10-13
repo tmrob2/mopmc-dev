@@ -37,7 +37,7 @@ void performMultiObjectiveModelChecking(
 
     mopmc::multiobjective::StandardMdpPcaaChecker<SparseModelType> mdpChecker(result);
 
-    std::vector<typename SparseModelType::ValueType> w = {0.5, 0.5};
+    std::vector<typename SparseModelType::ValueType> w = {0., 1.0};
 
     //mdpChecker.multiObjectiveSolver(env);
     mdpChecker.check(env, w);

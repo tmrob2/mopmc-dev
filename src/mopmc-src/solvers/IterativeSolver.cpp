@@ -26,21 +26,25 @@ void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionS
         }
         R(i) = r[i];
     }
+
     ValueType eps = std::numeric_limits<ValueType>::max();
     // compute y = r + P.x
     Eigen::Index maxRow;
     uint_fast64_t iterations = 0;
 
+   std::cout << "Actions in initial state: " << rowGroupIndices[0] << " - " <<  rowGroupIndices[1] << "\n";
+
     do {
         y = R;
 
         y += transitionSystem * x;
+
         // compute the new x
         nextBestPolicy(y, x, pi, rowGroupIndices);
         // compute the error
         eps = computeEpsilon(x, xprev, maxRow);
         xprev = x;
-        std::cout << "Eps[" << iterations << "]: " << eps << "\n";
+        //std::cout << "Eps[" << iterations << "]: " << eps << "\n";
         ++iterations;
     } while (eps > 1e-6);
 }
@@ -60,8 +64,9 @@ void objValueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transiti
 
         y += transitionSystem * x;
 
-        // compute the error
-        //std::cout << "x size: (" << x.rows() << ", " << x.cols() <<"), y: (" << y.rows() << ", " << y.cols() << ")\n";
+        //std::cout << transitionSystem.toDense() << std::endl;
+
+        //std::cout << y << std::endl;
         eps = computeEpsilonMatrix(x, y);
         /*for(uint_fast64_t i = 0; i < x.rows(); ++i) {
             std::cout << x(i) << " " << y(i) << "\n";
@@ -87,7 +92,6 @@ bool nextBestPolicy(Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &y,
         ValueType maxValue = x[state];
         uint64_t maxIndex = pi[state];
         for (uint_fast64_t action = 0; action < (actionEnd - actionBegin); ++action) {
-            //std::cout << "y: " << y[actionBegin + action] << "max " << maxValue << "\n";
             if (y[actionBegin + action] > maxValue) {
                 maxIndex = action;
                 maxValue = y[actionBegin+action];
@@ -97,6 +101,7 @@ bool nextBestPolicy(Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &y,
         x[state] = maxValue;
         pi[state] = maxIndex;
     }
+    //std::cout << "\n\n";
     return true;
 }
 

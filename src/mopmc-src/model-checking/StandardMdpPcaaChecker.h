@@ -29,9 +29,13 @@ public:
 
     void initialiseModelTypeSpecificData(SparseModelType& model);
 
+    void unboundedWeightedPhaseNoEc(storm::Environment const& env,
+                                    std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
+                                    std::vector<typename SparseModelType::ValueType> const& weightVector);
+
     void unboundedWeightedPhase(storm::Environment const& env,
-                                                 std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
-                                                 std::vector<typename SparseModelType::ValueType> const& weightVector);
+                                std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
+                                std::vector<typename SparseModelType::ValueType> const& weightVector);
 
     void unboundedIndividualPhase(storm::Environment const& env,
                                   std::vector<std::vector<typename SparseModelType::ValueType>>& rewardModels);
@@ -95,6 +99,8 @@ private:
         storm::storage::SparseMatrix<typename SparseModelType::ValueType> &matrix,
         storm::storage::BitVector &rowsWithSumLessOne);
 
+    std::vector<uint64_t> randomScheduler();
+
     void computeSchedulerProb1(storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& transitionMatrix,
                                storm::storage::SparseMatrix<typename SparseModelType::ValueType> const& backwardTransitions,
                                storm::storage::BitVector const& consideredStates,
@@ -109,6 +115,8 @@ private:
 
     void toEigenSparseMatrix();
 
+    void fullEigenSparseMatrix();
+
     void reduceMatrixToDTMC(Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> &b,
                             std::vector<uint64_t> const& scheduler);
 
@@ -118,6 +126,8 @@ private:
 
     //Over-approximation of a set of choices that are part of an EC
     storm::storage::BitVector ecChoicesHint;
+
+    bool useEcQuotient = false;
 
     // The actions that have reward assigned for at least one objective without
     // upper time-bound
@@ -154,7 +164,7 @@ private:
 
     // Memory for the solution of the most recent call of check(..)
     // becomes true after the first call of check(..)
-    bool checkHasBeenCalled{};
+    bool checkHasBeenCalled {};
     // The distances are stored as a (possibly negative) offset that has to be added (+) to to the objectiveResults.
     std::vector<typename SparseModelType::ValueType> offsetsToUnderApproximation;
     std::vector<typename SparseModelType::ValueType> offsetsToOverApproximation;
@@ -172,6 +182,9 @@ private:
         std::vector<typename SparseModelType::ValueType> auxStateValues;
         std::vector<typename SparseModelType::ValueType> auxChoiceValues;
     };
+
+    std::vector<typename SparseModelType::ValueType> auxStateValues;
+    std::vector<typename SparseModelType::ValueType> auxChoiceValues;
 
     boost::optional<EcQuotient> ecQuotient;
 

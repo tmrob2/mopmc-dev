@@ -23,6 +23,8 @@ namespace mopmc{
 
 namespace multiobjective{
 
+//! We follow the storm class and method naming convention. Technically this class does not exist in the Storm code
+//! base, however, the derived class for MDPs is something similar to this
 template<typename SparseModelType>
 StandardMdpPcaaChecker<SparseModelType>::StandardMdpPcaaChecker(
     storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType> &preprocessorResult)
@@ -30,6 +32,7 @@ StandardMdpPcaaChecker<SparseModelType>::StandardMdpPcaaChecker(
     initialise(preprocessorResult);
 }
 
+//! This is a storm function for initialising the multi-objective model and setting up the required data structures.
 template<typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::initialise(
     storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType> &preprocessorResult) {
@@ -127,6 +130,8 @@ void StandardMdpPcaaChecker<SparseModelType>::initialise(
 }
 
 
+//! This is a storm function - its purpose is just to set up some problem specific information about the model
+//! and is essentially an admin function.
 template <typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::initialiseModelTypeSpecificData(SparseModelType &model) {
     // set the state action rewards. Also do some sanity checks on the objectives
@@ -162,6 +167,8 @@ void StandardMdpPcaaChecker<SparseModelType>::initialiseModelTypeSpecificData(Sp
     }
 }
 
+//! We reimplement check. This function call is a similar nomenclature to Storm however the way it is implemented is
+//! different.
 template <typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::check(const storm::Environment &env,
                                                     const std::vector<typename SparseModelType::ValueType> &weightVector) {
@@ -180,12 +187,25 @@ void StandardMdpPcaaChecker<SparseModelType>::check(const storm::Environment &en
             storm::utility::vector::addScaledVector(weightedRewardVector, actionRewards[objIndex], weightVector[objIndex]);
         }
     }
+
     unboundedWeightedPhase(env, weightedRewardVector, weightVector);
 
     unboundedIndividualPhase(env, actionRewards);
+
+    /*std::cout << "initial state: " << initialState << "\n";
+    std::cout << "result size: " << objectiveResults[0].size() << "\n";
+    for (uint k = 0; k < objectives.size(); ++k) {
+        std::cout << "Obj " << k << ": ";
+        for (uint_fast64_t i = 0; i < objectiveResults[k].size(); ++i) {
+            std::cout << objectiveResults[k][i] << " ";
+        }
+        std::cout << "\n";
+        std::cout << "Obj " << k << " " << objectiveResults[k][initialState] << "\n";
+    }*/
 }
 
 
+//! This is Algorithm 1 in our paper.
 template <typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Environment const& env) {
     // instantiate a random weight vector - to determine this we need to know the number of objectives
@@ -325,6 +345,29 @@ void StandardMdpPcaaChecker<SparseModelType>::multiObjectiveSolver(storm::Enviro
 }
 
 template<class SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhaseNoEc(const storm::Environment &env,
+                                                                         const std::vector<typename SparseModelType::ValueType> &weightedRewardVector,
+                                                                         const std::vector<typename SparseModelType::ValueType> &weightVector) {
+    if (this->objectivesWithNoUpperTimeBound.empty() ||
+        ((this->lraObjectives.empty() || !storm::utility::vector::hasNonZeroEntry(lraMecDecomposition->auxMecValues)) &&
+         !storm::utility::vector::hasNonZeroEntry(weightedRewardVector))) {
+        this->weightedResult.assign(transitionMatrix.getRowGroupCount(), storm::utility::zero<typename SparseModelType::ValueType>());
+        storm::storage::BitVector statesInLraMec(transitionMatrix.getRowGroupCount(), false);
+        if (this->lraMecDecomposition) {
+            for (auto const& mec : this->lraMecDecomposition->mecs) {
+                for (auto const& sc : mec) {
+                    statesInLraMec.set(sc.first, true);
+                }
+            }
+        }
+        // Get an arbitrary scheduler that yields finite reward for all objectives
+        computeSchedulerFinitelyOften(transitionMatrix, transitionMatrix.transpose(true), ~actionsWithoutRewardInUnboundedPhase, statesInLraMec,
+                                      this->optimalChoices);
+        return;
+    }
+}
+
+template<class SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Environment const& env,
                                                                      std::vector<typename SparseModelType::ValueType> const& weightedRewardVector,
                                                                      std::vector<typename SparseModelType::ValueType> const& weightVector) {
@@ -347,6 +390,8 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
         return;
     }
 
+    //! This is a storm function. We use it to compute and collapse the End Component sub model based on the weighted
+    //! rewards model (w.r).
     updateEcQuotient(weightedRewardVector);
 
     // Set up the choice values
@@ -358,32 +403,40 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedWeightedPhase(storm::Envi
 
     std::vector<uint64_t > scheduler = computeValidInitialScheduler(ecQuotient->matrix, ecQuotient->rowsWithSumLessOne);
     Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> b(ecQuotient->matrix.getRowGroupCount());
+
     Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(ecQuotient->auxStateValues.data(), ecQuotient->auxStateValues.size());
     std::cout << "|b|: " << b.size() << "\n";
     reduceMatrixToDTMC(b, scheduler);
     Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> I = makeEigenIdentityMatrix();
     // compute the state value vector for the initial scheduler
     mopmc::solver::linsystem::solverHelper(b, x, eigenTransitionMatrix, I);
+
     // convert the transition matrix to a sparse eigen matrix for VI
     toEigenSparseMatrix();
+    std::cout << eigenTransitionMatrix << std::endl;
+
     // This computation can be done on the GPU.
-    //mopmc::solver::iter::valueIteration(eigenTransitionMatrix, x, ecQuotient->auxChoiceValues,
-    //                                    scheduler, ecQuotient->matrix.getRowGroupIndices());
+    mopmc::solver::iter::valueIteration(this->eigenTransitionMatrix, x, ecQuotient->auxChoiceValues,
+                                        scheduler, ecQuotient->matrix.getRowGroupIndices());
     std::vector<int> rowGroupIndices(ecQuotient->matrix.getRowGroupIndices().begin(), ecQuotient->matrix.getRowGroupIndices().end());
     std::vector<int> scheduler2(scheduler.begin(), scheduler.end());
     mopmc::solver::cuda::valueIteration(eigenTransitionMatrix, ecQuotient->auxStateValues,ecQuotient->auxChoiceValues,
                                         scheduler2, rowGroupIndices);
     std::transform(scheduler2.begin(), scheduler2.end(),
                    scheduler.begin(), [](int x){ return static_cast<uint_fast64_t>(x);});
+
     this->weightedResult = std::vector<typename SparseModelType::ValueType>(transitionMatrix.getRowGroupCount());
+    //transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, scheduler, ecqStateToOptimalMecMap,
+    //                                    this->weightedResult, this->optimalChoices);
 
     // construct a deterministic choice transition system.
 
     this->optimalChoices = std::move(scheduler);
-    /*for (int i = 0 ; i < 100 ; ++i) {
+    for (int i = 0 ; i < ecQuotient->auxStateValues.size() ; ++i) {
         std::cout << optimalChoices[i] << " ";
-    }*/
-    //std::cout << "Finished VI\n";
+    }
+    std::cout << "\n";
+
 
 }
 
@@ -403,6 +456,7 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
             //subB,
             optimalChoices,
             ecQuotient->matrix.getRowGroupIndices());
+
     std::vector<std::vector<typename SparseModelType::ValueType>> inducedRewardModels(objectives.size());
 
     Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, Eigen::Dynamic> R(optimalChoices.size(), objectives.size());
@@ -423,10 +477,9 @@ void StandardMdpPcaaChecker<SparseModelType>::unboundedIndividualPhase(
         }
         //std::cout << "\n";
     }
+    std::cout << "\nSolution\n";
     mopmc::solver::iter::objValueIteration(subMatrix, X, R);
-    for (uint k = 0; k < objectives.size(); ++k) {
-        std::cout << "X[" << k << "]: " << X(0, k) << " ";
-    }
+    std::cout << X.transpose() << std::endl;
 }
 
 template<typename SparseModelType>
@@ -673,6 +726,16 @@ std::vector<uint64_t> StandardMdpPcaaChecker<SparseModelType>::computeValidIniti
 }
 
 template<typename SparseModelType>
+std::vector<uint64_t> StandardMdpPcaaChecker<SparseModelType>::randomScheduler() {
+    for (uint_fast64_t state = 0; state < transitionMatrix.getColumnCount(); ++state) {
+        auto action_start = transitionMatrix.getRowGroupIndices()[state];
+        auto action_end = transitionMatrix.getRowGroupIndices()[state + 1] - action_start;
+
+    }
+}
+
+
+template<typename SparseModelType>
 void StandardMdpPcaaChecker<SparseModelType>::computeSchedulerProb1(
     const storm::storage::SparseMatrix<typename SparseModelType::ValueType> &transitionMatrix,
     const storm::storage::SparseMatrix<typename SparseModelType::ValueType> &backwardTransitions,
@@ -896,8 +959,9 @@ void StandardMdpPcaaChecker<SparseModelType>::toEigenSparseMatrix() {
     std::vector<Eigen::Triplet<typename SparseModelType::ValueType>> triplets;
     triplets.reserve(ecQuotient->matrix.getNonzeroEntryCount());
 
-    for(uint_fast64_t row = 0; row < ecQuotient->matrix.getRowGroupCount(); ++row) {
+    for(uint_fast64_t row = 0; row < ecQuotient->matrix.getRowCount(); ++row) {
         for(auto element : ecQuotient->matrix.getRow(row)) {
+            //std::cout << "row: " << row << " col: " << element.getColumn() << " val: " << element.getValue() << "\n";
             triplets.emplace_back(row, element.getColumn(), element.getValue());
         }
     }
@@ -905,6 +969,26 @@ void StandardMdpPcaaChecker<SparseModelType>::toEigenSparseMatrix() {
     Eigen::SparseMatrix<typename SparseModelType::ValueType,  Eigen::RowMajor> result =
             Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>(
                     ecQuotient->matrix.getRowCount(), ecQuotient->matrix.getColumnCount()
+            );
+    result.setFromTriplets(triplets.begin(), triplets.end());
+    result.makeCompressed();
+    this->eigenTransitionMatrix = std::move(result);
+}
+
+template<typename SparseModelType>
+void StandardMdpPcaaChecker<SparseModelType>::fullEigenSparseMatrix() {
+    std::vector<Eigen::Triplet<typename SparseModelType::ValueType>> triplets;
+    triplets.reserve(transitionMatrix.getNonzeroEntryCount());
+
+    for(uint_fast64_t row = 0; row < transitionMatrix.getRowCount(); ++row) {
+        for(auto element : transitionMatrix.getRow(row)) {
+            triplets.emplace_back(row, element.getColumn(), element.getValue());
+        }
+    }
+
+    Eigen::SparseMatrix<typename SparseModelType::ValueType,  Eigen::RowMajor> result =
+            Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>(
+                    transitionMatrix.getRowCount(), transitionMatrix.getColumnCount()
             );
     result.setFromTriplets(triplets.begin(), triplets.end());
     result.makeCompressed();
