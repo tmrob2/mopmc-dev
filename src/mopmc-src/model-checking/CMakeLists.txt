@@ -6,8 +6,8 @@ list(
         "${dir}/SparseMultiObjective.cpp"
         "${dir}/MultiObjectivePreprocessor.cpp"
         "${dir}/MultiObjectivePreprocessor.h"
-        "${dir}/StandardMdpPcaaChecker.h"
-        "${dir}/StandardMdpPcaaChecker.cpp"
+        "${dir}/MOPMCModelChecking.h"
+        "${dir}/MOPMCModelChecking.cpp"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

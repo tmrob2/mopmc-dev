@@ -21,7 +21,7 @@
 #include "SparseMultiObjective.h"
 
 namespace mopmc {
-    namespace stormtest {
+    namespace multiobjective {
         template<class SparseModelType>
         typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(
             const storm::Environment &env,
@@ -257,7 +257,7 @@ namespace mopmc {
         template<typename SparseModelType>
         void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessOperatorFormula(
             const storm::logic::OperatorFormula &formula,
-            mopmc::stormtest::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data) {
+            mopmc::multiobjective::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data) {
 
             storm::modelchecker::multiobjective::Objective<ValueType>& objective = *data.objectives.back();
 
@@ -364,7 +364,7 @@ namespace mopmc {
         template <typename SparseModelType>
         void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessUntilFormula(
             const storm::logic::UntilFormula &formula, const storm::logic::OperatorInformation &opInfo,
-            mopmc::stormtest::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data,
+            mopmc::multiobjective::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data,
             std::shared_ptr<const storm::logic::Formula> subformula) {
 
             // Try to transform the formula to expected total (or cumulative) rewards
@@ -427,7 +427,7 @@ namespace mopmc {
         template<typename SparseModelType>
         void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessBoundedUntilFormula(
             const storm::logic::BoundedUntilFormula &formula, const storm::logic::OperatorInformation &opInfo,
-            mopmc::stormtest::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data) {
+            mopmc::multiobjective::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data) {
             // Check how to handle this query
             if (formula.isMultiDimensional() || formula.getTimeBoundReference().isRewardBound()) {
                 std::cout << "Formula is reward bounded or multidimensional. Objective "
@@ -470,7 +470,7 @@ namespace mopmc {
         template<typename SparseModelType>
         void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessEventuallyFormula(
             const storm::logic::EventuallyFormula &formula, const storm::logic::OperatorInformation &opInfo,
-            mopmc::stormtest::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data,
+            mopmc::multiobjective::SparseMultiObjectivePreprocessor<SparseModelType>::PreprocessorData &data,
             const boost::optional<std::string> &optionalRewardModelName) {
             if (formula.isReachabilityProbabilityFormula()) {
                 preprocessUntilFormula(

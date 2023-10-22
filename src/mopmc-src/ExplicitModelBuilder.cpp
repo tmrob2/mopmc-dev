@@ -36,7 +36,7 @@ bool mopmc::stormCheck(std::string const& path_to_model, std::string const& prop
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp =
         storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    mopmc::stormtest::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
+    mopmc::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
 
 
 

@@ -32,7 +32,7 @@ void valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionS
     Eigen::Index maxRow;
     uint_fast64_t iterations = 0;
 
-   std::cout << "Actions in initial state: " << rowGroupIndices[0] << " - " <<  rowGroupIndices[1] << "\n";
+   //std::cout << "Actions in initial state: " << rowGroupIndices[0] << " - " <<  rowGroupIndices[1] << "\n";
 
     do {
         y = R;
@@ -59,12 +59,13 @@ void objValueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transiti
     ValueType eps = std::numeric_limits<ValueType>::max();
     // compute Y = Y + P.X
     uint_fast64_t iterations = 0;
+    //std::cout << transitionSystem.toDense() << std::endl;
     do {
         y = R;
 
         y += transitionSystem * x;
 
-        //std::cout << transitionSystem.toDense() << std::endl;
+        //std::cout << y.transpose() << "\n\n";
 
         //std::cout << y << std::endl;
         eps = computeEpsilonMatrix(x, y);
@@ -116,13 +117,14 @@ template <typename ValueType>
 ValueType computeEpsilonMatrix(Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &x,
                                Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic> &y){
     auto z = y - x;
-    double maxElement = std::numeric_limits<double>::min();
+    /*double maxElement = std::numeric_limits<double>::min();
     for(uint_fast64_t i = 0; i < z.rows(); ++i) {
         if(z(i) > maxElement) {
             maxElement = z(i);
         }
     }
-    return maxElement;
+    return maxElement;*/
+    return z.maxCoeff();
 }
 
 template <typename SparseModelType, typename ValueType>

@@ -31,7 +31,7 @@ The first call is to `mopmc::stormCheck` which parses a model as a Prism model a
 properties from a `.pctl` file. These are argument inputs with the first being model and the
 second being property inputs. 
 
-After constructing the model call `mopmc::stormtest::performMultiObjectiveModelChecking` which
+After constructing the model call `mopmc::multiobjective::performMultiObjectiveModelChecking` which
 initiates model checking for the model and properties input. This function first preprocesses
 constructs a `class` `SparseMultiObjectivePreprocessor` and various member functions located in
 `src/mopmc-src/model-checking/MultiObjectivePreprocessor.cpp(h)`

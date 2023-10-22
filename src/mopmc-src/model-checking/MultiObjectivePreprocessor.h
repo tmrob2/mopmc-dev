@@ -16,7 +16,7 @@
 #include <storm/modelchecker/multiobjective/Objective.h>
 
 namespace mopmc {
-namespace stormtest {
+namespace multiobjective {
 
     template<class SparseModelType>
     class SparseMultiObjectivePreprocessor {

@@ -19,6 +19,12 @@ void solverHelper(Eigen::Matrix<ValueType, Eigen::Dynamic, 1> &b,
                   Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x,
                   Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &matrix,
                   Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &identity);
+
+template<typename ValueType>
+void solverHelper(Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &b,
+                  Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x,
+                  Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &matrix,
+                  Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &id);
 }
 }
 }

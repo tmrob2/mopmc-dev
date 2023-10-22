@@ -19,9 +19,39 @@ Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> eigenI
     std::vector<uint64_t>& scheduler,
     std::vector<uint_fast64_t> const& rowGroupIndices);
 
+
+template <typename SparseModelType>
+Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> eigenInducedTransitionMatrix(
+    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> &fullTransitionSystem,
+    std::vector<uint64_t>& scheduler,
+    std::vector<uint_fast64_t> const& rowGroupIndices);
+
+template <typename SparseModelType>
+Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> makeIdentity(uint_fast64_t n);
+
 template<typename ValueType>
 void inducedRewards(std::vector<ValueType> &b, std::vector<ValueType> &subB,
                     std::vector<uint64_t> &scheduler, std::vector<uint_fast64_t> const &rowGroupIndices);
+
+template<typename SparseModelType>
+storm::storage::BitVector performProbGreater0(
+        Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> const& backwardTransitions,
+        storm::storage::BitVector const& phiStates,
+        storm::storage::BitVector const& psiStates);
+
+template<typename SparseModelType>
+Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor>
+constructSubMatrix(Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> &dtmc,
+                   storm::storage::BitVector &maybeStates,
+                   std::unordered_map<uint_fast64_t, uint_fast64_t>& map);
+
+template<typename SparseModelType>
+void makeRhs(std::vector<typename SparseModelType::ValueType>& b,
+             std::vector<typename SparseModelType::ValueType>const& deterministicStateRewards,
+             //std::vector<uint_fast64_t>const& rowGroupIndices,
+             storm::storage::BitVector& maybeStates);
+             //std::vector<uint_fast64_t>& scheduler);
+
 }
 
 #endif //MOPMC_SOLVERHELPER_H

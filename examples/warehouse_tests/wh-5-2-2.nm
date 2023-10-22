@@ -35,10 +35,10 @@ module warehouse
 	//if the current task has been completed then a new task is activated
 	[] (agentInit & taskComplete & active_task < numTasks - 1) ->1: (active_task' = active_task + 1) & (t' = 0) & (active_agent' = 0);
 
-	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (x' = right);
-	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (x' = left);
-	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (y' = up);
-	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0) -> 1 : (y' = down);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0 & t < 3) -> 1 : (x' = right);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0 & t < 3) -> 1 : (x' = left);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0 & t < 3) -> 1 : (y' = up);
+	[] (x >= 0 & x <= n - 1 & y >= 0 & y <= n - 1 & t > 0 & t < 3) -> 1 : (y' = down);
 	//Task Components
 	[] (agentInit & t = 0) -> 1 : (t' = 1) ;
 	[] (task0Obj & t = 1 & active_task = 0) -> 1 : (t' = 2);
@@ -49,11 +49,11 @@ endmodule
 label "finish" = t=2 & active_task = 1;
 
 rewards "movement_cost1"
-	!missionComplete & active_task = 0 : 1;
+	t > 0 & !missionComplete & active_task = 0 : 1;
 endrewards
 
 rewards "movement_cost2"
-	!missionComplete & active_task = 1 : 1;
+	t > 0 & !missionComplete & active_task = 1 : 1;
 endrewards
 
 rewards "task_prob1"
