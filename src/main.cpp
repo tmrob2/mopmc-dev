@@ -19,6 +19,6 @@ int main (int argc, char *argv[]) {
     //storm::settings::
 
     // Accepts Prism file format
-    mopmc::stormCheck(argv[1], argv[2]);
+    mopmc::check(argv[1], argv[2]);
     return 0;
 }

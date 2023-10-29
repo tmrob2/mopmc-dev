@@ -18,12 +18,9 @@
 
 
 namespace mopmc {
+    //bool check(std::string const& path_to_model, std::string const& property_string);
+
     bool check(std::string const& path_to_model, std::string const& property_string);
-
-    bool stormCheck(std::string const& path_to_model, std::string const& property_string);
-
-    bool stormWarehouseExperiment(std::string const& path_to_explicit_model, std::string const& path_to_explicit_labelling,
-                                   std::vector<std::string> const& path_to_rewards_model, std::string const& propFname);
 
     std::string readPropFile(std::string const& fname);
 }

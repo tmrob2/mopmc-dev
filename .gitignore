@@ -447,3 +447,5 @@ cmake-build-default/Testing/Temporary/LastTest.log
 /cmake-build-debug/CMakeFiles/Makefile.cmake
 /cmake-build-debug/CMakeFiles/Makefile2
 /cmake-build-debug/.cmake/api/v1/reply/toolchains-v1-89aca200a71803248d5e.json
+/cmake-build-debug/
+/.idea/

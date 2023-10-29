@@ -21,7 +21,7 @@
 #include <filesystem>
 
 
-bool mopmc::stormCheck(std::string const& path_to_model, std::string const& property_string) {
+bool mopmc::check(std::string const& path_to_model, std::string const& property_string) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 

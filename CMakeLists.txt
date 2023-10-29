@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 # set the project name and version
 project(mopmc LANGUAGES CXX C CUDA VERSION 1.0)
@@ -34,7 +34,7 @@ find_package(CUDAToolkit REQUIRED)
 enable_testing()
 
 # Google test framework
-add_subdirectory(googletest)
+#add_subdirectory(googletest)
 
 set(LibHeaders "src/mopmc-src/solvers/ActionSelection.h")
 set(LibSources "src/mopmc-src/solvers/ActionSelection.cu")
