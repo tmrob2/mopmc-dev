@@ -13,7 +13,7 @@ Before starting, make sure that Storm and **all of its dependencies are installe
 This project uses cmake which should be bundled with Ninja. If Ninja is available you will be able
 to make use of the convenient configurations and build script.
 
-This project requires CUDA Toolkit 12.2 and the associated NVIDIA driver 535. 
+This project requires CUDA Toolkit 12.xx and the associated NVIDIA driver 525+. 
 This cuda toolkit is essential as it provides 64bit numeric types for the GPU and provides more modern
 sparse matrix multiplication algorithms from Nvidia CuSparse. If installed correctly, using the command `nvidia-smi`
 you should see something like:
