@@ -46,6 +46,14 @@ export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64 ${LD_LIBRARY_PATH:+:${LD_LIBRA
 
 This avoids errors by the IDE debug compiler relating to setting `CMAKE_CUDA_ARCHITECTURES`.
 
+If your IDE cannot find the Storm header files, you can specify the header search paths so that the Storm source directories
+can be indexed (see [Manage CMake project files](https://www.jetbrains.com/help/clion/managing-cmake-project-files.html#nonprj_files)).
+This can be done by adding the following line into the current [`CMakeList.txt`](./CMakeLists.txt) file:
+```cmake
+set(storm_INCLUDE_DIR, ./storm_include_dir)
+```
+where `storm_include_dir` is a symlink to `<YOUR_STORM_ROOT_DIRECTORY>/build/src/storm` created in the project root.
+
 ## Getting Started
 
 First, clone and `cd` into the project then configure and compile the project. Execute
