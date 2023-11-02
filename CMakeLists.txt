@@ -16,6 +16,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 #find_package(storm REQUIRED)
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #set(storm_INCLUDE_DIR, "/home/thomas/storm/build/storm")
+set(storm_INCLUDE_DIR, ./storm)
 #set(storm-parsers_INCLUDE_DIR, "/home/thomas/storm/build/storm-parsers")
 # specify source files
 set(Sources)

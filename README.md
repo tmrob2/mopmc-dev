@@ -50,9 +50,9 @@ If your IDE cannot find the Storm header files, you can specify the header searc
 can be indexed (see [Manage CMake project files](https://www.jetbrains.com/help/clion/managing-cmake-project-files.html#nonprj_files)).
 This can be done by adding the following line into the current [`CMakeList.txt`](./CMakeLists.txt) file:
 ```cmake
-set(storm_INCLUDE_DIR, ./storm_include_dir)
+set(storm_INCLUDE_DIR, ./storm)
 ```
-where `storm_include_dir` is a symlink to `<YOUR_STORM_ROOT_DIRECTORY>/build/src/storm` created in the project root.
+where `storm` is a symlink to `<YOUR_STORM_ROOT_DIRECTORY>/build/src/storm` created in the project root.
 
 ## Getting Started
 

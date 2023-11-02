@@ -1,3 +1,6 @@
+# Don't commit storm
+storm
+
 # Prerequisites
 *.d
 
@@ -33,6 +36,7 @@
 
 # Build directories
 build/
+.idea/*
 .idea/.name
 .idea/misc.xml
 .idea/modules.xml
