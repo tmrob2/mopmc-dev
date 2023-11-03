@@ -24,6 +24,7 @@
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <storm/adapters/EigenAdapter.h>
+#include "queries/ConvQuery.h"
 
 namespace mopmc {
 
@@ -106,13 +107,16 @@ namespace mopmc {
         uint64_t numOfRowGroups = prepResult.preprocessedModel->getTransitionMatrix().getRowGroupCount();
         std::vector<uint64_t> scheduler(numOfRowGroups);
         //Convert transition matrix to eigen sparse matrix
-        auto eigenTransMatrix =
+        auto eigenTransMatrix = // a pointer to EigenSpMatrix
         storm::adapters::EigenAdapter::toEigenSparseMatrix(prepResult.preprocessedModel->getTransitionMatrix());
         eigenTransMatrix->makeCompressed();
-        std::cout << "Number of non-zero entries in Eigen sparse matrix: " << eigenTransMatrix->nonZeros() << std::endl;
 
         //It calls a query (Alg. 1) in ./mompc-src/queries...
         // TODO
+        mopmc::queries::ConvexQuery q(prepResult, *eigenTransMatrix);
+        q.query();
+        std::cout << "Number of non-zero entries in Eigen sparse matrix: " << q.e.nonZeros() << std::endl;
+        std::cout << q.numObjs << std::endl;
 
         return true;
     }
