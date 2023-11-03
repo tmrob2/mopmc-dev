@@ -49,12 +49,6 @@ bool mopmc::run(std::string const &path_to_model, std::string const &property_st
     std::ostream &outputStream = std::cout;
     prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
-    /*
-    uint_fast64_t numOfRows = prepResult.preprocessedModel->getTransitionMatrix().getRowCount();
-    std::vector<typename ModelType::ValueType>
-            weightedRewardVector(numOfRows, storm::utility::zero<typename ModelType::ValueType>());
-     */
-
     //Objectives must be total rewards
     if (!prepResult.containsOnlyTotalRewardFormulas()) {
         throw std::runtime_error("This framework handles total rewards only.");
@@ -80,10 +74,12 @@ bool mopmc::run(std::string const &path_to_model, std::string const &property_st
     //Initialise the model
     // Because initialize() is protected, need to create a mocked model checker object
     // whose constructor calls initialize().
-    // This function checks reward finiteness and other desirable requirements of the model.
-    storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>
-            _mockedModelChecker(prepResult);
-    //std::cout << "AFTER INITIALISATION" << std::endl;
+    // For our purposes, we use this function to check reward finiteness
+    // and other desirable requirements of the model.
+    try {
+        new storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>(prepResult);
+    }
+    catch (const std::runtime_error& e){ std::cout << e.what() << "\n";}
     //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
     //Generate reward vectors
@@ -112,8 +108,4 @@ bool mopmc::run(std::string const &path_to_model, std::string const &property_st
     // TODO
 
     return true;
-}
-
-void generateEcQuotient(){
-    
 }
