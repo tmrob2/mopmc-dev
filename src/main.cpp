@@ -16,7 +16,6 @@ int main (int argc, char *argv[]) {
     storm::utility::setUp();
     // Set some settings objects.
     storm::settings::initializeAll("storm-starter-project", "storm-starter-project");
-    //storm::settings::
 
     // Accepts Prism file format
     //mopmc::check(argv[1], argv[2]);

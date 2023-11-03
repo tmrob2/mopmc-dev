@@ -17,6 +17,7 @@
 #include "Runner.h"
 #include "model-checking/MultiObjectivePreprocessor.h"
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
+#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 //#include <storm/modelchecker/multiobjective/pcaa/StandardPcaaWeightVectorChecker.h>
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include <storm/storage/BitVector.h>
@@ -36,45 +37,83 @@ bool mopmc::run(std::string const &path_to_model, std::string const &property_st
     auto formulas = storm::api::extractFormulasFromProperties(properties);
 
     typedef storm::models::sparse::Mdp<double> ModelType;
-    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp =
-            storm::api::buildSparseModel<double>(program, formulas)->as<ModelType>();
+    std::shared_ptr<storm::models::sparse::Mdp<ModelType::ValueType>> mdp =
+            storm::api::buildSparseModel<ModelType::ValueType>(program, formulas)->as<ModelType>();
 
     const auto formula = formulas[0]->asMultiObjectiveFormula();
 
-    /*
-    typename mopmc::multiobjective::SparseMultiObjectivePreprocessor<ModelType>::ReturnType result =
-            mopmc::multiobjective::SparseMultiObjectivePreprocessor<ModelType>::preprocess(
-                    env,
-                    *mdp,
-                    formula);
-    */
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
-    typename PreprocessedType::ReturnType prepResult = PreprocessedType::preprocess(
-            env,
-            *mdp,
-            formula);
+    typename PreprocessedType::ReturnType prepResult =
+            PreprocessedType::preprocess(env, *mdp, formula);
 
-    std::ostream& outputStream = std::cout;
-
+    std::ostream &outputStream = std::cout;
     prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
+    /*
     uint_fast64_t numOfRows = prepResult.preprocessedModel->getTransitionMatrix().getRowCount();
     std::vector<typename ModelType::ValueType>
             weightedRewardVector(numOfRows, storm::utility::zero<typename ModelType::ValueType>());
+     */
 
     //Objectives must be total rewards
-    for (auto &objective : prepResult.objectives) {
-        if (!objective.formula->getSubformula().isTotalRewardFormula()) {
-            throw std::runtime_error("This framework handles total rewards only");
-        }
+    if (!prepResult.containsOnlyTotalRewardFormulas()) {
+        throw std::runtime_error("This framework handles total rewards only.");
+    }
+    //Confine the property (syntax) to achievability query
+    // We will convert it to a convex query.
+    if (prepResult.queryType != storm::modelchecker::multiobjective::preprocessing
+    ::SparseMultiObjectivePreprocessorResult<ModelType>::QueryType::Achievability) {
+        throw std::runtime_error("The input property should be achievability query type.");
     }
 
-    storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> stormModelChecker(prepResult);
+    //Get thresholds
+    uint_fast64_t numOfObjs = prepResult.objectives.size();
+    std::vector<ModelType::ValueType> thresholds(numOfObjs);
+    std::cout << "The thresholds are: ";
+    for (uint_fast64_t i=0; i<numOfObjs; i++) {
+        auto thres = prepResult.objectives[i].formula->getThresholdAs<double>();
+        thresholds[i] = thres;
+        std::cout << thres << ", ";
+    }
+    std::cout << std::endl;
+
+    //Initialise the model
+    // Because initialize() is protected, need to create a mocked model checker object
+    // whose constructor calls initialize().
+    // This function checks reward finiteness and other desirable requirements of the model.
+    storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>
+            _mockedModelChecker(prepResult);
     //std::cout << "AFTER INITIALISATION" << std::endl;
     //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
+    //Generate reward vectors
+    std::vector<std::vector<ModelType::ValueType>> rewVectors(numOfObjs);
+    for (uint_fast64_t i=0; i<numOfObjs; i++) {
+        const auto& rewModelName = prepResult.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
+        //std::cout << "Reward model name: " << rewModelName << ", Reward model type: "
+        //    << prepResult.preprocessedModel->getRewardModel(rewModelName) << std::endl;
+        rewVectors[i] = prepResult.preprocessedModel->getRewardModel(rewModelName)
+                .getTotalRewardVector(prepResult.preprocessedModel->getTransitionMatrix());
+        // for (const auto& x: rewVectors[i]) std::cout << x << ' ';
+    }
+
+    //Initialise weight vector
+    std::vector<ModelType::ValueType> weightVector(numOfObjs);
+    //Initialise weighted reward vector
+    uint64_t numOfRows = prepResult.preprocessedModel->getTransitionMatrix().getRowCount();
+    std::vector<ModelType::ValueType> wRewVector(numOfRows);
+    //Initialise scheduler
+    uint64_t numOfRowGroups = prepResult.preprocessedModel->getTransitionMatrix().getRowGroupCount();
+    std::vector<uint64_t > scheduler(numOfRowGroups);
+    //Convert transition matrix to eigen sparse matrix
     // TODO
+
     //It calls a query (Alg. 1) in ./mompc-src/queries...
+    // TODO
 
     return true;
+}
+
+void generateEcQuotient(){
+    
 }
