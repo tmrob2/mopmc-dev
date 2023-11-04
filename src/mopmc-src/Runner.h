@@ -13,6 +13,7 @@
 
 namespace mopmc {
 
+    // typedef
     typedef storm::models::sparse::Mdp<double> ModelType;
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;

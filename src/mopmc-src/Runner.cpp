@@ -48,7 +48,6 @@ namespace mopmc {
 
         const auto formula = formulas[0]->asMultiObjectiveFormula();
 
-        //typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
         PreprocessedType::ReturnType prepResult =
                 PreprocessedType::preprocess(env, *mdp, formula);
 
@@ -66,19 +65,10 @@ namespace mopmc {
             throw std::runtime_error("The input property should be achievability query type.");
         }
 
-        //Get thresholds
-        uint_fast64_t numOfObjs = prepResult.objectives.size();
-        std::vector<ModelType::ValueType> thresholds(numOfObjs);
-        std::cout << "The thresholds are: ";
-        for (uint_fast64_t i = 0; i < numOfObjs; i++) {
-            auto thres = prepResult.objectives[i].formula->getThresholdAs<double>();
-            thresholds[i] = thres;
-            std::cout << thres << ", ";
-        }
-        std::cout << std::endl;
-
-        //Initialise the model
-        // Because initialize() is protected, need to create a mocked model checker object
+        //Validate the model
+        // This makes an initialize() function in storm.
+        // But because it is protected, we need to get around this by
+        // creating a mocked model checker object
         // whose constructor calls initialize().
         // For our purposes, we use this function to check reward finiteness
         // and other desirable requirements of the model.
@@ -86,6 +76,18 @@ namespace mopmc {
             new storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>(prepResult);
         } catch (const std::runtime_error &e) { std::cout << e.what() << "\n"; }
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
+
+        /* //The following functions MOVED into the query function
+        //Get thresholds
+        uint_fast64_t numOfObjs = prepResult.objectives.size();
+        std::vector<ModelType::ValueType> thresholds(numOfObjs);
+        //std::cout << "The thresholds are: ";
+        for (uint_fast64_t i = 0; i < numOfObjs; i++) {
+            auto thres = prepResult.objectives[i].formula->getThresholdAs<double>();
+            thresholds[i] = thres;
+            //std::cout << thres << ", ";
+        }
+        //std::cout << std::endl;
 
         //Generate reward vectors
         std::vector<std::vector<ModelType::ValueType>> rewVectors(numOfObjs);
@@ -110,13 +112,13 @@ namespace mopmc {
         auto eigenTransMatrix = // a pointer to EigenSpMatrix
         storm::adapters::EigenAdapter::toEigenSparseMatrix(prepResult.preprocessedModel->getTransitionMatrix());
         eigenTransMatrix->makeCompressed();
+         */
 
         //It calls a query (Alg. 1) in ./mompc-src/queries...
         // TODO
-        mopmc::queries::ConvexQuery q(prepResult, *eigenTransMatrix);
+        //mopmc::queries::ConvexQuery q(prepResult);
+        mopmc::queries::ConvexQuery q(prepResult, env);
         q.query();
-        std::cout << "Number of non-zero entries in Eigen sparse matrix: " << q.e.nonZeros() << std::endl;
-        std::cout << q.numObjs << std::endl;
 
         return true;
     }

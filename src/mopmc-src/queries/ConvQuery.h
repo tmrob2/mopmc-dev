@@ -1,27 +1,25 @@
 //
 // Created by guoxin on 2/11/23.
 //
-// @_@ Insert a typo to differentiate it from an existing one
 #ifndef MOPMC_CONVEXXQUERY_H
 #define MOPMC_CONVEXXQUERY_H
 #include "../Runner.h"
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
+#include <storm/api/storm.h>
 
 namespace mopmc::queries {
 
     class ConvexQuery{
+        typedef typename ModelType::ValueType T;
+
     public:
-        //ConvexQuery() = default;
-        ConvexQuery(const PrepReturnType& rt,
-                    const EigenSpMatrix& eg
-                    );
+        ConvexQuery(const PrepReturnType& t_);
+        ConvexQuery(const PrepReturnType& t_, const storm::Environment& env_);
+
         void query();
         PrepReturnType t;
-        EigenSpMatrix e;
-        int numObjs;
-
-
+        storm::Environment env;
     };
     //TODO
 
