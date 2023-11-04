@@ -77,6 +77,14 @@ namespace mopmc {
         } catch (const std::runtime_error &e) { std::cout << e.what() << "\n"; }
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
+        //It calls a query (Alg. 1) in ./mompc-src/queries...
+        // TODO
+        //mopmc::queries::ConvexQuery q(prepResult);
+        mopmc::queries::ConvexQuery q(prepResult, env);
+        q.query();
+
+        return true;
+
         /* //The following functions MOVED into the query function
         //Get thresholds
         uint_fast64_t numOfObjs = prepResult.objectives.size();
@@ -113,13 +121,5 @@ namespace mopmc {
         storm::adapters::EigenAdapter::toEigenSparseMatrix(prepResult.preprocessedModel->getTransitionMatrix());
         eigenTransMatrix->makeCompressed();
          */
-
-        //It calls a query (Alg. 1) in ./mompc-src/queries...
-        // TODO
-        //mopmc::queries::ConvexQuery q(prepResult);
-        mopmc::queries::ConvexQuery q(prepResult, env);
-        q.query();
-
-        return true;
     }
 }
