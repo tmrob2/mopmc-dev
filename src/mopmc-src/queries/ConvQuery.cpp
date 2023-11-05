@@ -24,65 +24,69 @@ namespace mopmc::queries {
 
     typedef typename ModelType::ValueType T;
 
-    ConvexQuery::ConvexQuery(const PrepReturnType &t) : t_(t) {}
+    ConvexQuery::ConvexQuery(const PrepReturnType& model) : model_(model) {}
 
-    ConvexQuery::ConvexQuery(const PrepReturnType &t,
-                             const storm::Environment &env) :
-            t_(t), env_(env) {}
+    ConvexQuery::ConvexQuery(const PrepReturnType& model,
+                             const storm::Environment& env) :
+            model_(model), env_(env) {}
 
     void ConvexQuery::query() {
 
         //Data generation
-        const uint64_t m = t_.objectives.size(); // m: number of objectives
+        const uint64_t m = model_.objectives.size(); // m: number of objectives
 
-        std::vector <std::vector<T>> rho(m); //rho: all reward vectors
-        for (uint_fast64_t i = 0; i < m; i++) {
-            auto &name_ = t_.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
-            rho[i] = t_.preprocessedModel->getRewardModel(name_)
-                    .getTotalRewardVector(t_.preprocessedModel->getTransitionMatrix());
+        std::vector<std::vector<T>> rho(m); //rho: all reward vectors
+        //GS: need to store whether an objective is probabilistic or reward-based.
+        //TODO In future we will use treat them differently in the loss function. :GS
+        std::vector<bool> isProbObj(m);
+        for (uint_fast64_t i = 0; i < m; ++i) {
+            auto &name_ = model_.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
+            rho[i] = model_.preprocessedModel->getRewardModel(name_)
+                    .getTotalRewardVector(model_.preprocessedModel->getTransitionMatrix());
+            isProbObj[i] = model_.objectives[i].originalFormula->isProbabilityOperatorFormula();
         }
 
         auto P = // P: transition matrix as eigen sparse matrix
-                storm::adapters::EigenAdapter::toEigenSparseMatrix(t_.preprocessedModel->getTransitionMatrix());
+                storm::adapters::EigenAdapter::toEigenSparseMatrix(model_.preprocessedModel->getTransitionMatrix());
         P->makeCompressed();
 
         //Initialisation
-        std::vector <std::vector<T>> Phi;
-        // Lam1, Lam2 represent Lambda
-        std::vector <std::vector<T>> Lam1;
-        std::vector <std::vector<T>> Lam2;
+        std::vector<std::vector<T>> Phi;
+        // LambdaL, LambdaR represent Lambda
+        std::vector<std::vector<T>> LambdaL;
+        std::vector<std::vector<T>> LambdaR;
 
-        std::vector <T> h(m); //h: thresholds in objectives
-        for (uint_fast64_t i = 0; i < m; i++) {
-            h[i] = t_.objectives[i].formula->getThresholdAs<T>();
+        std::vector<T> h(m); //h: thresholds in objectives
+        for (uint_fast64_t i = 0; i < m; ++i) {
+            h[i] = model_.objectives[i].formula->getThresholdAs<T>();
         }
-        Eigen::Map <Eigen::Matrix<T, Eigen::Dynamic, 1>> h_(h.data(), h.size());
+        Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> h_(h.data(), h.size());
 
         //vt, vb
         std::vector<T> vt = std::vector<T>(m, static_cast<T>(0.0));
         std::vector<T> vb = std::vector<T>(m, static_cast<T>(0.0));
         //vi: initial vector for Frank-Wolfe
-        std::vector<T>* vi;
+        std::vector<T> *vi;
         std::vector<T> r(m);
 
-        std::vector <ModelType::ValueType> w = // w: weight vector
+        std::vector<ModelType::ValueType> w = // w: weight vector
                 std::vector<T>(m, static_cast<T>(1.0) / static_cast<T>(m));
 
         //thresholds for stopping the iteration
         const double eps{0.};
-        const double eps_p{0.};
+        const double eps_p{1.e-6};
         const double eps1{1.e-4};
         const uint_fast64_t maxIter{10};
 
         //GS: Double-check, from an algorithmic and practical point of view,
         // whether we maintain the two data structures
         // in the main iteration below. :SG
-        std::vector <std::vector<T>> W;
-        std::set <std::vector<T>> wSet;
+        std::vector<std::vector<T>> W;
+        std::set<std::vector<T>> wSet;
 
-        //GS:
-        // :SG
-        mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(t_);
+        //GS: I believe we will implement a new version
+        // of model checker for our purposes. :SG
+        mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
         //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> scalarisedMOMdpModelChecker(t);
 
         //Iteration
@@ -90,24 +94,24 @@ namespace mopmc::queries {
         T fDiff = 0;
         while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
             //std::cout << "Iteration: " << iter << "\n";
-            std::vector <T> fvt = mopmc::solver::convex::ReLU(vt, h);
-            std::vector <T> fvb = mopmc::solver::convex::ReLU(vb, h);
+            std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
+            std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
             fDiff = mopmc::solver::convex::diff(fvt, fvb);
             if (!Phi.empty()) {
-
                 // compute the FW and find a new weight vector
-
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
                                                        *vi, 100, W, Phi, h);
-                Eigen::Map <Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
+                //GS: To be consistent, may change the arg type of
+                // reluGradient() to vector. :GS
+                Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
                 Eigen::Matrix<T, Eigen::Dynamic, 1> cx = h_ - vt_;
-                std::vector <T> grad = mopmc::solver::convex::reluGradient(cx);
-                // If a w has already been seen before break;
-                // make sure we call it w
+                std::vector<T> grad = mopmc::solver::convex::reluGradient(cx);
+                //GS: exit if the gradient is very small. :SG
+                if (mopmc::solver::convex::l1Norm(grad) < eps_p) { break; }
                 w = mopmc::solver::convex::computeNewW(grad);
             }
 
-            //GS: Compute the initial for frank-wolfe. :SG
+            //GS: Compute the initial for frank-wolf and projectedGD. :SG
             if (Phi.size() == 1) {
                 vi = &r;
             } else {
@@ -138,28 +142,29 @@ namespace mopmc::queries {
             }
 
             // compute a new supporting hyperplane
+            /*
             std::cout << "W[" << iter << "]: ";
             for (T val: W.back()) {
                 std::cout << val << ",";
             }
             std::cout << "\n";
-
+             */
             scalarisedMOMDPModelChecker.check(env_, w);
 
             uint64_t ini = scalarisedMOMDPModelChecker.getInitialState();
-            for (uint_fast64_t i=0; i < m; ++i) {
+            for (uint_fast64_t i = 0; i < m; ++i) {
                 r[i] = scalarisedMOMDPModelChecker.getObjectiveResults()[i][ini];
             }
-            Phi.push_back(r);
-            Lam1.push_back(w);
-            Lam2.push_back(r);
 
-            // now we need to compute if the problem is still achievable
+            Phi.push_back(r);
+            LambdaL.push_back(w);
+            LambdaR.push_back(r);
+
             T wr = std::inner_product(w.begin(), w.end(), r.begin(), static_cast<T>(0.));
             T wvb = std::inner_product(w.begin(), w.end(), vb.begin(), static_cast<T>(0.));
-            if (Lam1.size() == 1 || wr < wvb ) {
+            if (LambdaL.size() == 1 || wr < wvb) {
                 T gamma = static_cast<T>(0.1);
-                std::cout << "|Phi|: " << Phi.size() <<"\n";
+                std::cout << "|Phi|: " << Phi.size() << "\n";
                 vb = mopmc::solver::convex::projectedGradientDescent(
                         mopmc::solver::convex::reluGradient,
                         *vi, gamma, 10, Phi, W, Phi.size(),
@@ -170,7 +175,7 @@ namespace mopmc::queries {
         }
 
         //scalarisedMdpModelChecker.multiObjectiveSolver(env_);
-        std::cout << "To implement the convex query ... \n";
+        std::cout << "Convex query done! \n";
     }
 
 }

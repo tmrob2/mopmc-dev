@@ -14,11 +14,11 @@ namespace mopmc::queries {
         typedef typename ModelType::ValueType T;
 
     public:
-        ConvexQuery(const PrepReturnType& t);
-        ConvexQuery(const PrepReturnType& t, const storm::Environment& env);
+        explicit ConvexQuery(const PrepReturnType& model);
+        ConvexQuery(const PrepReturnType& model, const storm::Environment& env);
 
         void query();
-        PrepReturnType t_;
+        PrepReturnType model_;
         storm::Environment env_;
     };
     //TODO

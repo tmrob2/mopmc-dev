@@ -52,7 +52,7 @@ namespace mopmc {
                 PreprocessedType::preprocess(env, *mdp, formula);
 
         std::ostream &outputStream = std::cout;
-        prepResult.preprocessedModel->printModelInformationToStream(outputStream);
+        //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
         //Objectives must be total rewards
         if (!prepResult.containsOnlyTotalRewardFormulas()) {
@@ -77,21 +77,22 @@ namespace mopmc {
         } catch (const std::runtime_error &e) { std::cout << e.what() << "\n"; }
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
-        //It calls a query (Alg. 1) in ./mompc-src/queries...
-        // TODO
-        //mopmc::queries::ConvexQuery q(prepResult);
+        //It calls a query (Alg. 1)
         mopmc::queries::ConvexQuery q(prepResult, env);
+        //mopmc::queries::ConvexQuery q(prepResult);
         q.query();
 
         return true;
 
         /* //The following functions MOVED into the query function
+         //The following functions MOVED into the query function
         //Get thresholds
         uint_fast64_t numOfObjs = prepResult.objectives.size();
         std::vector<ModelType::ValueType> thresholds(numOfObjs);
         //std::cout << "The thresholds are: ";
         for (uint_fast64_t i = 0; i < numOfObjs; i++) {
             auto thres = prepResult.objectives[i].formula->getThresholdAs<double>();
+            std::cout << "Is ProbabilityOperatorFormula: " << prepResult.objectives[i].originalFormula->isProbabilityOperatorFormula() << std::endl;
             thresholds[i] = thres;
             //std::cout << thres << ", ";
         }
@@ -101,11 +102,11 @@ namespace mopmc {
         std::vector<std::vector<ModelType::ValueType>> rewVectors(numOfObjs);
         for (uint_fast64_t i = 0; i < numOfObjs; i++) {
             const auto &rewModelName = prepResult.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
-            //std::cout << "Reward model name: " << rewModelName << ", Reward model type: "
-            //    << prepResult.preprocessedModel->getRewardModel(rewModelName) << std::endl;
+            std::cout << "Reward model name: " << rewModelName << ", Reward model type: "
+                << prepResult.preprocessedModel->getRewardModel(rewModelName) << std::endl;
             rewVectors[i] = prepResult.preprocessedModel->getRewardModel(rewModelName)
                     .getTotalRewardVector(prepResult.preprocessedModel->getTransitionMatrix());
-            // for (const auto& x: rewVectors[i]) std::cout << x << ' ';
+            //for (const auto& x: rewVectors[i]) std::cout << x << ' ';
         }
 
         //Initialise weight vector
