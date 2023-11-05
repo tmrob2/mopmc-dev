@@ -52,6 +52,15 @@ public:
 
     void multiObjectiveSolver(storm::Environment const& env);
 
+    //GS: add public functions. :SG
+public:
+    const std::vector<std::vector<typename SparseModelType::ValueType>> &getObjectiveResults() const {
+        return this->objectiveResults;
+    }
+    uint64_t getInitialState() const {
+        return this->initialState;
+    }
+
 private:
 
     Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> makeEigenIdentityMatrix();
