@@ -59,17 +59,19 @@ namespace mopmc::queries {
         Eigen::Map <Eigen::Matrix<T, Eigen::Dynamic, 1>> h_(h.data(), h.size());
 
         //vt, vb
-        std::vector <T> vt = std::vector<T>(m, static_cast<T>(0.0));
-        std::vector <T> vb = std::vector<T>(m, static_cast<T>(0.0));
+        std::vector<T> vt = std::vector<T>(m, static_cast<T>(0.0));
+        std::vector<T> vb = std::vector<T>(m, static_cast<T>(0.0));
         //vi: initial vector for Frank-Wolfe
-        std::vector <T> vi;
+        std::vector<T>* vi;
+        std::vector<T> r(m);
 
         std::vector <ModelType::ValueType> w = // w: weight vector
                 std::vector<T>(m, static_cast<T>(1.0) / static_cast<T>(m));
 
         //thresholds for stopping the iteration
-        const double eps{0.001};
-        const double eps1{0.001};
+        const double eps{0.};
+        const double eps_p{0.};
+        const double eps1{1.e-4};
         const uint_fast64_t maxIter{10};
 
         //GS: Double-check, from an algorithmic and practical point of view,
@@ -80,30 +82,23 @@ namespace mopmc::queries {
 
         //GS:
         // :SG
-        mopmc::multiobjective::MOPMCModelChecking<ModelType> testChecker(t_);
-        //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> testChecker(t);
+        mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(t_);
+        //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> scalarisedMOMdpModelChecker(t);
 
         //Iteration
         uint_fast64_t iter = 0;
         T fDiff = 0;
         while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
-            iter++;
             //std::cout << "Iteration: " << iter << "\n";
             std::vector <T> fvt = mopmc::solver::convex::ReLU(vt, h);
             std::vector <T> fvb = mopmc::solver::convex::ReLU(vb, h);
             fDiff = mopmc::solver::convex::diff(fvt, fvb);
-            if (Phi.size() > 0) {
-                //GS:
-                if (Phi.size() == 1) {
-                    vi = Phi.back();
-                }
+            if (!Phi.empty()) {
 
-                //GS: Here why do we need to make the argument of reluGradient
-                // an Eigen matrix rather than a standard one
-                // (like in ReLU)? :SG
                 // compute the FW and find a new weight vector
+
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
-                                                       vi, 100, W, Phi, h);
+                                                       *vi, 100, W, Phi, h);
                 Eigen::Map <Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
                 Eigen::Matrix<T, Eigen::Dynamic, 1> cx = h_ - vt_;
                 std::vector <T> grad = mopmc::solver::convex::reluGradient(cx);
@@ -111,6 +106,14 @@ namespace mopmc::queries {
                 // make sure we call it w
                 w = mopmc::solver::convex::computeNewW(grad);
             }
+
+            //GS: Compute the initial for frank-wolfe. :SG
+            if (Phi.size() == 1) {
+                vi = &r;
+            } else {
+                vi = &vt;
+            }
+
             /*
             std::cout << "w*: ";
             for (int i = 0; i < w.size() ; ++i ){
@@ -141,13 +144,32 @@ namespace mopmc::queries {
             }
             std::cout << "\n";
 
+            scalarisedMOMDPModelChecker.check(env_, w);
 
-            //testChecker.check(env_, w);
+            uint64_t ini = scalarisedMOMDPModelChecker.getInitialState();
+            for (uint_fast64_t i=0; i < m; ++i) {
+                r[i] = scalarisedMOMDPModelChecker.getObjectiveResults()[i][ini];
+            }
+            Phi.push_back(r);
+            Lam1.push_back(w);
+            Lam2.push_back(r);
+
+            // now we need to compute if the problem is still achievable
+            T wr = std::inner_product(w.begin(), w.end(), r.begin(), static_cast<T>(0.));
+            T wvb = std::inner_product(w.begin(), w.end(), vb.begin(), static_cast<T>(0.));
+            if (Lam1.size() == 1 || wr < wvb ) {
+                T gamma = static_cast<T>(0.1);
+                std::cout << "|Phi|: " << Phi.size() <<"\n";
+                vb = mopmc::solver::convex::projectedGradientDescent(
+                        mopmc::solver::convex::reluGradient,
+                        *vi, gamma, 10, Phi, W, Phi.size(),
+                        h, eps1);
+            }
+
+            ++iter;
         }
 
-
-        //testChecker.check(env_, w);
-        //testChecker.multiObjectiveSolver(env_);
+        //scalarisedMdpModelChecker.multiObjectiveSolver(env_);
         std::cout << "To implement the convex query ... \n";
     }
 
