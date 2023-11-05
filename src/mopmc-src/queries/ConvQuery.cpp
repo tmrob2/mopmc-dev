@@ -24,10 +24,10 @@ namespace mopmc::queries {
 
     typedef typename ModelType::ValueType T;
 
-    ConvexQuery::ConvexQuery(const PrepReturnType& model) : model_(model) {}
+    ConvexQuery::ConvexQuery(const PrepReturnType &model) : model_(model) {}
 
-    ConvexQuery::ConvexQuery(const PrepReturnType& model,
-                             const storm::Environment& env) :
+    ConvexQuery::ConvexQuery(const PrepReturnType &model,
+                             const storm::Environment &env) :
             model_(model), env_(env) {}
 
     void ConvexQuery::query() {
@@ -111,13 +111,6 @@ namespace mopmc::queries {
                 w = mopmc::solver::convex::computeNewW(grad);
             }
 
-            //GS: Compute the initial for frank-wolf and projectedGD. :SG
-            if (Phi.size() == 1) {
-                vi = &r;
-            } else {
-                vi = &vt;
-            }
-
             /*
             std::cout << "w*: ";
             for (int i = 0; i < w.size() ; ++i ){
@@ -159,6 +152,15 @@ namespace mopmc::queries {
             Phi.push_back(r);
             LambdaL.push_back(w);
             LambdaR.push_back(r);
+
+            //GS: Compute the initial for frank-wolf and projectedGD.
+            // Alright to do it here as the FW function is not called
+            // in the first iteration. :SG
+            if (Phi.size() == 1) {
+                vi = &r;
+            } else {
+                vi = &vt;
+            }
 
             T wr = std::inner_product(w.begin(), w.end(), r.begin(), static_cast<T>(0.));
             T wvb = std::inner_product(w.begin(), w.end(), vb.begin(), static_cast<T>(0.));
