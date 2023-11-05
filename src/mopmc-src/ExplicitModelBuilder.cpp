@@ -38,9 +38,6 @@ bool mopmc::check(std::string const& path_to_model, std::string const& property_
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
     mopmc::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
 
-
-
-
     return true;
 }
 

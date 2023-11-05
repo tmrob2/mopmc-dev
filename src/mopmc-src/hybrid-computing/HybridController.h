@@ -1,0 +1,8 @@
+//
+// Created by thomas on 05/11/23.
+//
+
+#ifndef MOPMC_HYBRIDCONTROLLER_H
+#define MOPMC_HYBRIDCONTROLLER_H
+
+#endif //MOPMC_HYBRIDCONTROLLER_H

@@ -17,7 +17,7 @@
 #include "../solvers/ConvexQuery.h"
 #include <random>
 #include "../solvers/SolverHelper.h"
-#include "../solvers/CuVISolver.h"
+#include "mopmc-src/solvers/CuVISolver.h"
 #include <storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h>
 
 namespace mopmc{
@@ -223,31 +223,51 @@ void MOPMCModelChecking<SparseModelType>::unboundedWeightedPhase(storm::Environm
     //! This is a storm function. We use it to compute and collapse the End Component sub model based on the weighted
     //! rewards model (w.r).
     this->updateEcQuotient(weightedRewardVector);
+    // TODO only if there was an update to the EC Quotient should we copy data over to the GPU
+    // Convert the storm data structure to one that is useful to us
+    toEigenSparseMatrix();
 
     // Set up the choice values
-    storm::utility::vector::selectVectorValues(this->ecQuotient->auxChoiceValues, this->ecQuotient->ecqToOriginalChoiceMapping, weightedRewardVector);
+    storm::utility::vector::selectVectorValues(this->ecQuotient->auxChoiceValues,
+                                               this->ecQuotient->ecqToOriginalChoiceMapping,
+                                               weightedRewardVector);
     std::map<uint64_t, uint64_t> ecqStateToOptimalMecMap;
     if (!this->lraObjectives.empty()) {
         throw std::runtime_error("This framework does not deal with LRA");
     }
 
-    std::vector<uint64_t > scheduler = this->computeValidInitialScheduler(this->ecQuotient->matrix, this->ecQuotient->rowsWithSumLessOne);
-    Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> b(this->ecQuotient->matrix.getRowGroupCount());
+    // TODO introduce a enum to control what infrastructure is used to compute the initial sched.
+    //  If the computation is done via hybrid-computing then we should also choose whether to do
+    //  this computation on the GPU or CPU so a further enum is required to make this choice.
+    //  Realistically we should pass a config into the class and just call the class config.
+    std::vector<uint64_t > scheduler = this->computeValidInitialScheduler(
+            this->ecQuotient->matrix, this->ecQuotient->rowsWithSumLessOne);
+    Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1> b(
+            this->ecQuotient->matrix.getRowGroupCount());
 
-    Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(this->ecQuotient->auxStateValues.data(), this->ecQuotient->auxStateValues.size());
+    // TODO When passing this information to the hybrid lib, we only need to pass the size of the
+    //  DTMC and construct the necessary identity matrices on the Looper side to avoid having to pass
+    //  references across threads.
+    Eigen::Map<Eigen::Matrix<typename SparseModelType::ValueType, Eigen::Dynamic, 1>> x(
+            this->ecQuotient->auxStateValues.data(), this->ecQuotient->auxStateValues.size());
     std::cout << "|b|: " << b.size() << "\n";
     reduceMatrixToDTMC(b, scheduler);
     Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> I = makeEigenIdentityMatrix();
     // compute the state value vector for the initial scheduler
-    mopmc::solver::linsystem::solverHelper(b, x, eigenTransitionMatrix, I);
+    // TODO if the following gets called on the CPU with the hybrid lib config
+    //  then it should be done with multithreading openmp using the optimised
+    //  Eigen framework
+    mopmc::solver::linsystem::solverHelper(b, x, dtmcTransitionMatrix, I);
 
-    // convert the transition matrix to a sparse eigen matrix for VI
-    toEigenSparseMatrix();
     //std::cout << eigenTransitionMatrix << std::endl;
 
     // This computation can be done on the GPU.
-    mopmc::solver::iter::valueIteration(this->eigenTransitionMatrix, x, this->ecQuotient->auxChoiceValues,
-                                        scheduler, this->ecQuotient->matrix.getRowGroupIndices());
+    //mopmc::solver::iter::valueIteration(this->eigenTransitionMatrix, x, this->ecQuotient->auxChoiceValues,
+    //                                    scheduler, this->ecQuotient->matrix.getRowGroupIndices());
+
+    std::cout << "got here\n";
+    // TODO This is the next part which also should be called on the hybrid-controller.
+    //  we can compute the variables necessary to send to the hybrid controller
     std::vector<int> rowGroupIndices(this->ecQuotient->matrix.getRowGroupIndices().begin(), this->ecQuotient->matrix.getRowGroupIndices().end());
     std::vector<int> scheduler2(scheduler.begin(), scheduler.end());
     mopmc::solver::cuda::valueIteration(eigenTransitionMatrix, this->ecQuotient->auxStateValues,this->ecQuotient->auxChoiceValues,
@@ -299,7 +319,6 @@ void MOPMCModelChecking<SparseModelType>::unboundedIndividualPhase(const storm::
         auto const& obj = this->objectives[objIndex];
         // Make sure that the objectiveResult is initialized correctly
         this->objectiveResults[objIndex].resize(this->transitionMatrix.getRowGroupCount(), storm::utility::zero<typename SparseModelType::ValueType>());
-        std::cout << "Got here!\n";
         storm::utility::vector::selectVectorValues(deterministicStateRewards, this->optimalChoices, this->transitionMatrix.getRowGroupIndices(),
                                                    this->actionRewards[objIndex]);
         //storm::storage::BitVector statesWithRewards = ~storm::utility::vector::filterZero(deterministicStateRewards);
@@ -506,7 +525,7 @@ void MOPMCModelChecking<SparseModelType>::reduceMatrixToDTMC(
         }
     }
     subMatrix.makeCompressed();
-    this->eigenTransitionMatrix = std::move(subMatrix);
+    this->dtmcTransitionMatrix = std::move(subMatrix);
 }
 
 template class MOPMCModelChecking<storm::models::sparse::Mdp<double>>;

@@ -15,17 +15,12 @@
 #include <storm/transformer/GoalStateMerger.h>
 #include <storm/utility/vector.h>
 #include <set>
-#include <storm/solver/MinMaxLinearEquationSolver.h>
 #include "../solvers/InducedEquationSolver.h"
-#include "../solvers/IterativeSolver.h"
 #include <storm/modelchecker/prctl/helper/DsMpiUpperRewardBoundsComputer.h>
 #include <storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h>
 #include <storm/solver/LinearEquationSolver.h>
 #include "../solvers/ConvexQuery.h"
-#include <random>
-#include "../solvers/SolverHelper.h"
-#include "../solvers/CuVISolver.h"
-#include <storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h>
+#include "../cuda/WarmUp.h"
 
 namespace mopmc {
 namespace multiobjective {
@@ -52,7 +47,10 @@ void performMultiObjectiveModelChecking(
 
     mopmc::multiobjective::MOPMCModelChecking<SparseModelType> mdpChecker(result);
 
-    std::vector<typename SparseModelType::ValueType> w = {1.0, 0.0};
+    // warmup the GPU if necessary
+    mopmc::kernels::launchWarmupKernel();
+
+    std::vector<typename SparseModelType::ValueType> w = {0.5, 0.5};
 
     //mdpChecker.multiObjectiveSolver(env);
     mdpChecker.check(env, w);
