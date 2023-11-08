@@ -18,6 +18,7 @@
 #include "../model-checking/MOPMCModelChecking.h"
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include "../solvers/ConvexQuery.h"
+#include "../solvers/CudaOnlyValueIteration.h"
 
 
 namespace mopmc::queries {
@@ -34,8 +35,11 @@ namespace mopmc::queries {
 
         //Data generation
         const uint64_t m = model_.objectives.size(); // m: number of objectives
+        const uint64_t n = model_.preprocessedModel->getNumberOfChoices(); // n: number of state-action pairs
+        const uint64_t k = model_.preprocessedModel->getNumberOfStates(); // k: number of states
 
-        std::vector<std::vector<T>> rho(m); //rho: all reward vectors
+        std::vector<std::vector<T>> rho(m);
+        std::vector<T> rho_flat(m*n);//rho: all reward vectors
         //GS: need to store whether an objective is probabilistic or reward-based.
         //TODO In future we will use treat them differently in the loss function. :GS
         std::vector<bool> isProbObj(m);
@@ -43,12 +47,17 @@ namespace mopmc::queries {
             auto &name_ = model_.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
             rho[i] = model_.preprocessedModel->getRewardModel(name_)
                     .getTotalRewardVector(model_.preprocessedModel->getTransitionMatrix());
+            for (uint_fast64_t j = 0; j < n; ++j) {
+                rho_flat[i * n + j] = rho[i][j];
+            }
             isProbObj[i] = model_.objectives[i].originalFormula->isProbabilityOperatorFormula();
         }
 
         auto P = // P: transition matrix as eigen sparse matrix
                 storm::adapters::EigenAdapter::toEigenSparseMatrix(model_.preprocessedModel->getTransitionMatrix());
         P->makeCompressed();
+        std::vector<uint64_t> pi(k, static_cast<uint64_t>(0)); // pi: scheduler
+        std::vector<uint64_t> stateIndices = model_.preprocessedModel->getTransitionMatrix().getRowGroupIndices();
 
         //Initialisation
         std::vector<std::vector<T>> Phi;
@@ -88,6 +97,10 @@ namespace mopmc::queries {
         // of model checker for our purposes. :SG
         mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
         //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> scalarisedMOMdpModelChecker(t);
+
+        //mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P,rho_flat);
+        mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P, stateIndices, rho_flat, pi, m);
+        cudaIvHandler.initialise();
 
         //Iteration
         uint_fast64_t iter = 0;

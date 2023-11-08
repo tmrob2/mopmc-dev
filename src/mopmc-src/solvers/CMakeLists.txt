@@ -12,6 +12,8 @@ list(
         "${dir}/SolverHelper.cpp"
         "${dir}/CuVISolver.h"
         "${dir}/CuVISolver.cpp"
+        "${dir}/CudaOnlyValueIteration.cpp"
+        "${dir}/CudaOnlyValueIteration.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

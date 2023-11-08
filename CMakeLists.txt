@@ -19,7 +19,11 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 set(storm_INCLUDE_DIR, ./storm)
 #set(storm-parsers_INCLUDE_DIR, "/home/thomas/storm/build/storm-parsers")
 # specify source files
-set(Sources)
+set(Sources
+        src/mopmc-src/solvers/CudaOnlyValueIteration.h
+        src/mopmc-src/solvers/CudaOnlyValueIteration.cpp
+        src/mopmc-src/solvers/CuFunctions.h
+        src/mopmc-src/solvers/CuFunctions.cu)
 set(TestSources)
 add_subdirectory(src)
 add_subdirectory(lpSolve)
