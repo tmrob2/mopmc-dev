@@ -23,7 +23,7 @@ namespace mopmc::value_iteration::cuda_only {
 
 
         CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                      std::vector<uint64_t> &rowGroupIndices, std::vector<ValueType> &rho_flat,
+                      const std::vector<uint64_t> &rowGroupIndices, std::vector<ValueType> &rho_flat,
                       std::vector<uint64_t> &pi,
                       std::vector<double> &w,
                       std::vector<double> &x);
@@ -32,7 +32,7 @@ namespace mopmc::value_iteration::cuda_only {
 
         int exit();
 
-        int agg(const std::vector<double> &w);
+        int valueIterationPhaseOne(const std::vector<double> &w);
 
         int valueIteration();
 
@@ -47,18 +47,18 @@ namespace mopmc::value_iteration::cuda_only {
 
     private:
         int *dA_csrOffsets, *dA_columns, *dEnabledActions, *dPi;
-        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
+        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXDiff;
         int A_nnz, A_ncols, A_nrows, nobjs;
 
-        double alpha = 1.0;
-        double beta = 1.0;
-        double eps = 1.0;
+        double alpha;
+        double beta;
+        double eps;
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
         cusparseHandle_t handle = nullptr;
         cusparseSpMatDescr_t matA;
-        cusparseDnVecDescr_t vecX, vecY, vecR;
+        cusparseDnVecDescr_t vecX, vecY, vecRw;
         void *dBuffer = nullptr;
         size_t bufferSize = 0;
 

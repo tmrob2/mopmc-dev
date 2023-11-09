@@ -103,7 +103,7 @@ namespace mopmc::queries {
                 cudaIvHandler(*P, stateIndices, rho_flat, pi, w, x);
         cudaIvHandler.initialise();
         //cudaIvHandler.valueIteration();
-        cudaIvHandler.agg(w);
+        cudaIvHandler.valueIterationPhaseOne(w);
         cudaIvHandler.exit();
 
         //Iteration
