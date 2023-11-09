@@ -21,36 +21,34 @@ namespace mopmc::value_iteration::cuda_only {
         CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                       std::vector<ValueType> &rho_flat);
 
+
         CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                       std::vector<uint64_t> &rowGroupIndices, std::vector<ValueType> &rho_flat,
-                      std::vector<uint64_t> &pi, uint64_t numObjs);
+                      std::vector<uint64_t> &pi,
+                      std::vector<double> &w,
+                      std::vector<double> &x);
 
         int initialise();
 
-        int valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor> const &transitionMatrix,
-                           std::vector<ValueType> &x,
-                           std::vector<ValueType> &r,
-                           std::vector<int> &pi,
-                           std::vector<int> const &rowGroupIndices);
+        int exit();
 
-        /*
-        int valueIteration(Eigen::SparseMatrix<V, Eigen::RowMajor> const &transitionMatrix,
-                           std::vector<std::vector<V>> &R,
-                           std::vector<V> &w,
-                           std::vector<int> &pi,
-                           std::vector<int> const &rowGroupIndices);
+        int agg(const std::vector<double> &w);
 
-         */
+        int valueIteration();
+
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
         std::vector<ValueType> rho_;
         std::vector<uint64_t> pi_;
         std::vector<uint64_t> stateIndices_;
         uint64_t numObjs_;
+        std::vector<double> w_;
+        std::vector<double> x_;
+        std::vector<double> res_;
 
     private:
         int *dA_csrOffsets, *dA_columns, *dEnabledActions, *dPi;
-        double *dA_values, *dX, *dY, *dR, *dXTemp, *dXPrime;
-        int A_nnz, A_ncols, A_nrows;
+        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
+        int A_nnz, A_ncols, A_nrows, nobjs;
 
         double alpha = 1.0;
         double beta = 1.0;
@@ -65,5 +63,6 @@ namespace mopmc::value_iteration::cuda_only {
         size_t bufferSize = 0;
 
     };
+
 }
 #endif //MOPMC_CUDAONLYVALUEITERATION_H

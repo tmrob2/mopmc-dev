@@ -182,6 +182,8 @@ int valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor>const & transi
             break;
         }*/
         ++iterations;
+
+        printf("Cuda value iteration: %i, maxEps: %f \n", iterations, maxEps);
     } while( maxEps > 1e-5 );
 
     CHECK_CUDA(cudaMemcpy(x.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))

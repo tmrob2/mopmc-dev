@@ -39,7 +39,7 @@ namespace mopmc::queries {
         const uint64_t k = model_.preprocessedModel->getNumberOfStates(); // k: number of states
 
         std::vector<std::vector<T>> rho(m);
-        std::vector<T> rho_flat(m*n);//rho: all reward vectors
+        std::vector<T> rho_flat(n*m);//rho: all reward vectors
         //GS: need to store whether an objective is probabilistic or reward-based.
         //TODO In future we will use treat them differently in the loss function. :GS
         std::vector<bool> isProbObj(m);
@@ -77,9 +77,9 @@ namespace mopmc::queries {
         //vi: initial vector for Frank-Wolfe
         std::vector<T> *vi;
         std::vector<T> r(m);
-
-        std::vector<ModelType::ValueType> w = // w: weight vector
+        std::vector<T> w = // w: weight vector
                 std::vector<T>(m, static_cast<T>(1.0) / static_cast<T>(m));
+        std::vector<T> x(k, static_cast<T>(0.)); //x: state values
 
         //thresholds for stopping the iteration
         const double eps{0.};
@@ -99,8 +99,12 @@ namespace mopmc::queries {
         //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> scalarisedMOMdpModelChecker(t);
 
         //mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P,rho_flat);
-        mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P, stateIndices, rho_flat, pi, m);
+        mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType>
+                cudaIvHandler(*P, stateIndices, rho_flat, pi, w, x);
         cudaIvHandler.initialise();
+        //cudaIvHandler.valueIteration();
+        cudaIvHandler.agg(w);
+        cudaIvHandler.exit();
 
         //Iteration
         uint_fast64_t iter = 0;
