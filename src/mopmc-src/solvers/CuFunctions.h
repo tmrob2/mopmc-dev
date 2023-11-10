@@ -7,9 +7,11 @@
 
 namespace mopmc::functions::cuda{
 
-    int selectStateValuesLauncher(double *y, double *x, int *enabledActions, int* pi, int arrCount);
-
     int aggregateLauncher(const double *w, const double *x, double *z, int k, int n, int m);
+
+    int maxValueLauncher(double *y, double *x, int *enabledActions, int* pi, int arrCount);
+
+    int absLauncher(const double *x, int k);
 
 };
 

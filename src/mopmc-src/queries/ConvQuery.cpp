@@ -80,6 +80,7 @@ namespace mopmc::queries {
         std::vector<T> w = // w: weight vector
                 std::vector<T>(m, static_cast<T>(1.0) / static_cast<T>(m));
         std::vector<T> x(k, static_cast<T>(0.)); //x: state values
+        std::vector<T> y(n, static_cast<T>(0.)); //y: state-action values
 
         //thresholds for stopping the iteration
         const double eps{0.};
@@ -100,7 +101,7 @@ namespace mopmc::queries {
 
         //mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P,rho_flat);
         mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType>
-                cudaIvHandler(*P, stateIndices, rho_flat, pi, w, x);
+                cudaIvHandler(*P, stateIndices, rho_flat, pi, w, x,y);
         cudaIvHandler.initialise();
         //cudaIvHandler.valueIteration();
         cudaIvHandler.valueIterationPhaseOne(w);

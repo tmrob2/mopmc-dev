@@ -26,7 +26,8 @@ namespace mopmc::value_iteration::cuda_only {
                       const std::vector<uint64_t> &rowGroupIndices, std::vector<ValueType> &rho_flat,
                       std::vector<uint64_t> &pi,
                       std::vector<double> &w,
-                      std::vector<double> &x);
+                      std::vector<double> &x,
+                      std::vector<double> &y);
 
         int initialise();
 
@@ -43,11 +44,12 @@ namespace mopmc::value_iteration::cuda_only {
         uint64_t numObjs_;
         std::vector<double> w_;
         std::vector<double> x_;
+        std::vector<double> y_;
         std::vector<double> res_;
 
     private:
         int *dA_csrOffsets, *dA_columns, *dEnabledActions, *dPi;
-        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXDiff;
+        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
         int A_nnz, A_ncols, A_nrows, nobjs;
 
         double alpha;
