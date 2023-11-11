@@ -40,7 +40,7 @@ namespace mopmc::value_iteration::cuda_only {
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
         std::vector<ValueType> rho_;
         std::vector<uint64_t> pi_;
-        std::vector<uint64_t> stateIndices_;
+        std::vector<uint64_t> enableActions_;
         uint64_t numObjs_;
         std::vector<double> w_;
         std::vector<double> x_;

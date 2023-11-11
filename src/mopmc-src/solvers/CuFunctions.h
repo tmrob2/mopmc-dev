@@ -7,9 +7,9 @@
 
 namespace mopmc::functions::cuda{
 
-    int aggregateLauncher(const double *w, const double *x, double *z, int k, int n, int m);
+    int aggregateLauncher(const double *w, const double *x, double *z, int numRows, int numObjs);
 
-    int maxValueLauncher(double *y, double *x, int *enabledActions, int* pi, int arrCount);
+    int maxValueLauncher1(double *y, double *x, int *enabledActions, int* pi, int arrCount, int numRows);
 
     int absLauncher(const double *x, int k);
 
