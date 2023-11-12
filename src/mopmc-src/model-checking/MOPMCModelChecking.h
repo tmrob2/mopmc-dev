@@ -99,6 +99,14 @@ public:
         return this->transitionMatrix;
     }
 
+    std::vector<std::vector<typename SparseModelType::ValueType>> getActionRewards() {
+        return this->actionRewards;
+    }
+
+    std::vector<std::vector<typename SparseModelType::ValueType>> getStateRewards() {
+        return this->stateRewards;
+    }
+
     std::vector<uint64_t > computeValidInitialSchedulerPubNoArg() {
         return this->computeValidInitialScheduler(this->ecQuotient->matrix, this->ecQuotient->rowsWithSumLessOne);
     }
