@@ -12,6 +12,7 @@
 #include <cublas_v2.h>
 //#include <thrust/device_ptr.h>
 #include <iostream>
+#include <storm/utility/vector.h>
 
 
 #define CHECK_CUDA(func)                                                       \
@@ -64,11 +65,45 @@ namespace mopmc::value_iteration::cuda_only {
             enableActions_(rowGroupIndices), w_(w), x_(x), y_(y) {
     }
 
+    template <typename ValueType>
+    CudaIVHandler<ValueType>::CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+                  const std::vector<uint64_t> &rowGroupIndices,
+                  const std::vector<uint_fast64_t>& ecqToOrigChoiceMapping_,
+                  uint64_t origStateActions_,
+                  std::vector<ValueType> &rho_flat,
+                  std::vector<uint64_t> &pi,
+                  std::vector<double> &w,
+                  std::vector<double> &x,
+                  std::vector<double> &y) :
+        transitionMatrix_(transitionMatrix), pi_(pi),
+        enableActions_(rowGroupIndices), ecqToOrigChoiceMapping(ecqToOrigChoiceMapping_),
+        origStateActions(origStateActions_),
+        w_(w), x_(x), y_(y) {
+        rewardsDownScaling(rho_flat); //  Added a new downscaled rho
+
+        std::cout << "rho size " << rho_.size() << " A_nrows * nobjs " << A_nrows * nobjs << "\n";
+    }
+
+    template <typename ValueType>
+    void CudaIVHandler<ValueType>::rewardsDownScaling(std::vector<ValueType>& rho_flat) {
+
+        auto nrows = transitionMatrix_.rows();
+        auto nobjs = w_.size();
+        rho_.resize(nrows * nobjs);
+        for (uint_fast64_t i = 0 ; i < nobjs; ++i) {
+            for (uint_fast64_t j = 0; j < nrows; ++j) {
+                rho_[i * nrows + j] = rho_flat[i*origStateActions + ecqToOrigChoiceMapping[j]];
+            }
+        }
+    }
+
+
     template<typename ValueType>
     int CudaIVHandler<ValueType>::initialise(){
 
         A_nnz = transitionMatrix_.nonZeros();
         A_ncols = transitionMatrix_.cols();
+        std::cout << "A_ncols " << A_ncols << " x: " << x_.size() <<"\n";
         A_nrows = transitionMatrix_.rows();
         nobjs = w_.size();
         //Assertions

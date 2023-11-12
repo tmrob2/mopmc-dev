@@ -29,11 +29,24 @@ namespace mopmc::value_iteration::cuda_only {
                       std::vector<double> &x,
                       std::vector<double> &y);
 
+        CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+                      const std::vector<uint64_t> &rowGroupIndices,
+                      const std::vector<uint_fast64_t>& ecqToOrigChoiceMapping,
+                      uint64_t origStateActions,
+                      std::vector<ValueType> &rho_flat,
+                      std::vector<uint64_t> &pi,
+                      std::vector<double> &w,
+                      std::vector<double> &x,
+                      std::vector<double> &y);
+
         int initialise();
 
         int exit();
 
         int valueIterationPhaseOne(const std::vector<double> &w);
+
+        // Extra helper function to help selecting indices for ecQuotient to downscale rhoFlat
+        void rewardsDownScaling(std::vector<ValueType>& rho_flat);
 
         int valueIteration();
 
@@ -63,6 +76,10 @@ namespace mopmc::value_iteration::cuda_only {
         cusparseDnVecDescr_t vecX, vecY, vecRw;
         void *dBuffer = nullptr;
         size_t bufferSize = 0;
+
+        // Extra weight vector processing bit for handling ecQuotient
+        std::vector<uint_fast64_t> ecqToOrigChoiceMapping;
+        uint64_t origStateActions;
 
     };
 
