@@ -54,9 +54,9 @@ namespace mopmc::value_iteration::cuda_only {
 
     template<typename ValueType>
     CudaIVHandler<ValueType>::CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                                            const std::vector<uint64_t> &rowGroupIndices,
+                                            const std::vector<int> &rowGroupIndices,
                                             std::vector<ValueType> &rho_flat,
-                                            std::vector<uint64_t> &pi,
+                                            std::vector<int> &pi,
                                             std::vector<double> &w,
                                             std::vector<double> &x,
                                             std::vector<double> &y) :
@@ -77,10 +77,12 @@ namespace mopmc::value_iteration::cuda_only {
         assert(rho_.size() == A_nrows * nobjs);
         assert(enableActions_.size() == A_ncols + 1);
 
+        /*
         std::cout << "____ PRINTING RHO_: [ ";
         for (int i = 0; i < 50; ++i) {
             std::cout << rho_[i] << " ";
         } std::cout << "]\n";
+         */
 
 
 
@@ -144,12 +146,13 @@ namespace mopmc::value_iteration::cuda_only {
         /////PRINTING
         std::vector<double> dXOut(A_ncols);
         CHECK_CUDA(cudaMemcpy(dXOut.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
+        /*
         printf("____ dX (at the end of initialisation): [");
         for (int i = 0; i < 50; ++i) {
             std::cout << dXOut[i] << " ";
         }
         std::cout << "]\n" ;
-        //
+         */
 
         return EXIT_SUCCESS;
     }
@@ -189,7 +192,7 @@ namespace mopmc::value_iteration::cuda_only {
         //CHECK_CUDA(cudaMemset(dRw, static_cast<double>(0.0), A_nrows * sizeof(double)))
         mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
         ///// PRINTING FOR DEBUG
-
+        /*
         std::vector<double> dWOut0(nobjs);
         CHECK_CUDA(cudaMemcpy(dWOut0.data(), dW, nobjs * sizeof(double), cudaMemcpyDeviceToHost))
         printf("____ dW: [");
@@ -197,8 +200,8 @@ namespace mopmc::value_iteration::cuda_only {
             std::cout << dWOut0[i] << " ";
         }
         std::cout << "]\n" ;
-
-
+         */
+        /*
         std::vector<double> dRwOut0(A_nrows);
         CHECK_CUDA(cudaMemcpy(dRwOut0.data(), dRw, A_nrows * sizeof(double), cudaMemcpyDeviceToHost))
         printf("____ dRw: [");
@@ -206,6 +209,7 @@ namespace mopmc::value_iteration::cuda_only {
             std::cout << dRwOut0[i] << " ";
         }
         std::cout << "]\n" ;
+         */
 
         /*
         std::vector<double> dROut(A_nrows * nobjs);
@@ -221,13 +225,17 @@ namespace mopmc::value_iteration::cuda_only {
         int maxInd = 0;
         int iterations = 0;
         double alpha2 = -1.0;
-        int maxIter = 200;
+        int maxIter = 1000;
 
         ////FOR PRINTING
+        /*
         std::vector<double> dXOut(A_ncols);
         std::vector<double> dYOut(A_nrows);
         std::vector<double> dXPrimeOut(A_ncols);
         std::vector<double> dRwOut(A_nrows);
+        std::vector<int> dEnabledActionsOut(A_ncols+1);
+         */
+
 
         do {
             // y = r
@@ -242,18 +250,22 @@ namespace mopmc::value_iteration::cuda_only {
             CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_ncols, dX, 1, dXPrime, 1))
             //
             ////PRINTING
+            /*
             CHECK_CUDA(cudaMemcpy(dXOut.data(), dX, A_ncols* sizeof(double), cudaMemcpyDeviceToHost))
             printf("____ dX (before max value launcher): [");
             for (int i = 0; i < 100; ++i) {
-                std::cout << dXOut[dXOut.size()-100+i] << " ";
+                //std::cout << dXOut[dXOut.size()-100+i] << " ";
+                std::cout << dXOut[i] << " ";
             }
             std::cout << "... ]\n" ;
             CHECK_CUDA(cudaMemcpy(dYOut.data(), dY, A_nrows* sizeof(double), cudaMemcpyDeviceToHost))
             printf("____ dY (before max value launcher): [");
             for (int i = 0; i < 200; ++i) {
-                std::cout << dYOut[dYOut.size()-200+i] << " ";
+                //std::cout << dYOut[dYOut.size()-200+i] << " ";
+                std::cout << dYOut[i] << " ";
             }
             std::cout << "... ]\n" ;
+             */
             /*
             CHECK_CUDA(cudaMemcpy(dRwOut.data(), dRw, A_nrows * sizeof(double), cudaMemcpyDeviceToHost))
             printf("____ dRw: [");
@@ -265,22 +277,45 @@ namespace mopmc::value_iteration::cuda_only {
             // x(s) <- max_{a\in Act(s)} y(s,a), pi(s) <- argmax_{a\in Act(s)} pi(s)
             mopmc::functions::cuda::maxValueLauncher1(dY, dX, dEnabledActions, dPi, A_ncols+1, A_nrows);
             //
-            CHECK_CUDA(cudaMemcpy(dXOut.data(), dX, A_ncols* sizeof(double), cudaMemcpyDeviceToHost))
             ////PRINTING
+            /*
+            CHECK_CUDA(cudaMemcpy(dXOut.data(), dX, A_ncols* sizeof(double), cudaMemcpyDeviceToHost))
             printf("____ dX (after max value launcher): [");
             for (int i = 0; i < 100; ++i) {
-                std::cout << dXOut[dXOut.size()-100+i] << " ";
+                //std::cout << dXOut[dXOut.size()-100+i] << " ";
+                std::cout << dXOut[i] << " ";
             }
             std::cout << "... ]\n" ;
+             */
+
+            /*
+            CHECK_CUDA(cudaMemcpy(dYOut.data(), dY, A_nrows* sizeof(double), cudaMemcpyDeviceToHost))
+            printf("____ dY (after max value launcher): [");
+            for (int i = 0; i < 200; ++i) {
+                //std::cout << dYOut[dYOut.size()-200+i] << " ";
+                std::cout << dYOut[i] << " ";
+            }
+             */
+            /*
+            std::cout << "... ]\n" ;
+            CHECK_CUDA(cudaMemcpy(dEnabledActionsOut.data(), dEnabledActions, (A_ncols+1)* sizeof(int), cudaMemcpyDeviceToHost))
+            printf("____ dEnabledActions: [");
+            for (int i = 0; i < 100; ++i) {
+                std::cout << dEnabledActionsOut[i] << " ";
+            }
+            std::cout << "... ]\n" ;
+             */
             // x' <- -1 * x + x'
             CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, A_ncols, &alpha2, dX, 1, dXPrime, 1))
+            ////Printing
+            /*
             CHECK_CUDA(cudaMemcpy(dXPrimeOut.data(), dXPrime, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
             printf("____ dXPrime (x'-x): [");
             for (int i = 0; i < 200; ++i) {
                 std::cout << dXPrimeOut[i] << " ";
             }
             std::cout << "... ]\n" ;
-
+             */
             // x(s) <- max_{a\in Act(s)} y(s,a), pi(s) <- argmax_{a\in Act(s)} pi(s)
             // max |x'|
             // maxEps: Host variable that will store the maximum value.
@@ -293,7 +328,7 @@ namespace mopmc::value_iteration::cuda_only {
             CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime+maxInd-1, sizeof(double), cudaMemcpyDeviceToHost))
             // We are not done yet, since the value may be negative.
             maxEps = (maxEps >= 0) ? maxEps : -maxEps;
-            printf("Absolute maximum value of array is %lf.\n", maxEps);
+            //printf("Absolute maximum value of array is %lf.\n", maxEps);
             //maxEps = mopmc::kernels::findMaxEps(dXPrime, A_ncols, maxEps);
             //
             ++iterations;

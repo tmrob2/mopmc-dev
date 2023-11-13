@@ -25,6 +25,7 @@
 #include <Eigen/Sparse>
 #include <storm/adapters/EigenAdapter.h>
 #include "queries/ConvQuery.h"
+#include "./model-checking/MOPMCModelChecking.h"
 
 namespace mopmc {
 
@@ -45,6 +46,9 @@ namespace mopmc {
 
         std::shared_ptr<storm::models::sparse::Mdp<ModelType::ValueType>> mdp =
                 storm::api::buildSparseModel<ModelType::ValueType>(program, formulas)->as<ModelType>();
+
+        std::cout << "mdp->getNumberOfStates(): " << mdp->getNumberOfStates() << "\n";
+        std::cout << "mdp->getNumberOfChoices(): " << mdp->getNumberOfChoices() << "\n";
 
         const auto formula = formulas[0]->asMultiObjectiveFormula();
 
@@ -72,10 +76,17 @@ namespace mopmc {
         // whose constructor calls initialize().
         // For our purposes, we use this function to check reward finiteness
         // and other desirable requirements of the model.
+        /*
         try {
             new storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>(prepResult);
         } catch (const std::runtime_error &e) { std::cout << e.what() << "\n"; }
+         */
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
+
+        std::cout << "prepResult.preprocessedModel->getNumberOfStates(): "
+            << prepResult.preprocessedModel->getNumberOfStates() << std::endl;
+        std::cout << "prepResult.preprocessedModel->getTransitionMatrix().getRowCount(): "
+            << prepResult.preprocessedModel->getTransitionMatrix().getRowCount() << std::endl;
 
         //It calls a query (Alg. 1)
         mopmc::queries::ConvexQuery q(prepResult, env);

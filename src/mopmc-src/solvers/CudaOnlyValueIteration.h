@@ -23,8 +23,8 @@ namespace mopmc::value_iteration::cuda_only {
 
 
         CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                      const std::vector<uint64_t> &rowGroupIndices, std::vector<ValueType> &rho_flat,
-                      std::vector<uint64_t> &pi,
+                      const std::vector<int> &rowGroupIndices, std::vector<ValueType> &rho_flat,
+                      std::vector<int> &pi,
                       std::vector<double> &w,
                       std::vector<double> &x,
                       std::vector<double> &y);
@@ -39,13 +39,13 @@ namespace mopmc::value_iteration::cuda_only {
 
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
         std::vector<ValueType> rho_;
-        std::vector<uint64_t> pi_;
-        std::vector<uint64_t> enableActions_;
-        uint64_t numObjs_;
+        std::vector<int> pi_;
+        std::vector<int> enableActions_;
+        //int numObjs_;
         std::vector<double> w_;
         std::vector<double> x_;
         std::vector<double> y_;
-        std::vector<double> res_;
+        //std::vector<double> res_;
 
     private:
         int *dA_csrOffsets, *dA_columns, *dEnabledActions, *dPi;

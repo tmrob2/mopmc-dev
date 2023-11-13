@@ -19,6 +19,8 @@
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include "../solvers/ConvexQuery.h"
 #include "../solvers/CudaOnlyValueIteration.h"
+#include "../solvers/CuVISolver.h"
+#include "../solvers/IterativeSolver.h"
 
 
 namespace mopmc::queries {
@@ -39,7 +41,7 @@ namespace mopmc::queries {
         const uint64_t k = model_.preprocessedModel->getNumberOfStates(); // k: number of states
 
         std::vector<std::vector<T>> rho(m);
-        std::vector<T> rho_flat(n*m);//rho: all reward vectors
+        std::vector<T> rho_flat(n * m);//rho: all reward vectors
         //GS: need to store whether an objective is probabilistic or reward-based.
         //TODO In future we will use treat them differently in the loss function. :GS
         std::vector<bool> isProbObj(m);
@@ -77,8 +79,9 @@ namespace mopmc::queries {
         //vi: initial vector for Frank-Wolfe
         std::vector<T> *vi;
         std::vector<T> r(m);
-        std::vector<T> w = // w: weight vector
-                std::vector<T>(m, static_cast<T>(1.0) / static_cast<T>(m));
+        //std::vector<T> w = // w: weight vector
+                //std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
+        std::vector<T> w = {-0.5, -0.5};
         std::vector<T> x(k, static_cast<T>(0.)); //x: state values
         std::vector<T> y(n, static_cast<T>(0.)); //y: state-action values
 
@@ -86,7 +89,7 @@ namespace mopmc::queries {
         const double eps{0.};
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
-        const uint_fast64_t maxIter{10};
+        const uint_fast64_t maxIter{0};
 
         //GS: Double-check, from an algorithmic and practical point of view,
         // whether we maintain the two data structures
@@ -94,18 +97,87 @@ namespace mopmc::queries {
         std::vector<std::vector<T>> W;
         std::set<std::vector<T>> wSet;
 
+
+        //TEST BLOCK
+        {
+            //DATA PREPARATION
+            //weighted reward vector
+            /*
+            std::vector<T> rho_w(n, static_cast<T>(0.));
+            for (uint64_t i = 0; i < m; ++i) {
+                for (uint_fast64_t j = 0; j < n; ++j) {
+                    rho_w[j] += w[i] * rho[i][j];
+                }
+            }
+             */
+            //WITH ecQuotient
+
+            mopmc::multiobjective::MOPMCModelChecking<ModelType> model1(model_);
+
+            auto rho1 = model1.getActionRewards();
+            assert(!rho1.empty());
+            assert(!rho1[0].empty());
+            assert(typeid(rho1[0][0]) == typeid(T));
+            const uint64_t n1 = model1.getTransitionMatrix().getRowCount();
+            const uint64_t k1 = model1.getTransitionMatrix().getColumnCount();
+            std::vector<double> rho1_flat(n1 * m);
+            for (uint64_t i = 0; i < m; ++i) {
+                for (uint_fast64_t j = 0; j < n1; ++j) {
+                    rho1_flat[i * n1 + j] = rho1[i][j];
+                }
+            }
+            /*
+            std::vector<T> rho_ecq_w(n1, static_cast<T>(0.));
+            for (uint64_t i = 0; i < m; ++i) {
+                for (uint_fast64_t j = 0; j < n1; ++j) {
+                    rho_ecq_w[j] += w[i] * rho1[i][j];
+                }
+            }
+             */
+
+            //cuda only
+            std::vector<int> pi1(k1, static_cast<int>(0));
+            std::vector<double> x1(k1, static_cast<double>(0.));
+            std::vector<double> y1(n1, static_cast<double>(0.));
+
+            auto P1 = // P: transition matrix as eigen sparse matrix
+                    storm::adapters::EigenAdapter::toEigenSparseMatrix(model1.getTransitionMatrix());
+            P1->makeCompressed();
+            std::vector<uint64_t> rowGroupIndices1 = model1.getTransitionMatrix().getRowGroupIndices();
+            std::vector<int> stateIndices1(rowGroupIndices1.begin(), rowGroupIndices1.end());
+
+            mopmc::value_iteration::cuda_only::CudaIVHandler<double> cudaIvHandler(*P1, stateIndices1, rho1_flat,
+                                                                                   pi1, w, x1, y1);
+            cudaIvHandler.initialise();
+            cudaIvHandler.valueIterationPhaseOne(w);
+            cudaIvHandler.exit();
+            std::cout << "----------------------------------------------\n";
+            std::cout << "@_@ TESTING OUTPUT: \n";
+            assert(w.size()==2);
+            std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
+            std::cout << "Result at initial state: " << cudaIvHandler.x_[model1.getInitialState()] << "\n";
+            std::cout << "----------------------------------------------\n";
+
+            /*
+            std::vector<int> stateIndices0(stateIndices.begin(), stateIndices.end());
+            std::vector<int> pi0 (pi.begin(), pi.end());
+            mopmc::value_iteration::cuda_only::CudaIVHandler<double> cudaIvHandler0(*P, stateIndices0, rho_flat, pi0, w, x,y);
+            cudaIvHandler0.initialise();
+            cudaIvHandler0.valueIterationPhaseOne(w);
+            cudaIvHandler0.exit();
+            std::cout << "----------------------------------------------\n";
+            std::cout << "@_@ TESTING OUTPUT: \n";
+            assert(w.size()==2);
+            std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
+            std::cout << "Result at initial state: " << cudaIvHandler0.x_[model_.getInitialState()] << "\n";
+            std::cout << "----------------------------------------------\n";
+             */
+        }
+
+
         //GS: I believe we will implement a new version
         // of model checker for our purposes. :SG
         mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
-        //storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType> scalarisedMOMdpModelChecker(t);
-
-        //mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType> cudaIvHandler(*P,rho_flat);
-        mopmc::value_iteration::cuda_only::CudaIVHandler<ModelType::ValueType>
-                cudaIvHandler(*P, stateIndices, rho_flat, pi, w, x,y);
-        cudaIvHandler.initialise();
-        //cudaIvHandler.valueIteration();
-        cudaIvHandler.valueIterationPhaseOne(w);
-        cudaIvHandler.exit();
 
         //Iteration
         uint_fast64_t iter = 0;
@@ -160,6 +232,7 @@ namespace mopmc::queries {
             }
             std::cout << "\n";
              */
+
             scalarisedMOMDPModelChecker.check(env_, w);
 
             uint64_t ini = scalarisedMOMDPModelChecker.getInitialState();

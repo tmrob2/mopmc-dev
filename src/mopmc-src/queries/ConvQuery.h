@@ -19,6 +19,7 @@ namespace mopmc::queries {
 
         void query();
         PrepReturnType model_;
+        Eigen::SparseMatrix<T, Eigen::RowMajor> P_;
         storm::Environment env_;
     };
     //TODO
