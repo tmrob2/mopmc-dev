@@ -26,6 +26,7 @@
 #include <storm/adapters/EigenAdapter.h>
 #include "queries/ConvQuery.h"
 #include "./model-checking/MOPMCModelChecking.h"
+#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h>
 
 namespace mopmc {
 
@@ -54,6 +55,13 @@ namespace mopmc {
 
         PreprocessedType::ReturnType prepResult =
                 PreprocessedType::preprocess(env, *mdp, formula);
+
+        auto rewardAnalysis = storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectiveRewardAnalysis<ModelType>::analyze(prepResult);
+        std::string s1 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::AllFinite ? "yes" : "no";
+        std::string s2 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::ExistsParetoFinite ? "yes" : "no";
+        std::cout << "[!] The expected reward is finite for all objectives and all schedulers: " << s1 << std::endl;
+        std::cout << "[!] There is a Pareto optimal scheduler yielding finite rewards for all objectives: " << s2 << std::endl;
+
 
         std::ostream &outputStream = std::cout;
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
