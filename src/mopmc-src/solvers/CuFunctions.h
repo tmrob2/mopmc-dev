@@ -7,9 +7,22 @@
 
 namespace mopmc::functions::cuda{
 
-    int aggregateLauncher(const double *w, const double *x, double *z, int numRows, int numObjs);
+    int aggregateLauncher(const double *w, const double *x, double *y, int numRows, int numObjs);
 
     int maxValueLauncher1(double *y, double *x, int *enabledActions, int* pi, int arrCount, int numRows);
+
+    int maxValueLauncher2(double *y, double *x, int *enabledActions, int* pi, int* bpi, int arrCount);
+
+    //Predicate functor
+    template<typename T>
+    struct is_not_zero
+    {
+        __host__ __device__
+        bool operator()(const T x)
+        {
+            return (x != 0);
+        }
+    };
 
     int absLauncher(const double *x, int k);
 
