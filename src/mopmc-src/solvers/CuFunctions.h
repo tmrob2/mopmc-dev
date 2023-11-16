@@ -13,6 +13,10 @@ namespace mopmc::functions::cuda{
 
     int maxValueLauncher2(double *y, double *x, int *enabledActions, int* pi, int* bpi, int arrCount);
 
+    int maskingLauncher(const int* csrOffsets, const int *rowGroupIndices, const int *row2RowGroupIndices,
+                        const int* pi, int* maskVec, int arrCount);
+    int row2RowGroupLauncher(const int *row2RowGroupMapping, int *x, int arrCount);
+
     //Predicate functor
     template<typename T>
     struct is_not_zero

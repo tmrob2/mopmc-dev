@@ -25,7 +25,7 @@ namespace mopmc { namespace value_iteration { namespace gpu {
 
         CudaValueIterationHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                                   const std::vector<int> &rowGroupIndices,
-                                  const std::vector<int> &row2RowGroupIndices,
+                                  const std::vector<int> &row2RowGroupMapping,
                                   std::vector<ValueType> &rho_flat,
                                   std::vector<int> &pi,
                                   std::vector<double> &w,
@@ -46,7 +46,7 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         std::vector<ValueType> flattenRewardVector;
         std::vector<int> scheduler_;
         std::vector<int> rowGroupIndices_;
-        std::vector<int> row2RowGroupIndices_;
+        std::vector<int> row2RowGroupMapping_;
         std::vector<double> weightVector_;
         std::vector<double> x_;
         std::vector<double> y_;
@@ -55,9 +55,9 @@ namespace mopmc { namespace value_iteration { namespace gpu {
     private:
         int *dA_csrOffsets, *dA_columns, *dA_rows_extra;
         int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
-        int *dEnabledActions, *dPi;
-        int *dPi_bin; // this is an array of 0s and 1s
-        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
+        int *dRowGroupIndices, *dRow2RowGroupMapping, *dPi, *dPi_bin;
+        int *dMasking; // this is an array of 0s and 1s
+        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXTemp, *dXPrime;
         int A_nnz, A_ncols, A_nrows, nobjs;
         int B_nnz, B_ncols, B_nrows;
 
@@ -69,11 +69,11 @@ namespace mopmc { namespace value_iteration { namespace gpu {
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
-        cusparseHandle_t handle = nullptr;
+        cusparseHandle_t handle = nullptr, handleB = nullptr;
         cusparseSpMatDescr_t matA, matB;
-        cusparseDnVecDescr_t vecX, vecY, vecRw;
-        void *dBuffer = nullptr;
-        size_t bufferSize = 0;
+        cusparseDnVecDescr_t vecX, vecY, vecXPrime, vecRw;
+        void *dBuffer = nullptr, *dBufferB = nullptr;
+        size_t bufferSize = 0, bufferSizeB = 0;
 
     };
 
