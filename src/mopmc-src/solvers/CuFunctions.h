@@ -13,8 +13,8 @@ namespace mopmc::functions::cuda{
 
     int maxValueLauncher2(double *y, double *x, int *enabledActions, int *pi, int *bpi, int arrCount);
 
-    int maskingLauncher(const int* csrOffsets, const int *rowGroupIndices, const int *row2RowGroupIndices,
-                        const int* pi, int *masking4rows, int *masking4nnz, int arrCount);
+    int binaryMaskingLauncher(const int* csrOffsets, const int *rowGroupIndices, const int *row2RowGroupIndices,
+                              const int* pi, int *masking4rows, int *masking4nnz, int arrCount);
     int row2RowGroupLauncher(const int *row2RowGroupMapping, int *x, int arrCount);
 
     //Predicate functor

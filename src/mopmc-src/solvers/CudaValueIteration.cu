@@ -60,167 +60,15 @@ namespace mopmc {
             template<typename ValueType>
             CudaValueIterationHandler<ValueType>::CudaValueIterationHandler(
                     const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                    std::vector<ValueType> &rho_flat) :
-                    transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat) {}
-
-
-            template<typename ValueType>
-            CudaValueIterationHandler<ValueType>::CudaValueIterationHandler(
-                    const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                     const std::vector<int> &rowGroupIndices,
                     const std::vector<int> &row2RowGroupMapping,
                     std::vector<ValueType> &rho_flat,
                     std::vector<int> &pi,
                     std::vector<double> &w,
-                    std::vector<double> &x,
-                    std::vector<double> &y) :
+                    int iniRow) :
                     transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
                     rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
-                    weightVector_(w), x_(x), y_(y) {
-
-            }
-
-
-            template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w) {
-                printf("____THIS IS AGGREGATE FUNCTION____\n");
-                CHECK_CUDA(cudaMemcpy(dW, w.data(), nobjs * sizeof(double), cudaMemcpyHostToDevice))
-                //CHECK_CUDA(cudaMemset(dRw, static_cast<double>(0.0), A_nrows * sizeof(double)))
-                mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
-                iterations = 0;
-                do {
-                    /// y = r
-                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_nrows, dRw, 1, dY, 1))
-                    /// y = A.x + r (r = y)
-                    CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                                &alpha, matA, vecX, &beta, vecY, CUDA_R_64F,
-                                                CUSPARSE_SPMV_ALG_DEFAULT, dBuffer))
-                    /// compute the next policy update:
-                    /// x' <- x
-                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_ncols, dX, 1, dXPrime, 1))
-
-                    // x(s) <- max_{a\in Act(s)} y(s,a), pi(s) <- argmax_{a\in Act(s)} pi(s)
-                    mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dPi, A_ncols + 1, A_nrows);
-
-                    // x' <- -1 * x + x'
-                    CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, A_ncols, &alpha2, dX, 1, dXPrime, 1))
-
-                    // x(s) <- max_{a\in Act(s)} y(s,a), pi(s) <- argmax_{a\in Act(s)} pi(s)
-                    // max |x'|
-                    CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dXPrime, 1, &maxInd))
-                    CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost))
-                    maxEps = (maxEps >= 0) ? maxEps : -maxEps;
-                    //maxEps = mopmc::kernels::findMaxEps(dXPrime, A_ncols, maxEps);
-                    //
-                    ++iterations;
-                    //printf("___ VI PHASE ONE, ITERATION %i, maxEps %f\n", iterations, maxEps);
-                } while (maxEps > 1e-5 && iterations < maxIter);
-
-                return EXIT_SUCCESS;
-            }
-
-            template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo() {
-
-
-
-
-                // cudaMalloc B-------------------------------------------------------------
-                CHECK_CUDA(cudaMalloc((void **) &dB_csrOffsets, (A_ncols + 1) * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dB_columns, A_nnz * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dB_values, A_nnz * sizeof(double)))
-                CHECK_CUDA(cudaMalloc((void **) &dB_rows_extra, A_nnz * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double)))
-
-                CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
-                                                CUSPARSE_INDEX_BASE_ZERO));
-
-                mopmc::functions::cuda::maskingLauncher(dA_csrOffsets,
-                                                        dRowGroupIndices, dRow2RowGroupMapping,
-                                                        dPi, dMasking_nrows, dMasking_nnz, A_nrows);
-                /*
-                {
-                    int k = 1000;
-                    std::vector<int> hRowGroupIndices(A_nrows);
-                    CHECK_CUDA(cudaMemcpy(hRowGroupIndices.data(), dRowGroupIndices, k * sizeof(int), cudaMemcpyDeviceToHost))
-                    printf("____ dRowGroupIndices: [");
-                    for (int i = 0; i < k; ++i) {
-                        std::cout << hRowGroupIndices[i] << " ";
-                    }
-                    std::cout << "...]\n";
-                }
-                 */
-
-                thrust::copy_if(thrust::device, dA_values, dA_values + A_nnz - 1,
-                                dMasking_nnz, dB_values, mopmc::functions::cuda::is_not_zero<int>());
-                thrust::copy_if(thrust::device, dA_columns, dA_columns + A_nnz - 1,
-                                dMasking_nnz, dB_columns, mopmc::functions::cuda::is_not_zero<int>());
-                thrust::copy_if(thrust::device, dA_rows_extra, dA_rows_extra + A_nnz - 1,
-                                dMasking_nnz, dB_rows_extra, mopmc::functions::cuda::is_not_zero<int>());
-                B_nnz = (int) thrust::count_if(thrust::device, dB_values, dB_values + A_nnz - 1,
-                                               mopmc::functions::cuda::is_not_zero<double>());
-
-                mopmc::functions::cuda::row2RowGroupLauncher(dRow2RowGroupMapping, dB_rows_extra, B_nnz);
-
-                std::cout << "A_ncols: " << A_ncols << ", A_nrows: " << A_nrows << ", A_nnz: " << A_nnz << "\n";
-                std::cout << "B_ncols: " << B_ncols << ", B_nrows: " << B_nrows << ", B_nnz: " << B_nnz << "\n";
-
-                CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra,B_nnz, B_nrows,
-                                               dB_csrOffsets,CUSPARSE_INDEX_BASE_ZERO));
-                CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
-                                                 dB_csrOffsets, dB_columns, dB_values,
-                                                 CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-                                                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
-
-                for (int i = 0; i < nobjs; i++) {
-
-                    thrust::copy_if(thrust::device, dR+i*A_nrows, dR+(i+1)*A_nrows-1,
-                                    dMasking_nrows, dRi, mopmc::functions::cuda::is_not_zero<double>());
-
-                   /*
-                     {
-                         int k = 100;
-                         std::vector<double> hRi(B_nrows);
-                         CHECK_CUDA(cudaMemcpy(hRi.data(), dRi, B_nrows * sizeof(double), cudaMemcpyDeviceToHost))
-                         printf("____ dRi:\n[ ");
-                         for (int i = 0; i < k; ++i) {
-                             std::cout << hRi[i] << " ";
-                         }
-                         std::cout << "...]\n";
-                     }
-*/
-
-                    iterations = 0;
-                    do {
-                        /// x = ri
-                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dX, 1));
-                        /// initialise x' as ri too
-                        if (iterations == 0) {
-                            CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dXPrime, 1));
-                        }
-                        /// x = B.x' + ri where x = ri
-                        CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                                    &alpha, matB, vecXPrime, &beta, vecX, CUDA_R_64F,
-                                                    CUSPARSE_SPMV_ALG_DEFAULT, dBuffer));
-                        /// x' = -1 * x + x'
-                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dX, 1, dXPrime, 1));
-                        /// max |x'|
-                        CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dXPrime, 1, &maxInd));
-                        ///get maxEps
-                        CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
-                        maxEps = (maxEps >= 0) ? maxEps : -maxEps;
-                        /// x' = x
-                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dX, 1, dXPrime, 1));
-
-                        printf("___ VI PHASE TWO, ITERATION %i, maxEps %f\n", iterations, maxEps);
-                        ++iterations;
-
-                    } while (maxEps > 1e-5 && iterations < maxIter);
-                }
-
-                return EXIT_SUCCESS;
+                    weightVector_(w), iniRow_(iniRow) {
             }
 
             template<typename ValueType>
@@ -232,8 +80,8 @@ namespace mopmc {
                 B_ncols = A_ncols;
                 B_nrows = B_ncols;
                 nobjs = weightVector_.size();
+                results_.resize(nobjs);
                 //Assertions
-                assert(A_ncols == x_.size());
                 assert(A_ncols == scheduler_.size());
                 assert(flattenRewardVector_.size() == A_nrows * nobjs);
                 assert(rowGroupIndices_.size() == A_ncols + 1);
@@ -254,14 +102,21 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dRowGroupIndices, (A_ncols + 1) * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dRow2RowGroupMapping, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dW, nobjs * sizeof(double)))
-                // cudaMalloc VARIABLES -------------------------------------------------------------
+                // cudaMalloc Variables -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dX, A_ncols * sizeof(double)))
-                //CHECK_CUDA(cudaMalloc((void **) &dX2Prime, A_ncols * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dXPrime, A_ncols * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dY, A_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dPi, A_ncols * sizeof(int)))
-                //CHECK_CUDA(cudaMalloc((void **) &dPi_bin, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dRw, A_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dResult, (nobjs +1) * sizeof(double)))
+                // cudaMalloc PHASE B-------------------------------------------------------------
+                CHECK_CUDA(cudaMalloc((void **) &dB_csrOffsets, (A_ncols + 1) * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dB_columns, A_nnz * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dB_values, A_nnz * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dB_rows_extra, A_nnz * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double)))
                 // cudaMemcpy -------------------------------------------------------------
                 CHECK_CUDA(cudaMemcpy(dA_csrOffsets, transitionMatrix_.outerIndexPtr(), (A_nrows + 1) * sizeof(int),
                                       cudaMemcpyHostToDevice));
@@ -269,10 +124,8 @@ namespace mopmc {
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dA_values, transitionMatrix_.valuePtr(), A_nnz * sizeof(double),
                                       cudaMemcpyHostToDevice))
-                CHECK_CUDA(cudaMemcpy(dX, x_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
-                CHECK_CUDA(cudaMemcpy(dXPrime, x_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
-                CHECK_CUDA(cudaMemcpy(dY, y_.data(), A_nrows * sizeof(double), cudaMemcpyHostToDevice));
-                //CHECK_CUDA(cudaMemset(dY, static_cast<double>(0.0), A_nrows * sizeof(double)))
+                //CHECK_CUDA(cudaMemcpy(dX, weightedValueVector_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
+                //CHECK_CUDA(cudaMemcpy(dXPrime, weightedValueVector_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dR, flattenRewardVector_.data(), A_nrows * nobjs * sizeof(double),
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dRowGroupIndices, rowGroupIndices_.data(), (A_ncols + 1) * sizeof(int),
@@ -280,7 +133,8 @@ namespace mopmc {
                 CHECK_CUDA(cudaMemcpy(dRow2RowGroupMapping, row2RowGroupMapping_.data(), A_nrows * sizeof(int),
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dPi, scheduler_.data(), A_ncols * sizeof(int), cudaMemcpyHostToDevice));
-                // NOTE. Data for dW in VI phase 1.
+                // NOTE. Data for dW copied in VI phase B.
+                //CHECK_CUDA(cudaMemset(dY, static_cast<double>(0.0), A_nrows * sizeof(double)))
                 //-------------------------------------------------------------------------
                 CHECK_CUSPARSE(cusparseCreate(&handle))
                 CHECK_CUBLAS(cublasCreate_v2(&cublasHandle));
@@ -309,18 +163,123 @@ namespace mopmc {
                         &alpha, matB, vecXPrime, &beta, vecX, CUDA_R_64F,
                         CUSPARSE_SPMV_ALG_DEFAULT, &bufferSizeB))
                         */
-                CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize))
-                //CHECK_CUDA(cudaMalloc(&dBufferB, bufferSizeB))
-                //std::vector<double> dXOut(A_ncols);
-                //CHECK_CUDA(cudaMemcpy(dXOut.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
+                CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize));
+                return EXIT_SUCCESS;
+            }
+
+            template<typename ValueType>
+            int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w) {
+
+                CHECK_CUDA(cudaMemcpy(dW, w.data(), nobjs * sizeof(double), cudaMemcpyHostToDevice))
+                mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
+
+                iteration = 0;
+                do {
+                    // y = r
+                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_nrows, dRw, 1, dY, 1))
+                    if (iteration == 0) {
+                        mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dPi, A_ncols + 1, A_nrows);
+                    }
+                    // y = A.x + r (r = y)
+                    CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                                &alpha, matA, vecX, &beta, vecY, CUDA_R_64F,
+                                                CUSPARSE_SPMV_ALG_DEFAULT, dBuffer))
+                    // compute the next policy update:
+                    // x' <- x
+                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_ncols, dX, 1, dXPrime, 1))
+
+                    // x(s) = max_{ a \in Act(s)} y(s,a), pi(s) - argmax_{a\in Act(s)} pi(s)
+                    mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dPi, A_ncols + 1, A_nrows);
+
+                    // x' = -1 * x + x'
+                    CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, A_ncols, &alpha2, dX, 1, dXPrime, 1))
+                    // max |x'|
+                    CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dXPrime, 1, &maxInd))
+                    CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost))
+                    maxEps = (maxEps >= 0) ? maxEps : -maxEps;
+                    //maxEps = mopmc::kernels::findMaxEps(dXPrime, A_ncols, maxEps);
+                    ++iteration;
+                    //printf("___ VI PHASE ONE, ITERATION %i, maxEps %f\n", iteration, maxEps);
+                } while (maxEps > 1e-5 && iteration < maxIter);
+
+                printf("___ VI PHASE ONE, terminated at ITERATION %i\n", iteration);
+                //copy result
+                thrust::copy(thrust::device, dX+iniRow_, dX+iniRow_+1, dResult+nobjs);
+
+                return EXIT_SUCCESS;
+            }
+
+            template<typename ValueType>
+            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo() {
+
+                CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
+                                                CUSPARSE_INDEX_BASE_ZERO));
+
+                mopmc::functions::cuda::binaryMaskingLauncher(dA_csrOffsets,
+                                                              dRowGroupIndices, dRow2RowGroupMapping,
+                                                              dPi, dMasking_nrows, dMasking_nnz, A_nrows);
+                thrust::copy_if(thrust::device, dA_values, dA_values + A_nnz - 1,
+                                dMasking_nnz, dB_values, mopmc::functions::cuda::is_not_zero<int>());
+                thrust::copy_if(thrust::device, dA_columns, dA_columns + A_nnz - 1,
+                                dMasking_nnz, dB_columns, mopmc::functions::cuda::is_not_zero<int>());
+                thrust::copy_if(thrust::device, dA_rows_extra, dA_rows_extra + A_nnz - 1,
+                                dMasking_nnz, dB_rows_extra, mopmc::functions::cuda::is_not_zero<int>());
+                B_nnz = (int) thrust::count_if(thrust::device, dMasking_nnz, dMasking_nnz + A_nnz - 1,
+                                               mopmc::functions::cuda::is_not_zero<double>());
+
+                mopmc::functions::cuda::row2RowGroupLauncher(dRow2RowGroupMapping, dB_rows_extra, B_nnz);
+
+                CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra,B_nnz, B_nrows,
+                                               dB_csrOffsets,CUSPARSE_INDEX_BASE_ZERO));
+                CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
+                                                 dB_csrOffsets, dB_columns, dB_values,
+                                                 CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
+
+                for (int obj = 0; obj < nobjs; obj++) {
+                    thrust::copy_if(thrust::device, dR + obj * A_nrows, dR + (obj + 1) * A_nrows - 1,
+                                    dMasking_nrows, dRi, mopmc::functions::cuda::is_not_zero<double>());
+
+                    iteration = 0;
+                    do {
+                        // x = ri
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dX, 1));
+                        // initialise x' as ri too
+                        if (iteration == 0) {
+                            CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dXPrime, 1));
+                        }
+                        // x = B.x' + ri where x = ri
+                        CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                                    &alpha, matB, vecXPrime, &beta, vecX, CUDA_R_64F,
+                                                    CUSPARSE_SPMV_ALG_DEFAULT, dBuffer));
+                        // x' = -1 * x + x'
+                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dX, 1, dXPrime, 1));
+                        // max |x'|
+                        CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dXPrime, 1, &maxInd));
+                        // get maxEps
+                        CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
+                        maxEps = (maxEps >= 0) ? maxEps : -maxEps;
+                        // x' = x
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dX, 1, dXPrime, 1));
+
+                        //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
+                        ++iteration;
+
+                    } while (maxEps > 1e-5 && iteration < maxIter);
+                    printf("___ VI PHASE TWO, OBJECTIVE %i, terminated at ITERATION %i\n", obj, iteration);
+
+                    thrust::copy(thrust::device, dX+iniRow_, dX+iniRow_+1, dResult+obj);
+                }
+
                 return EXIT_SUCCESS;
             }
 
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::exit() {
-                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost))
-                CHECK_CUDA(cudaMemcpy(x_.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
+                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs+1) * sizeof(double), cudaMemcpyDeviceToHost));
+                //CHECK_CUDA(cudaMemcpy(weightedValueVector_.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
                 //-------------------------------------------------------------------------
                 // destroy matrix/vector descriptors
                 CHECK_CUSPARSE(cusparseDestroySpMat(matA))
@@ -342,7 +301,6 @@ namespace mopmc {
                 CHECK_CUDA(cudaFree(dB_rows_extra))
                 CHECK_CUDA(cudaFree(dX))
                 CHECK_CUDA(cudaFree(dXPrime))
-                //CHECK_CUDA(cudaFree(dX2Prime))
                 CHECK_CUDA(cudaFree(dY))
                 CHECK_CUDA(cudaFree(dR))
                 CHECK_CUDA(cudaFree(dRw))
@@ -352,14 +310,27 @@ namespace mopmc {
                 CHECK_CUDA(cudaFree(dRow2RowGroupMapping))
                 CHECK_CUDA(cudaFree(dMasking_nrows))
                 CHECK_CUDA(cudaFree(dMasking_nnz))
-
+                CHECK_CUDA(cudaFree(dResult))
 
                 printf("____ CUDA EXIT!! ____\n");
                 return EXIT_SUCCESS;
             }
 
-            template
-            class CudaValueIterationHandler<double>;
+            template class CudaValueIterationHandler<double>;
         }
     }
 }
+
+
+/*
+{
+    int k = 1000;
+    std::vector<int> hRowGroupIndices(A_nrows);
+    CHECK_CUDA(cudaMemcpy(hRowGroupIndices.data(), dRowGroupIndices, k * sizeof(int), cudaMemcpyDeviceToHost))
+    printf("____ dRowGroupIndices: [");
+    for (int i = 0; i < k; ++i) {
+        std::cout << hRowGroupIndices[i] << " ";
+    }
+    std::cout << "...]\n";
+}
+ */

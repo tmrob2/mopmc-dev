@@ -14,16 +14,18 @@
 namespace mopmc::value_iteration::cuda_only {
 
     template<typename ValueType>
-    class CudaIVHandler {
+    class CudaVIHandler {
     public:
 
 
-        CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+        CudaVIHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                       std::vector<ValueType> &rho_flat);
 
 
-        CudaIVHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                      const std::vector<int> &rowGroupIndices, std::vector<ValueType> &rho_flat,
+        CudaVIHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+                      const std::vector<int> &rowGroupIndices,
+                      const std::vector<int> &row2RowGroupIndices,
+                      std::vector<ValueType> &rho_flat,
                       std::vector<int> &pi,
                       std::vector<double> &w,
                       std::vector<double> &x,
@@ -35,22 +37,28 @@ namespace mopmc::value_iteration::cuda_only {
 
         int valueIterationPhaseOne(const std::vector<double> &w);
 
-        int valueIteration();
+        int valueIterationPhaseTwo();
+
+        //int valueIteration();
 
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
-        std::vector<ValueType> rho_;
-        std::vector<int> pi_;
-        std::vector<int> enableActions_;
-        //int numObjs_;
-        std::vector<double> w_;
+        std::vector<ValueType> flattenRewardVector;
+        std::vector<int> scheduler_;
+        std::vector<int> rowGroupIndices_;
+        std::vector<int> row2RowGroupIndices_;
+        std::vector<double> weightVector_;
         std::vector<double> x_;
         std::vector<double> y_;
         //std::vector<double> res_;
 
     private:
-        int *dA_csrOffsets, *dA_columns, *dEnabledActions, *dPi;
-        double *dA_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
+        int *dA_csrOffsets, *dA_columns, *dA_rows_extra;
+        int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
+        int *dEnabledActions, *dPi;
+        int *dPiBin; // this is an array of 0s and 1s
+        double *dA_values, dB_values, *dX, *dY, *dR, *dRw, *dW, *dXTemp, *dXPrime;
         int A_nnz, A_ncols, A_nrows, nobjs;
+        int B_nnz, B_ncols, B_nrows;
 
         double alpha;
         double beta;

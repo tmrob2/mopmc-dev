@@ -18,19 +18,15 @@ namespace mopmc { namespace value_iteration { namespace gpu {
     class CudaValueIterationHandler {
     public:
 
+        CudaValueIterationHandler(
+                const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+                const std::vector<int> &rowGroupIndices,
+                const std::vector<int> &row2RowGroupMapping,
+                std::vector<ValueType> &rho_flat,
+                std::vector<int> &pi,
+                std::vector<double> &w,
+                int iniRow);
 
-        CudaValueIterationHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                                  std::vector<ValueType> &rho_flat);
-
-
-        CudaValueIterationHandler(const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                                  const std::vector<int> &rowGroupIndices,
-                                  const std::vector<int> &row2RowGroupMapping,
-                                  std::vector<ValueType> &rho_flat,
-                                  std::vector<int> &pi,
-                                  std::vector<double> &w,
-                                  std::vector<double> &x,
-                                  std::vector<double> &y);
 
         int initialise();
 
@@ -40,24 +36,23 @@ namespace mopmc { namespace value_iteration { namespace gpu {
 
         int valueIterationPhaseTwo();
 
-        //int valueIteration();
-
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
         std::vector<ValueType> flattenRewardVector_;
         std::vector<int> scheduler_;
         std::vector<int> rowGroupIndices_;
         std::vector<int> row2RowGroupMapping_;
         std::vector<double> weightVector_;
-        std::vector<double> x_;
+        std::vector<double> weightedValueVector_;
         std::vector<double> y_;
-        //std::vector<double> res_;
+        std::vector<double> results_;
+        int iniRow_;
 
     private:
         int *dA_csrOffsets, *dA_columns, *dA_rows_extra;
         int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
         int *dRowGroupIndices, *dRow2RowGroupMapping, *dPi, *dPi_bin;
         int *dMasking_nnz, *dMasking_nrows; // this is an array of 0s and 1s
-        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXPrime, *dX2Prime;
+        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXPrime, *dX2Prime, *dResult;
         int A_nnz, A_ncols, A_nrows, nobjs;
         int B_nnz, B_ncols, B_nrows;
 
@@ -66,7 +61,7 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         int maxIter;
         double maxEps;
         int maxInd = 0;
-        int iterations;
+        int iteration;
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
