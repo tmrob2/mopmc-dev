@@ -57,17 +57,16 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
         int *dRowGroupIndices, *dRow2RowGroupMapping, *dPi, *dPi_bin;
         int *dMasking_nnz, *dMasking_nrows; // this is an array of 0s and 1s
-        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXTemp, *dXPrime;
+        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXPrime, *dX2Prime;
         int A_nnz, A_ncols, A_nrows, nobjs;
         int B_nnz, B_ncols, B_nrows;
 
-        double alpha,beta;
+        double alpha,alpha2, beta;
         double eps;
         int maxIter;
         double maxEps;
         int maxInd = 0;
-        int iterations = 0;
-        double alpha2 = -1.0;
+        int iterations;
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
