@@ -97,7 +97,7 @@ namespace mopmc {
 
 
             __global__ void masking(const int *csrOffsets, const int *rowGroupIndices, const int *row2RowGroupMapping,
-                                    const int *pi, int *maskVec, int arrCount) {
+                                    const int *pi, int *masking2rows, int *masking4nzz, int arrCount) {
                 //arrCount == nrows
                 uint tid = threadIdx.x + blockIdx.x * blockDim.x;
                 if (tid < arrCount) {
@@ -108,10 +108,11 @@ namespace mopmc {
                     if (tid == firstRowInRowGroup + selectedActionInd) {
                         val = 1;
                     }
+                    masking2rows[tid] = val;
                     int start = csrOffsets[tid];
                     int incr = csrOffsets[tid + 1] - start;
                     for (int i = 0; i < incr; ++i) {
-                        maskVec[start + i] = val;
+                        masking4nzz[start + i] = val;
                     }
 
                 }
@@ -119,7 +120,7 @@ namespace mopmc {
 
 
             int maskingLauncher(const int* csrOffsets, const int *rowGroupIndices, const int *row2RowGroupMapping,
-                                const int* pi, int* maskVec, int arrCount) {
+                                const int* pi, int *masking4rows, int* masking4nnz, int arrCount) {
                 int blockSize;
                 int minGridSize;
                 int gridSize;
@@ -127,7 +128,8 @@ namespace mopmc {
                 cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, &masking, 0, arrCount);
 
                 gridSize = (arrCount + blockSize - 1) / blockSize;
-                masking<<<gridSize, blockSize>>> (csrOffsets, rowGroupIndices, row2RowGroupMapping, pi, maskVec, arrCount);
+                masking<<<gridSize, blockSize>>> (csrOffsets, rowGroupIndices, row2RowGroupMapping,
+                                                  pi, masking4rows, masking4nnz, arrCount);
                 return 0;
             }
 

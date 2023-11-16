@@ -43,7 +43,7 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         //int valueIteration();
 
         Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
-        std::vector<ValueType> flattenRewardVector;
+        std::vector<ValueType> flattenRewardVector_;
         std::vector<int> scheduler_;
         std::vector<int> rowGroupIndices_;
         std::vector<int> row2RowGroupMapping_;
@@ -56,16 +56,18 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         int *dA_csrOffsets, *dA_columns, *dA_rows_extra;
         int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
         int *dRowGroupIndices, *dRow2RowGroupMapping, *dPi, *dPi_bin;
-        int *dMasking; // this is an array of 0s and 1s
+        int *dMasking_nnz, *dMasking_nrows; // this is an array of 0s and 1s
         double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXTemp, *dXPrime;
         int A_nnz, A_ncols, A_nrows, nobjs;
         int B_nnz, B_ncols, B_nrows;
 
-        double alpha;
-        double beta;
+        double alpha,beta;
         double eps;
         int maxIter;
         double maxEps;
+        int maxInd = 0;
+        int iterations = 0;
+        double alpha2 = -1.0;
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
