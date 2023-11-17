@@ -10,6 +10,8 @@ list(
         "${dir}/ExplicitModelBuilder.h"
         "${dir}/Runner.cpp"
         "${dir}/Runner.h"
+        "${dir}/Preprocessor.cpp"
+        "${dir}/Preprocessor.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

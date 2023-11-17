@@ -26,51 +26,65 @@ namespace mopmc::queries {
 
     typedef typename ModelType::ValueType T;
 
-    ConvexQuery::ConvexQuery(const PrepReturnType &model) : model_(model) {}
+    ConvexQuery::ConvexQuery(const PreprocessedData<ModelType> &data, const storm::Environment &env)
+    : data_(data), env_(env) {
 
-    ConvexQuery::ConvexQuery(const PrepReturnType &model,
-                             const storm::Environment &env) :
-            model_(model), env_(env) {}
+    }
 
     void ConvexQuery::query() {
 
+        //CUDA ONLY TEST BLOCK
+        {
+            std::vector<T> w = {-.5, -.5};
+            assert(data_.numObjs == 2);
+            //Convert data from uint_64 to int
+            std::vector<int> rowGroupIndices1(data_.rowGroupIndices.begin(), data_.rowGroupIndices.end());
+            std::vector<int> rowToRowGroupMapping1(data_.row2RowGroupMapping.begin(), data_.row2RowGroupMapping.end());
+            std::vector<int> scheduler1(data_.defaultScheduler.begin(), data_.defaultScheduler.end());
+
+            mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(data_.transitionMatrix,
+                                                                                         rowGroupIndices1,
+                                                                                         rowToRowGroupMapping1,
+                                                                                         data_.flattenRewardVector,
+                                                                                         scheduler1, w,
+                                                                                         (int) data_.iniRow);
+            cudaVIHandler.initialise();
+            cudaVIHandler.valueIterationPhaseOne(w);
+            cudaVIHandler.valueIterationPhaseTwo();
+            cudaVIHandler.exit();
+            {
+                std::cout << "----------------------------------------------\n";
+                std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
+                std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
+                std::cout << "Result at initial state ";
+                for (int i = 0; i < data_.numObjs; ++i) {
+                    std::cout << "- Objective " << i << ": " << cudaVIHandler.results_[i] << " ";
+                }std::cout <<"\n";
+                std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[2] << "\n";
+                std::cout << "----------------------------------------------\n";
+            }
+        }
+
+
         //Data generation
-        const uint64_t m = model_.objectives.size(); // m: number of objectives
-        const uint64_t n = model_.preprocessedModel->getNumberOfChoices(); // n: number of state-action pairs
-        const uint64_t k = model_.preprocessedModel->getNumberOfStates(); // k: number of states
-        assert(model_.preprocessedModel->getTransitionMatrix().getRowGroupIndices().size()==k+1);
+        const uint64_t m = data_.numObjs; // m: number of objectives
+        const uint64_t n = data_.rowCount; // n: number of choices / state-action pairs
+        const uint64_t k = data_.colCount; // k: number of states
+        Eigen::SparseMatrix<T> *P = &data_.transitionMatrix;
+        assert(data_.rowGroupIndices.size()==k+1);
 
         std::vector<std::vector<T>> rho(m);
         std::vector<T> rho_flat(n * m);//rho: all reward vectors
         //GS: need to store whether an objective is probabilistic or reward-based.
         //TODO In future we will use treat them differently in the loss function. :GS
-        std::vector<bool> isProbObj(m);
-        for (uint_fast64_t i = 0; i < m; ++i) {
-            auto &name_ = model_.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
-            rho[i] = model_.preprocessedModel->getRewardModel(name_)
-                    .getTotalRewardVector(model_.preprocessedModel->getTransitionMatrix());
-            for (uint_fast64_t j = 0; j < n; ++j) {
-                rho_flat[i * n + j] = rho[i][j];
-            }
-            isProbObj[i] = model_.objectives[i].originalFormula->isProbabilityOperatorFormula();
-        }
-
-        auto P = // P: transition matrix as eigen sparse matrix
-                storm::adapters::EigenAdapter::toEigenSparseMatrix(model_.preprocessedModel->getTransitionMatrix());
-        P->makeCompressed();
-        std::vector<uint64_t> pi(k, static_cast<uint64_t>(0)); // pi: scheduler
-        std::vector<uint64_t> stateIndices = model_.preprocessedModel->getTransitionMatrix().getRowGroupIndices();
-
         //Initialisation
         std::vector<std::vector<T>> Phi;
         // LambdaL, LambdaR represent Lambda
         std::vector<std::vector<T>> LambdaL;
         std::vector<std::vector<T>> LambdaR;
 
-        std::vector<T> h(m); //h: thresholds in objectives
-        for (uint_fast64_t i = 0; i < m; ++i) {
-            h[i] = model_.objectives[i].formula->getThresholdAs<T>();
-        }
+
+        std::vector<T> h = data_.thresholds;
         Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> h_(h.data(), h.size());
 
         //vt, vb
@@ -79,17 +93,13 @@ namespace mopmc::queries {
         //vi: initial vector for Frank-Wolfe
         std::vector<T> *vi;
         std::vector<T> r(m);
-        //std::vector<T> w = // w: weight vector
-                //std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
-        std::vector<T> w = {-.5, -.5};
-        std::vector<T> x(k, static_cast<T>(0.)); //x: state values
-        std::vector<T> y(n, static_cast<T>(0.)); //y: state-action values
-
+        std::vector<T> w = // w: weight vector
+                std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
         //thresholds for stopping the iteration
         const double eps{0.};
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
-        const uint_fast64_t maxIter{0};
+        const uint_fast64_t maxIter{20};
 
         //GS: Double-check, from an algorithmic and practical point of view,
         // whether we maintain the two data structures
@@ -98,66 +108,9 @@ namespace mopmc::queries {
         std::set<std::vector<T>> wSet;
 
 
-        //CUDA ONLY TEST BLOCK
-        {
-            mopmc::multiobjective::MOPMCModelChecking<ModelType> model1(model_);
-            auto rho1 = model1.getActionRewards();
-            assert(!rho1.empty());
-            assert(!rho1[0].empty());
-            assert(typeid(rho1[0][0]) == typeid(T));
-            const uint64_t n1 = model1.getTransitionMatrix().getRowCount();
-            const uint64_t k1 = model1.getTransitionMatrix().getColumnCount();
-            std::vector<double> rho1_flat(n1 * m);
-            for (uint64_t i = 0; i < m; ++i) {
-                for (uint_fast64_t j = 0; j < n1; ++j) {
-                    rho1_flat[i * n1 + j] = rho1[i][j];
-                }
-            }
-            std::vector<int> pi1(k1, static_cast<int>(0));
-            std::vector<double> x1(k1, static_cast<double>(0.));
-            std::vector<double> y1(n1, static_cast<double>(0.));
-
-            auto P1 = // P: transition matrix as eigen sparse matrix
-                    storm::adapters::EigenAdapter::toEigenSparseMatrix(model1.getTransitionMatrix());
-            P1->makeCompressed();
-            std::vector<uint64_t> rowGroupIndicesTemp = model1.getTransitionMatrix().getRowGroupIndices();
-            std::vector<int> rowGroupIndices1(rowGroupIndicesTemp.begin(), rowGroupIndicesTemp.end());
-
-            std::vector<int> rowToRowGroupMapping(n1);
-            for (uint64_t i = 0; i < rowGroupIndices1.size()-1; ++i) {
-                size_t currInd = rowGroupIndices1[i];
-                size_t nextInd = rowGroupIndices1[i + 1];
-                for (uint64_t j = 0; j < nextInd - currInd; ++j)
-                    rowToRowGroupMapping[currInd + j] = (int) i;
-            }
-            mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaIvHandler(*P1,
-                                                                                         rowGroupIndices1,
-                                                                                         rowToRowGroupMapping,
-                                                                                         rho1_flat,
-                                                                                         pi1, w,
-                                                                                         (int) model1.getInitialState());
-            cudaIvHandler.initialise();
-            cudaIvHandler.valueIterationPhaseOne(w);
-            cudaIvHandler.valueIterationPhaseTwo();
-            cudaIvHandler.exit();
-            {
-                std::cout << "----------------------------------------------\n";
-                std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
-                assert(w.size() == 2);
-                std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
-                std::cout << "Result at initial state ";
-                for (int i = 0; i < m; ++i) {
-                    std::cout << "- Objective " << i <<": "<< cudaIvHandler.results_[i]<<" ";
-                }std::cout <<"\n";
-                std::cout<< "(Negative) Weighted result: " << cudaIvHandler.results_[2]<<"\n";
-                std::cout << "----------------------------------------------\n";
-            }
-        }
-
-        return;
         //GS: I believe we will implement a new version
         // of model checker for our purposes. :SG
-        mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
+       //mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
 
         //Iteration
         uint_fast64_t iter = 0;
@@ -213,12 +166,14 @@ namespace mopmc::queries {
             std::cout << "\n";
              */
 
-            scalarisedMOMDPModelChecker.check(env_, w);
-
-            uint64_t ini = scalarisedMOMDPModelChecker.getInitialState();
+            //scalarisedMOMDPModelChecker.check(env_, w);
+            /*
+            uint64_t ini = data_.iniRow getInitialState();
             for (uint_fast64_t i = 0; i < m; ++i) {
                 r[i] = scalarisedMOMDPModelChecker.getObjectiveResults()[i][ini];
             }
+             */
+
 
             Phi.push_back(r);
             LambdaL.push_back(w);
@@ -250,5 +205,6 @@ namespace mopmc::queries {
         //scalarisedMdpModelChecker.multiObjectiveSolver(env_);
         std::cout << "Convex query done! \n";
     }
+
 
 }

@@ -3,24 +3,17 @@
 //
 
 #include "CudaValueIteration.cuh"
-
-#include "CudaOnlyValueIteration.h"
-#include "ActionSelection.h"
 #include "CuFunctions.h"
-#include <storm/storage/SparseMatrix.h>
-#include <Eigen/Sparse>
+//#include <storm/storage/SparseMatrix.h>
+//#include <Eigen/Sparse>
 #include <cuda_runtime_api.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
 #include <thrust/copy.h>
-#include <thrust/reduce.h>
 #include <thrust/count.h>
-#include <thrust/remove.h>
-#include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/device_ptr.h>
 #include <thrust/execution_policy.h>
-#include <iostream>
 
 
 #define CHECK_CUDA(func)                                                       \
@@ -184,13 +177,10 @@ namespace mopmc {
                     CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
                                                 &alpha, matA, vecX, &beta, vecY, CUDA_R_64F,
                                                 CUSPARSE_SPMV_ALG_DEFAULT, dBuffer))
-                    // compute the next policy update:
-                    // x' <- x
+                    // x' = x
                     CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_ncols, dX, 1, dXPrime, 1))
-
-                    // x(s) = max_{ a \in Act(s)} y(s,a), pi(s) - argmax_{a\in Act(s)} pi(s)
+                    // x(s) = max_{a\in Act(s)} y(s,a), pi(s) = argmax_{a\in Act(s)} pi(s)
                     mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dPi, A_ncols + 1, A_nrows);
-
                     // x' = -1 * x + x'
                     CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, A_ncols, &alpha2, dX, 1, dXPrime, 1))
                     // max |x'|
@@ -211,7 +201,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo() {
-
+                // generate a DTMC transition matrix as a csr matrix
                 CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
                                                 CUSPARSE_INDEX_BASE_ZERO));
 
@@ -224,11 +214,10 @@ namespace mopmc {
                                 dMasking_nnz, dB_columns, mopmc::functions::cuda::is_not_zero<int>());
                 thrust::copy_if(thrust::device, dA_rows_extra, dA_rows_extra + A_nnz - 1,
                                 dMasking_nnz, dB_rows_extra, mopmc::functions::cuda::is_not_zero<int>());
+                // @B_nnz: number of non-zero entries in the DTMC transition matrix
                 B_nnz = (int) thrust::count_if(thrust::device, dMasking_nnz, dMasking_nnz + A_nnz - 1,
                                                mopmc::functions::cuda::is_not_zero<double>());
-
                 mopmc::functions::cuda::row2RowGroupLauncher(dRow2RowGroupMapping, dB_rows_extra, B_nnz);
-
                 CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra,B_nnz, B_nrows,
                                                dB_csrOffsets,CUSPARSE_INDEX_BASE_ZERO));
                 CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
@@ -236,6 +225,9 @@ namespace mopmc {
                                                  CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                                  CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
 
+                // value iteration for all objectives
+                // !! As gpu does the main work, we can use mult-threading to send as many
+                // individual objective data to gpu as possible.
                 for (int obj = 0; obj < nobjs; obj++) {
                     thrust::copy_if(thrust::device, dR + obj * A_nrows, dR + (obj + 1) * A_nrows - 1,
                                     dMasking_nrows, dRi, mopmc::functions::cuda::is_not_zero<double>());
@@ -267,7 +259,7 @@ namespace mopmc {
 
                     } while (maxEps > 1e-5 && iteration < maxIter);
                     printf("___ VI PHASE TWO, OBJECTIVE %i, terminated at ITERATION %i\n", obj, iteration);
-
+                    // copy results
                     thrust::copy(thrust::device, dX+iniRow_, dX+iniRow_+1, dResult+obj);
                 }
 
@@ -279,7 +271,6 @@ namespace mopmc {
             int CudaValueIterationHandler<ValueType>::exit() {
                 CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
                 CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs+1) * sizeof(double), cudaMemcpyDeviceToHost));
-                //CHECK_CUDA(cudaMemcpy(weightedValueVector_.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))
                 //-------------------------------------------------------------------------
                 // destroy matrix/vector descriptors
                 CHECK_CUSPARSE(cusparseDestroySpMat(matA))
