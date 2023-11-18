@@ -2,8 +2,8 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(
         APPEND Sources
-        "${dir}/CPULooper.cpp"
-        "${dir}/CPULooper.h"
+        "${dir}/Looper.cpp"
+        "${dir}/Looper.h"
         "${dir}/Problem.h"
         "${dir}/Problem.cpp"
         "${dir}/HybridController.h"

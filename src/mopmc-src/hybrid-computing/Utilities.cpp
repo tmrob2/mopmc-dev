@@ -3,7 +3,7 @@
 //
 #include "Utilities.h"
 
-namespace mythread::utilities {
+namespace hybrid::utilities {
 
 template<typename T>
 CuMDPMatrix<T>::CuMDPMatrix(const Eigen::SparseMatrix<T, Eigen::RowMajor> &transitionSystem,

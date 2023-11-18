@@ -4,7 +4,7 @@
 #include "Looper.h"
 #include <iostream>
 
-namespace mythread {
+namespace hybrid {
 
     // Running the infinite loop
     template <typename T, typename ValueType>
@@ -224,7 +224,7 @@ namespace mythread {
     }
 
     template <typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::solve(std::vector<mythread::SchedulerProblem<ValueType>> tasks) {
+    void CLooperPool<T, ValueType>::solve(std::vector<hybrid::SchedulerProblem<ValueType>> tasks) {
         // implementation of the scheduler solver
 
         auto dispatchers = getDispatchers();
@@ -232,7 +232,7 @@ namespace mythread {
         uint k = 0;
         while(countDown > 0) {
             k = k % mLoopers.size();
-            mythread::SchedulerProblem task = tasks.back();
+            hybrid::SchedulerProblem task = tasks.back();
             if(dispatchers[k]->post(std::move(task))) {
                 //std::cout << "Thread: " << k << " accepted task " << countDown << "\n";
                 --countDown;
@@ -247,7 +247,7 @@ namespace mythread {
     }
 
     template <typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::solve(std::vector<mythread::DTMCProblem<ValueType>> tasks) {
+    void CLooperPool<T, ValueType>::solve(std::vector<hybrid::DTMCProblem<ValueType>> tasks) {
         // implementation of the DTMC solver
     }
 
@@ -261,14 +261,14 @@ namespace mythread {
     }
 
     template <typename ValueType>
-    void mythread::SchedulerProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
+    void hybrid::SchedulerProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
         index_ = this->index;
         x_ = this->x;
         y_ = this->y;
     }
 
     template <typename ValueType>
-    void mythread::DTMCProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
+    void hybrid::DTMCProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
         index_ = this->index;
         x_ = this->x;
         y_ = this->y;

@@ -18,8 +18,10 @@
 #include <Eigen/Sparse>
 #include "Problem.h"
 #include "Utilities.h"
-
-namespace mythread {
+// storm
+#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
+#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
+namespace hybrid {
 
 enum ThreadSpecialisation {
     GPU,
@@ -72,7 +74,7 @@ using Runnable = std::function<void()>;
 // callable and each problem has the same structure then
 // we can insert any problem into the queue. As a problem is a
 // functor it is easy to satisfy the compiler.
-template <typename T, typename ValueType>
+template <typename M, typename ValueType>
 class CLooper {
 public:
 
@@ -83,6 +85,8 @@ public:
                        mBusy(false), expectedSolutions(0) {
 
     };
+
+    CLooper(uint id, ThreadSpecialisation spec, PreprocessedData<M>)
     // Copy denied, move to be implemented
 
     ~CLooper() {
@@ -115,7 +119,7 @@ public:
     std::vector<std::pair<int, double>> getSolution();
 
     // Computes the next problem
-    boost::optional<T> next();
+    boost::optional<SchedulerProblem<ValueType>> next();
 
     // Flag to check if all tasks have been computed by the thread
     bool solutionsReady();
@@ -166,9 +170,9 @@ private:
     std::vector<std::pair<int, double>> solutions;
     uint expectedSolutions;
     uint id;
-    mythread::utilities::CuMDPMatrix<ValueType> cuTransitionMatrix;
+    hybrid::utilities::CuMDPMatrix<ValueType> cuTransitionMatrix;
     // TODO specialise the thread for serving GPU or CPU operations
-    mythread::ThreadSpecialisation threadType;
+    hybrid::ThreadSpecialisation threadType;
 };
 
 template <typename T, typename ValueType>
@@ -189,9 +193,9 @@ public:
     // TODO The CLooperPool is currently not fit for purpose because we really only need two threads
     //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU
     //  thread dispatcher and with cuda natively on the GPU thread
-    void solve(std::vector<mythread::SchedulerProblem<ValueType>> tasks);
+    void solve(std::vector<hybrid::SchedulerProblem<ValueType>> tasks);
 
-    void solve(std::vector<mythread::DTMCProblem<ValueType>> tasks);
+    void solve(std::vector<hybrid::DTMCProblem<ValueType>> tasks);
 
     void collectSolutions();
 

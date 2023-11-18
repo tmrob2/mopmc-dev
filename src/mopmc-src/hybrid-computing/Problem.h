@@ -12,7 +12,7 @@
 #include <Eigen/Sparse>
 #include "mopmc-src/solvers/CuVISolver.h"
 
-namespace mythread {
+namespace hybrid {
 template<typename ValueType>
 class SchedulerProblem {
 public:

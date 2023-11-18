@@ -41,7 +41,7 @@
     }                                                                          \
 }
 
-namespace mythread::utilities {
+namespace hybrid::utilities {
 
 template<typename T>
 class CuMDPMatrix {
@@ -55,6 +55,9 @@ public:
                          std::vector<int>& pi);
 
     int tearDownMDPMatrix();
+
+    void weightedSolution(std::vector<T>& w);
+
 private:
     int *dA_csrOffsets;
     int *dA_columns;
