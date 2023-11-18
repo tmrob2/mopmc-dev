@@ -37,20 +37,26 @@ enable_testing()
 # Google test framework
 #add_subdirectory(googletest)
 
-set(LibHeaders "src/mopmc-src/solvers/ActionSelection.h")
-set(LibSources "src/mopmc-src/solvers/ActionSelection.cu")
+set(LibHeaders
+    src/mopmc-src/cuda/ActionSelection.h
+    src/mopmc-src/cuda/WarmUp.h
+)
+set(LibSources
+    src/mopmc-src/cuda/ActionSelection.cu
+    src/mopmc-src/cuda/WarmUp.cu
+)
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3)
-add_library(libmopmc STATIC ${LibSources} ${LibHeaders})
-target_link_libraries(libmopmc PRIVATE CUDA::cudart CUDA::cusparse CUDA::cublas)
-set_target_properties(libmopmc PROPERTIES LINKER_LANGUAGE CUDA CUDA_ARCHITECTURES OFF)
+add_library(libmopmc-gpu STATIC ${LibSources} ${LibHeaders})
+target_link_libraries(libmopmc-gpu PRIVATE CUDA::cudart CUDA::cusparse CUDA::cublas)
+set_target_properties(libmopmc-gpu PROPERTIES LINKER_LANGUAGE CUDA CUDA_ARCHITECTURES OFF)
 
-#set_target_properties(libmopmc PROPERTIES CUDA_ARCHITECTURES 70-real 72-virtual)
+#set_target_properties(libmopmc-gpu PROPERTIES CUDA_ARCHITECTURES 70-real 72-virtual)
 
 # Set include directories and dependencies
 target_include_directories(${PROJECT_NAME} PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} ${CUDA_INCLUDE_DIRS} lpSolve PRIVATE src)
 target_link_directories(${PROJECT_NAME} PUBLIC lpSolve)
-target_link_libraries(${PROJECT_NAME} PRIVATE libmopmc storm storm-parsers lpsolve55 CUDA::cudart CUDA::cusparse CUDA::cublas)
+target_link_libraries(${PROJECT_NAME} PRIVATE libmopmc-gpu storm storm-parsers lpsolve55 CUDA::cudart CUDA::cusparse CUDA::cublas)
 #target_include_directories(ProjectTests PUBLIC ${storm_INCLUDE_DIR} ${storm-parsers_INCLUDE_DIR} EigenSources PRIVATE test)
 #target_link_libraries(ProjectTests GTest::gtest_main storm storm-parsers)
 
