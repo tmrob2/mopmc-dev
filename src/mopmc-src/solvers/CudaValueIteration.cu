@@ -62,10 +62,6 @@ namespace mopmc {
                     transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
                     rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
                     weightVector_(w), iniRow_(iniRow) {
-            }
-
-            template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::initialise() {
 
                 A_nnz = transitionMatrix_.nonZeros();
                 A_ncols = transitionMatrix_.cols();
@@ -78,6 +74,10 @@ namespace mopmc {
                 assert(A_ncols == scheduler_.size());
                 assert(flattenRewardVector_.size() == A_nrows * nobjs);
                 assert(rowGroupIndices_.size() == A_ncols + 1);
+            }
+
+            template<typename ValueType>
+            int CudaValueIterationHandler<ValueType>::initialise() {
 
                 alpha = 1.0;
                 alpha2 = -1.0;
@@ -101,7 +101,7 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dY, A_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dPi, A_ncols * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dRw, A_nrows * sizeof(double)))
-                CHECK_CUDA(cudaMalloc((void **) &dResult, (nobjs +1) * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dResult, (nobjs + 1) * sizeof(double)))
                 // cudaMalloc PHASE B-------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dB_csrOffsets, (A_ncols + 1) * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dB_columns, A_nnz * sizeof(int)))
@@ -194,7 +194,7 @@ namespace mopmc {
 
                 printf("___ VI PHASE ONE, terminated at ITERATION %i\n", iteration);
                 //copy result
-                thrust::copy(thrust::device, dX+iniRow_, dX+iniRow_+1, dResult+nobjs);
+                thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + nobjs);
 
                 return EXIT_SUCCESS;
             }
@@ -218,8 +218,8 @@ namespace mopmc {
                 B_nnz = (int) thrust::count_if(thrust::device, dMasking_nnz, dMasking_nnz + A_nnz - 1,
                                                mopmc::functions::cuda::is_not_zero<double>());
                 mopmc::functions::cuda::row2RowGroupLauncher(dRow2RowGroupMapping, dB_rows_extra, B_nnz);
-                CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra,B_nnz, B_nrows,
-                                               dB_csrOffsets,CUSPARSE_INDEX_BASE_ZERO));
+                CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra, B_nnz, B_nrows,
+                                                dB_csrOffsets, CUSPARSE_INDEX_BASE_ZERO));
                 CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
                                                  dB_csrOffsets, dB_columns, dB_values,
                                                  CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
@@ -260,7 +260,7 @@ namespace mopmc {
                     } while (maxEps > 1e-5 && iteration < maxIter);
                     printf("___ VI PHASE TWO, OBJECTIVE %i, terminated at ITERATION %i\n", obj, iteration);
                     // copy results
-                    thrust::copy(thrust::device, dX+iniRow_, dX+iniRow_+1, dResult+obj);
+                    thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
                 }
 
                 return EXIT_SUCCESS;
@@ -270,7 +270,7 @@ namespace mopmc {
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::exit() {
                 CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
-                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs+1) * sizeof(double), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
                 //-------------------------------------------------------------------------
                 // destroy matrix/vector descriptors
                 CHECK_CUSPARSE(cusparseDestroySpMat(matA))
@@ -307,7 +307,8 @@ namespace mopmc {
                 return EXIT_SUCCESS;
             }
 
-            template class CudaValueIterationHandler<double>;
+            template
+            class CudaValueIterationHandler<double>;
         }
     }
 }

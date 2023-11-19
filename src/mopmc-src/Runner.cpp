@@ -27,14 +27,26 @@
 #include "queries/ConvQuery.h"
 #include "./model-checking/MOPMCModelChecking.h"
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h>
+#include "Preprocessing.h"
+
 
 namespace mopmc {
+
+
+    // typedef
+    typedef storm::models::sparse::Mdp<double> ModelType;
+    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
+    //typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
+    //typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
 
     bool run(std::string const &path_to_model, std::string const &property_string) {
         //std::cout << "AN NEW ROUTINE" << std::endl;
         storm::Environment env;
-        env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+        //TODO to make this work
+        //auto data1 = mopmc::preprocess<ModelType>(path_to_model, property_string, env);
+        //return true;
 
+        env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
         //auto program = storm::parser::PrismParser::parse(path_to_model);
         storm::prism::Program program = storm::api::parseProgram(path_to_model);
         program = storm::utility::prism::preprocess(program, "");
@@ -44,15 +56,13 @@ namespace mopmc {
         // Translate properties into the more low-level formulae.
         auto formulas = storm::api::extractFormulasFromProperties(properties);
 
-
         std::shared_ptr<storm::models::sparse::Mdp<ModelType::ValueType>> mdp =
                 storm::api::buildSparseModel<ModelType::ValueType>(program, formulas)->as<ModelType>();
 
-        std::cout << "mdp->getNumberOfStates(): " << mdp->getNumberOfStates() << "\n";
-        std::cout << "mdp->getNumberOfChoices(): " << mdp->getNumberOfChoices() << "\n";
+        std::cout << "Number of states in original mdp: " << mdp->getNumberOfStates() << "\n";
+        std::cout << "Number of choices in original mdp: " << mdp->getNumberOfChoices() << "\n";
 
         const auto formula = formulas[0]->asMultiObjectiveFormula();
-
         PreprocessedType::ReturnType prepResult =
                 PreprocessedType::preprocess(env, *mdp, formula);
 
@@ -63,7 +73,7 @@ namespace mopmc {
         std::cout << "[!] There is a Pareto optimal scheduler yielding finite rewards for all objectives: " << s2 << std::endl;
 
 
-        std::ostream &outputStream = std::cout;
+        //std::ostream &outputStream = std::cout;
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
 
         //Objectives must be total rewards
@@ -77,69 +87,11 @@ namespace mopmc {
             throw std::runtime_error("The input property should be achievability query type.");
         }
 
-        //Validate the model
-        // This makes an initialize() function in storm.
-        // But because it is protected, we need to get around this by
-        // creating a mocked model checker object
-        // whose constructor calls initialize().
-        // For our purposes, we use this function to check reward finiteness
-        // and other desirable requirements of the model.
-        /*
-        try {
-            new storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<ModelType>(prepResult);
-        } catch (const std::runtime_error &e) { std::cout << e.what() << "\n"; }
-         */
-        //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
-
-        std::cout << "prepResult.preprocessedModel->getNumberOfStates(): "
-            << prepResult.preprocessedModel->getNumberOfStates() << std::endl;
-        std::cout << "prepResult.preprocessedModel->getTransitionMatrix().getRowCount(): "
-            << prepResult.preprocessedModel->getTransitionMatrix().getRowCount() << std::endl;
-
-        //It calls a query (Alg. 1)
-        mopmc::queries::ConvexQuery q(prepResult, env);
-        //mopmc::queries::ConvexQuery q(prepResult);
+        mopmc::PreprocessedData<ModelType> data(prepResult);
+        //mopmc::queries::ConvexQuery q(prepResult, env);
+        mopmc::queries::ConvexQuery q(data, env);
         q.query();
-
         return true;
 
-        /* //The following functions MOVED into the query function
-         //The following functions MOVED into the query function
-        //Get thresholds
-        uint_fast64_t numOfObjs = prepResult.objectives.size();
-        std::vector<ModelType::ValueType> thresholds(numOfObjs);
-        //std::cout << "The thresholds are: ";
-        for (uint_fast64_t i = 0; i < numOfObjs; i++) {
-            auto thres = prepResult.objectives[i].formula->getThresholdAs<double>();
-            std::cout << "Is ProbabilityOperatorFormula: " << prepResult.objectives[i].originalFormula->isProbabilityOperatorFormula() << std::endl;
-            thresholds[i] = thres;
-            //std::cout << thres << ", ";
-        }
-        //std::cout << std::endl;
-
-        //Generate reward vectors
-        std::vector<std::vector<ModelType::ValueType>> rewVectors(numOfObjs);
-        for (uint_fast64_t i = 0; i < numOfObjs; i++) {
-            const auto &rewModelName = prepResult.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
-            std::cout << "Reward model name: " << rewModelName << ", Reward model type: "
-                << prepResult.preprocessedModel->getRewardModel(rewModelName) << std::endl;
-            rewVectors[i] = prepResult.preprocessedModel->getRewardModel(rewModelName)
-                    .getTotalRewardVector(prepResult.preprocessedModel->getTransitionMatrix());
-            //for (const auto& x: rewVectors[i]) std::cout << x << ' ';
-        }
-
-        //Initialise weight vector
-        std::vector<ModelType::ValueType> weightVector(numOfObjs);
-        //Initialise weighted reward vector
-        uint64_t numOfRows = prepResult.preprocessedModel->getTransitionMatrix().getRowCount();
-        std::vector<ModelType::ValueType> wRewVector(numOfRows);
-        //Initialise scheduler
-        uint64_t numOfRowGroups = prepResult.preprocessedModel->getTransitionMatrix().getRowGroupCount();
-        std::vector<uint64_t> scheduler(numOfRowGroups);
-        //Convert transition matrix to eigen sparse matrix
-        auto eigenTransMatrix = // a pointer to EigenSpMatrix
-        storm::adapters::EigenAdapter::toEigenSparseMatrix(prepResult.preprocessedModel->getTransitionMatrix());
-        eigenTransMatrix->makeCompressed();
-         */
     }
 }

@@ -3,15 +3,16 @@
 //
 #ifndef MOPMC_CONVEXXQUERY_H
 #define MOPMC_CONVEXXQUERY_H
-#include "../Runner.h"
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <storm/api/storm.h>
-#include "../Preprocessor.h"
+#include "../Preprocessing.h"
 
 namespace mopmc::queries {
 
+
     class ConvexQuery{
+        typedef storm::models::sparse::Mdp<double> ModelType;
         typedef typename ModelType::ValueType T;
 
     public:

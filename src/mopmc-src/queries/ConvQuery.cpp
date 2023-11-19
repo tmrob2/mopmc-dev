@@ -24,6 +24,11 @@
 
 namespace mopmc::queries {
 
+    // typedef
+    typedef storm::models::sparse::Mdp<double> ModelType;
+    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
+    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
+    typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
     typedef typename ModelType::ValueType T;
 
     ConvexQuery::ConvexQuery(const PreprocessedData<ModelType> &data, const storm::Environment &env)
@@ -36,18 +41,22 @@ namespace mopmc::queries {
         //CUDA ONLY TEST BLOCK
         {
             std::vector<T> w = {-.5, -.5};
-            assert(data_.numObjs == 2);
+            assert(data_.objectiveCount == 2);
+            assert(data_.transitionMatrix.nonZeros() < INT_MAX);
+            assert(data_.rowCount < INT_MAX);
             //Convert data from uint_64 to int
             std::vector<int> rowGroupIndices1(data_.rowGroupIndices.begin(), data_.rowGroupIndices.end());
             std::vector<int> rowToRowGroupMapping1(data_.row2RowGroupMapping.begin(), data_.row2RowGroupMapping.end());
             std::vector<int> scheduler1(data_.defaultScheduler.begin(), data_.defaultScheduler.end());
 
-            mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(data_.transitionMatrix,
-                                                                                         rowGroupIndices1,
-                                                                                         rowToRowGroupMapping1,
-                                                                                         data_.flattenRewardVector,
-                                                                                         scheduler1, w,
-                                                                                         (int) data_.iniRow);
+            mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
+                    data_.transitionMatrix,
+                    rowGroupIndices1,
+                    rowToRowGroupMapping1,
+                    data_.flattenRewardVector,
+                    scheduler1, w,
+                    (int) data_.initialRow
+                    );
             cudaVIHandler.initialise();
             cudaVIHandler.valueIterationPhaseOne(w);
             cudaVIHandler.valueIterationPhaseTwo();
@@ -57,7 +66,7 @@ namespace mopmc::queries {
                 std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
                 std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
                 std::cout << "Result at initial state ";
-                for (int i = 0; i < data_.numObjs; ++i) {
+                for (int i = 0; i < data_.objectiveCount; ++i) {
                     std::cout << "- Objective " << i << ": " << cudaVIHandler.results_[i] << " ";
                 }std::cout <<"\n";
                 std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[2] << "\n";
@@ -67,7 +76,7 @@ namespace mopmc::queries {
 
 
         //Data generation
-        const uint64_t m = data_.numObjs; // m: number of objectives
+        const uint64_t m = data_.objectiveCount; // m: number of objectives
         const uint64_t n = data_.rowCount; // n: number of choices / state-action pairs
         const uint64_t k = data_.colCount; // k: number of states
         Eigen::SparseMatrix<T> *P = &data_.transitionMatrix;
@@ -82,6 +91,8 @@ namespace mopmc::queries {
         // LambdaL, LambdaR represent Lambda
         std::vector<std::vector<T>> LambdaL;
         std::vector<std::vector<T>> LambdaR;
+        std::vector<std::vector<T>> W;
+        std::set<std::vector<T>> wSet;
 
 
         std::vector<T> h = data_.thresholds;
@@ -100,13 +111,6 @@ namespace mopmc::queries {
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
         const uint_fast64_t maxIter{20};
-
-        //GS: Double-check, from an algorithmic and practical point of view,
-        // whether we maintain the two data structures
-        // in the main iteration below. :SG
-        std::vector<std::vector<T>> W;
-        std::set<std::vector<T>> wSet;
-
 
         //GS: I believe we will implement a new version
         // of model checker for our purposes. :SG
@@ -168,7 +172,7 @@ namespace mopmc::queries {
 
             //scalarisedMOMDPModelChecker.check(env_, w);
             /*
-            uint64_t ini = data_.iniRow getInitialState();
+            uint64_t ini = data_.initialRow getInitialState();
             for (uint_fast64_t i = 0; i < m; ++i) {
                 r[i] = scalarisedMOMDPModelChecker.getObjectiveResults()[i][ini];
             }
