@@ -12,24 +12,28 @@
 #include <storm/environment/Environment.h>
 
 namespace mopmc {
+    // V value type, I index type
     template<typename V, typename I>
     struct Data {
 
         Eigen::SparseMatrix<V> transitionMatrix;
-        I rowCount{};
-        I colCount{};
-        std::vector<I> rowGroupIndices;
-        std::vector<I> row2RowGroupMapping;
         std::vector<std::vector<V>> rewardVectors;
         std::vector<V> flattenRewardVector;
-        I objectiveCount{};
-        std::vector<bool> probObjectives;
         std::vector<V> thresholds;
         std::vector<V> weightedVector;
-        std::vector<I> defaultScheduler;
-        I initialRow{};
 
-        void bar(const V &t);
+        I rowCount{};
+        I colCount{};
+        I objectiveCount{};
+        I initialRow{};
+        std::vector<I> rowGroupIndices;
+        std::vector<I> row2RowGroupMapping;
+        std::vector<I> defaultScheduler;
+
+        std::vector<bool> probObjectives;
+
+        //cast to double for values and int for indices
+        Data<double, int> castToGpuData();
     };
 
 }

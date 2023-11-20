@@ -57,8 +57,8 @@ namespace mopmc {
                     const std::vector<int> &row2RowGroupMapping,
                     std::vector<ValueType> &rho_flat,
                     std::vector<int> &pi,
-                    std::vector<double> &w,
-                    int iniRow) :
+                    int iniRow,
+                    std::vector<double> &w) :
                     transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
                     rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
                     weightVector_(w), iniRow_(iniRow) {
@@ -69,7 +69,7 @@ namespace mopmc {
                 B_ncols = A_ncols;
                 B_nrows = B_ncols;
                 nobjs = weightVector_.size();
-                results_.resize(nobjs);
+                results_.resize(nobjs+1);
                 //Assertions
                 assert(A_ncols == scheduler_.size());
                 assert(flattenRewardVector_.size() == A_nrows * nobjs);
@@ -263,15 +263,15 @@ namespace mopmc {
                     thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
                 }
 
+                //-------------------------------------------------------------------------
+                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
                 return EXIT_SUCCESS;
             }
 
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::exit() {
-                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
-                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
-                //-------------------------------------------------------------------------
                 // destroy matrix/vector descriptors
                 CHECK_CUSPARSE(cusparseDestroySpMat(matA))
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecX))

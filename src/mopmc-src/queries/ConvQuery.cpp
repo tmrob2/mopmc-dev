@@ -20,6 +20,7 @@
 #include "../solvers/ConvexQuery.h"
 #include "../solvers/CudaOnlyValueIteration.h"
 #include "../solvers/CudaValueIteration.cuh"
+#include "../Data.h"
 
 
 namespace mopmc::queries {
@@ -38,25 +39,33 @@ namespace mopmc::queries {
 
     void ConvexQuery::query() {
 
+        std::vector<T> w0 = {-.5, -.5};
+        mopmc::Data<double, int> data32 = data_.castToGpuData();
+        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
+                data32.transitionMatrix,
+                data32.rowGroupIndices,
+                data32.row2RowGroupMapping,
+                data32.flattenRewardVector,
+                data32.defaultScheduler,
+                data32.initialRow,
+                w0
+        );
+        cudaVIHandler.initialise();
+
         //CUDA ONLY TEST BLOCK
+        /*
         {
             std::vector<T> w = {-.5, -.5};
-            assert(data_.objectiveCount == 2);
-            assert(data_.transitionMatrix.nonZeros() < INT_MAX);
-            assert(data_.rowCount < INT_MAX);
-            //Convert data from uint_64 to int
-            std::vector<int> rowGroupIndices1(data_.rowGroupIndices.begin(), data_.rowGroupIndices.end());
-            std::vector<int> rowToRowGroupMapping1(data_.row2RowGroupMapping.begin(), data_.row2RowGroupMapping.end());
-            std::vector<int> scheduler1(data_.defaultScheduler.begin(), data_.defaultScheduler.end());
-
+            mopmc::Data<double, int> data32 = data_.castToGpuData();
             mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                    data_.transitionMatrix,
-                    rowGroupIndices1,
-                    rowToRowGroupMapping1,
-                    data_.flattenRewardVector,
-                    scheduler1, w,
-                    (int) data_.initialRow
-                    );
+                    data32.transitionMatrix,
+                    data32.rowGroupIndices,
+                    data32.row2RowGroupMapping,
+                    data32.flattenRewardVector,
+                    data32.defaultScheduler,
+                    data32.initialRow,
+                    w
+            );
             cudaVIHandler.initialise();
             cudaVIHandler.valueIterationPhaseOne(w);
             cudaVIHandler.valueIterationPhaseTwo();
@@ -66,14 +75,14 @@ namespace mopmc::queries {
                 std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
                 std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
                 std::cout << "Result at initial state ";
-                for (int i = 0; i < data_.objectiveCount; ++i) {
+                for (int i = 0; i < data32.objectiveCount; ++i) {
                     std::cout << "- Objective " << i << ": " << cudaVIHandler.results_[i] << " ";
                 }std::cout <<"\n";
-                std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[2] << "\n";
+                std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[data32.objectiveCount] << "\n";
                 std::cout << "----------------------------------------------\n";
             }
         }
-
+         */
 
         //Data generation
         const uint64_t m = data_.objectiveCount; // m: number of objectives
@@ -104,23 +113,21 @@ namespace mopmc::queries {
         //vi: initial vector for Frank-Wolfe
         std::vector<T> *vi;
         std::vector<T> r(m);
-        std::vector<T> w = // w: weight vector
-                std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
+        std::vector<T> w = {-.0, -1.};// w: weight vector
+                // std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
         //thresholds for stopping the iteration
         const double eps{0.};
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
         const uint_fast64_t maxIter{20};
 
-        //GS: I believe we will implement a new version
-        // of model checker for our purposes. :SG
        //mopmc::multiobjective::MOPMCModelChecking<ModelType> scalarisedMOMDPModelChecker(model_);
 
         //Iteration
         uint_fast64_t iter = 0;
         T fDiff = 0;
         while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
-            //std::cout << "Iteration: " << iter << "\n";
+            std::cout << "Iteration: " << iter << "\n";
             std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
             std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
             fDiff = mopmc::solver::convex::diff(fvt, fvb);
@@ -136,15 +143,18 @@ namespace mopmc::queries {
                 //GS: exit if the gradient is very small. :SG
                 if (mopmc::solver::convex::l1Norm(grad) < eps_p) { break; }
                 w = mopmc::solver::convex::computeNewW(grad);
+                for (int i = 0; i < w.size() ; ++i ) {
+                 w[i] = -w[i];
+                }
             }
 
-            /*
+
             std::cout << "w*: ";
             for (int i = 0; i < w.size() ; ++i ){
                 std::cout << w[i] << ",";
             }
             std::cout << "\n";
-             */
+
 
             //GS: As mention, double check whether we need to
             // maintain W and wSet. :SG
@@ -162,13 +172,13 @@ namespace mopmc::queries {
             }
 
             // compute a new supporting hyperplane
-            /*
-            std::cout << "W[" << iter << "]: ";
-            for (T val: W.back()) {
-                std::cout << val << ",";
-            }
-            std::cout << "\n";
-             */
+
+
+            cudaVIHandler.valueIterationPhaseOne(w);
+            cudaVIHandler.valueIterationPhaseTwo();
+
+            std::vector<T> r_ (cudaVIHandler.results_.begin(), cudaVIHandler.results_.end()-1);
+            r = r_;
 
             //scalarisedMOMDPModelChecker.check(env_, w);
             /*
@@ -177,7 +187,6 @@ namespace mopmc::queries {
                 r[i] = scalarisedMOMDPModelChecker.getObjectiveResults()[i][ini];
             }
              */
-
 
             Phi.push_back(r);
             LambdaL.push_back(w);
@@ -208,6 +217,18 @@ namespace mopmc::queries {
 
         //scalarisedMdpModelChecker.multiObjectiveSolver(env_);
         std::cout << "Convex query done! \n";
+        cudaVIHandler.exit();
+        {
+            std::cout << "----------------------------------------------\n";
+            std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
+            std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
+            std::cout << "Result at initial state ";
+            for (int i = 0; i < data_.objectiveCount; ++i) {
+                std::cout << "- Objective " << i << ": " << cudaVIHandler.results_[i] << " ";
+            }std::cout <<"\n";
+            std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[2] << "\n";
+            std::cout << "----------------------------------------------\n";
+        }
     }
 
 }

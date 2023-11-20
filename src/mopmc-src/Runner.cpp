@@ -20,6 +20,8 @@
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 //#include <storm/modelchecker/multiobjective/pcaa/StandardPcaaWeightVectorChecker.h>
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
+#include <storm/storage/sparse/StateType.h>
+
 #include <storm/storage/BitVector.h>
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
@@ -35,16 +37,23 @@
 namespace mopmc {
 
     typedef storm::models::sparse::Mdp<double> ModelType;
+    typedef storm::models::sparse::Mdp<double>::ValueType ValueType;
+    typedef storm::storage::sparse::state_type IndexType;
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
-    typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
+    typedef Eigen::SparseMatrix<ValueType, Eigen::RowMajor> EigenSpMatrix;
 
     bool run(std::string const &path_to_model, std::string const &property_string) {
+
+        assert (typeid(ValueType)==typeid(double));
+        assert (typeid(IndexType)==typeid(uint64_t));
+
         storm::Environment env;
         auto prepResult = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
-        auto data = mopmc::Transformation<ModelType, ModelType::ValueType, uint64_t>::transform(prepResult);
+        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform(prepResult);
         mopmc::queries::ConvexQuery q(data, env);
-        q.query();return true;
+        q.query();
+        return true;
 
     }
 
