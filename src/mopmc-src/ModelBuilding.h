@@ -2,8 +2,8 @@
 // Created by guoxin on 17/11/23.
 //
 
-#ifndef MOPMC_PREPROCESSING_H
-#define MOPMC_PREPROCESSING_H
+#ifndef MOPMC_MODELBUILDING_H
+#define MOPMC_MODELBUILDING_H
 
 #include <string>
 #include <storm/storage/SparseMatrix.h>
@@ -17,11 +17,11 @@
 namespace  mopmc {
 
     template<typename M>
-    class PreprocessedData {
+    class ModelBuilder {
     public:
-        PreprocessedData();
 
-        explicit PreprocessedData(typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn);
+        static typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType build(
+                std::string const &path_to_model, std::string const &property_string, storm::Environment &env);
 
         Eigen::SparseMatrix<double> transitionMatrix;
         uint64_t rowCount{};
@@ -39,14 +39,7 @@ namespace  mopmc {
 
     };
 
-    template<typename M>
-    //void preprocess(std::string const& path_to_model, std::string const& property_string, storm::Environment env);
-    PreprocessedData<M> preprocess(
-            std::string const &path_to_model,
-            std::string const &property_string,
-            storm::Environment &env);
-
 
 }
 
-#endif //MOPMC_PREPROCESSING_H
+#endif //MOPMC_MODELBUILDING_H

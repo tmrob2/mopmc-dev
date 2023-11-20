@@ -27,25 +27,28 @@
 #include "queries/ConvQuery.h"
 #include "./model-checking/MOPMCModelChecking.h"
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h>
-#include "Preprocessing.h"
+#include "ModelBuilding.h"
+#include "Transformation.h"
+#include "Data.h"
 
 
 namespace mopmc {
 
-
-    // typedef
     typedef storm::models::sparse::Mdp<double> ModelType;
     typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
-    //typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
-    //typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
+    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
+    typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
 
     bool run(std::string const &path_to_model, std::string const &property_string) {
-        //std::cout << "AN NEW ROUTINE" << std::endl;
         storm::Environment env;
-        //TODO to make this work
-        //auto data1 = mopmc::preprocess<ModelType>(path_to_model, property_string, env);
-        //return true;
+        auto prepResult = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
+        auto data = mopmc::Transformation<ModelType, ModelType::ValueType, uint64_t>::transform(prepResult);
+        mopmc::queries::ConvexQuery q(data, env);
+        q.query();return true;
 
+    }
+
+    /*
         env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
         //auto program = storm::parser::PrismParser::parse(path_to_model);
         storm::prism::Program program = storm::api::parseProgram(path_to_model);
@@ -86,12 +89,5 @@ namespace mopmc {
         ::SparseMultiObjectivePreprocessorResult<ModelType>::QueryType::Achievability) {
             throw std::runtime_error("The input property should be achievability query type.");
         }
-
-        mopmc::PreprocessedData<ModelType> data(prepResult);
-        //mopmc::queries::ConvexQuery q(prepResult, env);
-        mopmc::queries::ConvexQuery q(data, env);
-        q.query();
-        return true;
-
-    }
+         */
 }

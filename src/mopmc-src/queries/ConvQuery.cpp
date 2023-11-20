@@ -31,8 +31,8 @@ namespace mopmc::queries {
     typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
     typedef typename ModelType::ValueType T;
 
-    ConvexQuery::ConvexQuery(const PreprocessedData<ModelType> &data, const storm::Environment &env)
-    : data_(data), env_(env) {
+    ConvexQuery::ConvexQuery(const mopmc::Data<T,uint64_t> &data, const storm::Environment &env)
+            : data_(data), env_(env) {
 
     }
 
@@ -209,6 +209,5 @@ namespace mopmc::queries {
         //scalarisedMdpModelChecker.multiObjectiveSolver(env_);
         std::cout << "Convex query done! \n";
     }
-
 
 }

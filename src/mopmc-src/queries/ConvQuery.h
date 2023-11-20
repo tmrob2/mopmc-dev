@@ -6,7 +6,7 @@
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <storm/api/storm.h>
-#include "../Preprocessing.h"
+#include "../Data.h"
 
 namespace mopmc::queries {
 
@@ -17,13 +17,13 @@ namespace mopmc::queries {
 
     public:
 
-        ConvexQuery(const mopmc::PreprocessedData<ModelType> &data, const storm::Environment& env);
+        ConvexQuery(const mopmc::Data<T, uint64_t> &data, const storm::Environment& env);
 
         void query();
 
         Eigen::SparseMatrix<T, Eigen::RowMajor> P_;
         storm::Environment env_;
-        mopmc::PreprocessedData<ModelType> data_;
+        mopmc::Data<T, uint64_t> data_;
     };
 }
 

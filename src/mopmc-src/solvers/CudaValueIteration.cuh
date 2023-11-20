@@ -48,26 +48,26 @@ namespace mopmc { namespace value_iteration { namespace gpu {
         int iniRow_;
 
     private:
-        int *dA_csrOffsets, *dA_columns, *dA_rows_extra;
-        int *dB_csrOffsets, *dB_columns, *dB_rows_extra;
-        int *dRowGroupIndices, *dRow2RowGroupMapping, *dPi, *dPi_bin;
-        int *dMasking_nnz, *dMasking_nrows; // this is an array of 0s and 1s
-        double *dA_values, *dB_values, *dX, *dY, *dR, *dRw, *dRi, *dW, *dXPrime, *dX2Prime, *dResult;
+        int *dA_csrOffsets{}, *dA_columns{}, *dA_rows_extra{};
+        int *dB_csrOffsets{}, *dB_columns{}, *dB_rows_extra{};
+        int *dRowGroupIndices{}, *dRow2RowGroupMapping{}, *dPi{}, *dPi_bin{};
+        int *dMasking_nnz{}, *dMasking_nrows{}; // this is an array of 0s and 1s
+        double *dA_values{}, *dB_values{}, *dX{}, *dY{}, *dR{}, *dRw{}, *dRi{}, *dW{}, *dXPrime{}, *dX2Prime{}, *dResult{};
         int A_nnz, A_ncols, A_nrows, nobjs;
-        int B_nnz, B_ncols, B_nrows;
+        int B_nnz{}, B_ncols, B_nrows;
 
-        double alpha,alpha2, beta;
-        double eps;
-        int maxIter;
-        double maxEps;
+        double alpha{},alpha2{}, beta{};
+        double eps{};
+        int maxIter{};
+        double maxEps{};
         int maxInd = 0;
-        int iteration;
+        int iteration{};
 
         //CUSPARSE APIs
         cublasHandle_t cublasHandle = nullptr;
         cusparseHandle_t handle = nullptr, handleB = nullptr;
-        cusparseSpMatDescr_t matA, matB;
-        cusparseDnVecDescr_t vecX, vecY, vecXPrime, vecRw;
+        cusparseSpMatDescr_t matA{}, matB{};
+        cusparseDnVecDescr_t vecX{}, vecY{}, vecXPrime{}, vecRw{};
         void *dBuffer = nullptr, *dBufferB = nullptr;
         size_t bufferSize = 0, bufferSizeB = 0;
 
