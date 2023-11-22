@@ -17,7 +17,8 @@ namespace mopmc::queries {
 
     public:
 
-        ConvexQuery(const mopmc::Data<T, uint64_t> &data, const storm::Environment& env);
+        //ConvexQuery(const mopmc::Data<T, uint64_t> &data, const storm::Environment& env);
+        explicit ConvexQuery(const mopmc::Data<T, uint64_t> &data);
 
         void query();
 

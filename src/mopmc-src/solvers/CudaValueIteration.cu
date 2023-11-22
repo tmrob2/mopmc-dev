@@ -58,17 +58,19 @@ namespace mopmc {
                     std::vector<ValueType> &rho_flat,
                     std::vector<int> &pi,
                     int iniRow,
-                    std::vector<double> &w) :
+                    //std::vector<double> &w
+                    int objCount) :
                     transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
                     rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
-                    weightVector_(w), iniRow_(iniRow) {
+                    //weightVector_(w),
+                    iniRow_(iniRow), nobjs(objCount) {
 
                 A_nnz = transitionMatrix_.nonZeros();
                 A_ncols = transitionMatrix_.cols();
                 A_nrows = transitionMatrix_.rows();
                 B_ncols = A_ncols;
                 B_nrows = B_ncols;
-                nobjs = weightVector_.size();
+                //nobjs = weightVector_.size();
                 results_.resize(nobjs+1);
                 //Assertions
                 assert(A_ncols == scheduler_.size());
@@ -158,6 +160,13 @@ namespace mopmc {
                         */
                 CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize));
                 return EXIT_SUCCESS;
+            }
+
+            template<typename ValueType>
+            int CudaValueIterationHandler<ValueType>::valueIteration(const std::vector<double> &w) {
+
+                this->valueIterationPhaseOne(w);
+                this->valueIterationPhaseTwo();
             }
 
             template<typename ValueType>
@@ -307,8 +316,7 @@ namespace mopmc {
                 return EXIT_SUCCESS;
             }
 
-            template
-            class CudaValueIterationHandler<double>;
+            template class CudaValueIterationHandler<double>;
         }
     }
 }

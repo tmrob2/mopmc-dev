@@ -27,12 +27,15 @@ namespace mopmc {
                         std::vector<ValueType> &rho_flat,
                         std::vector<int> &pi,
                         int iniRow,
-                        std::vector<double> &w);
+                        //std::vector<double> &w
+                        int objCount);
 
 
                 int initialise();
 
                 int exit();
+
+                int valueIteration(const std::vector<double> &w);
 
                 int valueIterationPhaseOne(const std::vector<double> &w);
 
@@ -43,12 +46,17 @@ namespace mopmc {
                 std::vector<int> scheduler_;
                 std::vector<int> rowGroupIndices_;
                 std::vector<int> row2RowGroupMapping_;
-                std::vector<double> weightVector_;
+                //std::vector<double> weightVector_;
                 std::vector<double> weightedValueVector_;
-                std::vector<double> y_;
+                //std::vector<double> y_;
                 std::vector<double> results_;
                 double weightedResult_{};
                 int iniRow_{};
+                int nobjs{};
+
+                const std::vector<double> &getResults() const {
+                    return results_;
+                }
 
             private:
                 int *dA_csrOffsets{}, *dA_columns{}, *dA_rows_extra{};
@@ -56,7 +64,7 @@ namespace mopmc {
                 int *dRowGroupIndices{}, *dRow2RowGroupMapping{}, *dPi{}, *dPi_bin{};
                 int *dMasking_nnz{}, *dMasking_nrows{}; // this is an array of 0s and 1s
                 double *dA_values{}, *dB_values{}, *dX{}, *dY{}, *dR{}, *dRw{}, *dRi{}, *dW{}, *dXPrime{}, *dX2Prime{}, *dResult{};
-                int A_nnz{}, A_ncols{}, A_nrows{}, nobjs{};
+                int A_nnz{}, A_ncols{}, A_nrows{};
                 int B_nnz{}, B_ncols{}, B_nrows{};
 
                 double alpha{}, alpha2{}, beta{};
