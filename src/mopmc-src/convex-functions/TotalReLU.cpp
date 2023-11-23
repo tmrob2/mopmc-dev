@@ -10,38 +10,40 @@ namespace mopmc::optimisation::convex_functions {
 
 
     template<typename V>
-    TotalReLU<V>::TotalReLU(std::vector<V> c) : c_(c) {}
+    TotalReLU<V>::TotalReLU(std::vector<V> &c) : c_(c) {}
 
     template<typename V>
-    V TotalReLU<V>::value(std::vector<V> x) {
+    V TotalReLU<V>::value(std::vector<V> &x) {
 
-        if (x.size()!= c_.size()) {
+        if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }
 
         std::vector<V> y(c_.size());
-        for (uint_fast64_t i = 0 ; i < c_.size() ; ++i ){
-            y[i] = std::max(static_cast<V>(0.), x[i] - c_[i]);
+        for (uint_fast64_t i = 0; i < c_.size(); ++i) {
+            y[i] = std::max(static_cast<V>(0.), c_[i] - x[i]);
         }
         return std::reduce(y.begin(), y.end());
     }
 
     template<typename V>
-    std::vector<V> TotalReLU<V>::subgradient(std::vector<V> x) {
+    std::vector<V> TotalReLU<V>::subgradient(std::vector<V> &x) {
 
-        if (x.size()!= c_.size()) {
+        if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }
 
         std::vector<V> dy(c_.size());
-        for (uint_fast64_t i = 0 ; i < c_.size() ; ++i ){
-                dy[i] = static_cast<V>(1.);
-            if (x[i] > c_[i]) {
+        for (uint_fast64_t i = 0; i < c_.size(); ++i) {
+            if (x[i] < c_[i]) {
+                dy[i] = static_cast<V>(-1.);
             } else {
                 dy[i] = static_cast<V>(0.);
             };
         }
         return dy;
     }
-    template class TotalReLU<double>;
+
+    template
+    class TotalReLU<double>;
 }

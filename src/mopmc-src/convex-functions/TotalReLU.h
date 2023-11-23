@@ -11,13 +11,14 @@
 namespace mopmc::optimisation::convex_functions {
 
     template<typename V>
-    class TotalReLU: public BaseConvexFunction<V> {
+    class TotalReLU : public BaseConvexFunction<V> {
     public:
 
-        explicit TotalReLU(std::vector<V> c);
+        explicit TotalReLU(std::vector<V> &c);
 
-        V value(std::vector<V> x) override;
-        std::vector<V> subgradient(std::vector<V> x)override;
+        V value(std::vector<V> &x) override;
+
+        std::vector<V> subgradient(std::vector<V> &x) override;
 
         std::vector<V> c_;
     };

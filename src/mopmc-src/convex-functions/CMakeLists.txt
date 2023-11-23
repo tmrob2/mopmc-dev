@@ -4,6 +4,8 @@ list(
         APPEND Sources
         "${dir}/TotalReLU.cpp"
         "${dir}/TotalReLU.h"
+        "${dir}/SignedKLEuclidean.cpp"
+        "${dir}/SignedKLEuclidean.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

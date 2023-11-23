@@ -11,8 +11,9 @@ namespace mopmc::optimisation::convex_functions {
     class BaseConvexFunction {
     public:
 
-        virtual V value(std::vector<V>) = 0;
-        virtual std::vector<V> subgradient(std::vector<V>) = 0;
+        virtual V value(std::vector<V> &x) = 0;
+
+        virtual std::vector<V> subgradient(std::vector<V> &x) = 0;
     };
 }
 
