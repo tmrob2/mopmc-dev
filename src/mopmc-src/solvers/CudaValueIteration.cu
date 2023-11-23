@@ -6,7 +6,7 @@
 #include "CuFunctions.h"
 //#include <storm/storage/SparseMatrix.h>
 //#include <Eigen/Sparse>
-#include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
 #include <thrust/copy.h>
@@ -58,11 +58,9 @@ namespace mopmc {
                     std::vector<ValueType> &rho_flat,
                     std::vector<int> &pi,
                     int iniRow,
-                    //std::vector<double> &w
                     int objCount) :
                     transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
                     rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
-                    //weightVector_(w),
                     iniRow_(iniRow), nobjs(objCount) {
 
                 A_nnz = transitionMatrix_.nonZeros();
@@ -70,7 +68,9 @@ namespace mopmc {
                 A_nrows = transitionMatrix_.rows();
                 B_ncols = A_ncols;
                 B_nrows = B_ncols;
-                //nobjs = weightVector_.size();
+                C_nrows = B_ncols;
+                C_ncols = nobjs;
+                C_ld = C_ncols;
                 results_.resize(nobjs+1);
                 //Assertions
                 assert(A_ncols == scheduler_.size());
@@ -81,13 +81,6 @@ namespace mopmc {
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::initialise() {
 
-                alpha = 1.0;
-                alpha2 = -1.0;
-                beta = 1.0;
-                eps = 1.0;
-                maxIter = 1000;
-                maxEps = 0.0;
-
                 // cudaMalloc CONSTANTS -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dA_csrOffsets, (A_nrows + 1) * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dA_columns, A_nnz * sizeof(int)))
@@ -96,12 +89,12 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dR, A_nrows * nobjs * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dRowGroupIndices, (A_ncols + 1) * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dRow2RowGroupMapping, A_nrows * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dW, nobjs * sizeof(double)))
                 // cudaMalloc Variables -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dX, A_ncols * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dXPrime, A_ncols * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dY, A_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dPi, A_ncols * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dW, nobjs * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dRw, A_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dResult, (nobjs + 1) * sizeof(double)))
                 // cudaMalloc PHASE B-------------------------------------------------------------
@@ -112,15 +105,16 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dRj, nobjs * B_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dZ, nobjs * A_ncols * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dZPrime, nobjs * A_ncols * sizeof(double)))
                 // cudaMemcpy -------------------------------------------------------------
                 CHECK_CUDA(cudaMemcpy(dA_csrOffsets, transitionMatrix_.outerIndexPtr(), (A_nrows + 1) * sizeof(int),
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dA_columns, transitionMatrix_.innerIndexPtr(), A_nnz * sizeof(int),
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dA_values, transitionMatrix_.valuePtr(), A_nnz * sizeof(double),
-                                      cudaMemcpyHostToDevice))
-                //CHECK_CUDA(cudaMemcpy(dX, weightedValueVector_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
-                //CHECK_CUDA(cudaMemcpy(dXPrime, weightedValueVector_.data(), A_ncols * sizeof(double), cudaMemcpyHostToDevice));
+                                      cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dR, flattenRewardVector_.data(), A_nrows * nobjs * sizeof(double),
                                       cudaMemcpyHostToDevice));
                 CHECK_CUDA(cudaMemcpy(dRowGroupIndices, rowGroupIndices_.data(), (A_ncols + 1) * sizeof(int),
@@ -138,7 +132,10 @@ namespace mopmc {
                                                  dA_csrOffsets, dA_columns, dA_values,
                                                  CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
                                                  CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
-
+                // Crease dense matrix C
+                CHECK_CUSPARSE(cusparseCreateDnMat(&matC, C_nrows, C_ncols, C_ld, dZ, CUDA_R_64F, CUSPARSE_ORDER_COL));
+                // Crease dense matrix D
+                CHECK_CUSPARSE(cusparseCreateDnMat(&matD, C_nrows, C_ncols, C_ld, dZPrime, CUDA_R_64F, CUSPARSE_ORDER_COL));
                 // Create dense vector X
                 CHECK_CUSPARSE(cusparseCreateDnVec(&vecX, A_ncols, dX, CUDA_R_64F))
                 // Create dense vector Y
@@ -288,6 +285,7 @@ namespace mopmc {
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecXPrime))
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecRw))
                 CHECK_CUSPARSE(cusparseDestroySpMat(matB))
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
                 CHECK_CUSPARSE(cusparseDestroy(handle))
                 // device memory de-allocation
                 CHECK_CUDA(cudaFree(dBuffer))
@@ -302,6 +300,8 @@ namespace mopmc {
                 CHECK_CUDA(cudaFree(dX))
                 CHECK_CUDA(cudaFree(dXPrime))
                 CHECK_CUDA(cudaFree(dY))
+                CHECK_CUDA(cudaFree(dZ))
+                CHECK_CUDA(cudaFree(dZPrime))
                 CHECK_CUDA(cudaFree(dR))
                 CHECK_CUDA(cudaFree(dRw))
                 CHECK_CUDA(cudaFree(dRi))

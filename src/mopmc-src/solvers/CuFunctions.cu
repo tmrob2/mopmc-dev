@@ -97,7 +97,7 @@ namespace mopmc {
 
 
             __global__ void binaryMasking(const int *csrOffsets, const int *rowGroupIndices, const int *row2RowGroupMapping,
-                                          const int *pi, int *masking2rows, int *masking4nzz, int arrCount) {
+                                          const int *pi, int *masking4rows, int *masking4nzz, int arrCount) {
                 //arrCount == nrows
                 uint tid = threadIdx.x + blockIdx.x * blockDim.x;
                 if (tid < arrCount) {
@@ -108,7 +108,7 @@ namespace mopmc {
                     if (tid == firstRowInRowGroup + selectedActionInd) {
                         val = 1;
                     }
-                    masking2rows[tid] = val;
+                    masking4rows[tid] = val;
                     int start = csrOffsets[tid];
                     int incr = csrOffsets[tid + 1] - start;
                     for (int i = 0; i < incr; ++i) {

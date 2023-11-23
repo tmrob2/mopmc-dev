@@ -8,7 +8,7 @@
 
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
-#include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
 
@@ -61,24 +61,28 @@ namespace mopmc {
             private:
                 int *dA_csrOffsets{}, *dA_columns{}, *dA_rows_extra{};
                 int *dB_csrOffsets{}, *dB_columns{}, *dB_rows_extra{};
-                int *dRowGroupIndices{}, *dRow2RowGroupMapping{}, *dPi{}, *dPi_bin{};
+                int *dRowGroupIndices{}, *dRow2RowGroupMapping{}, *dPi{};
                 int *dMasking_nnz{}, *dMasking_nrows{}; // this is an array of 0s and 1s
-                double *dA_values{}, *dB_values{}, *dX{}, *dY{}, *dR{}, *dRw{}, *dRi{}, *dW{}, *dXPrime{}, *dX2Prime{}, *dResult{};
+                double *dA_values{}, *dB_values{};
+                double *dR{};
+                double *dW{}, *dRw{}, *dRi{}, *dRj;
+                double *dX{}, *dXPrime{}, *dY{}, *dZ{}, *dZPrime{};
+                double *dResult{};
                 int A_nnz{}, A_ncols{}, A_nrows{};
                 int B_nnz{}, B_ncols{}, B_nrows{};
+                int C_ncols{}, C_nrows{}, C_ld{};
 
-                double alpha{}, alpha2{}, beta{};
-                double eps{};
-                int maxIter{};
-                double maxEps{};
-                int maxInd = 0;
+                double alpha=1.0, alpha2=-1.0, beta=1.0;
+                double eps=1.0, maxEps=0.0;
+                int maxIter=1000, maxInd = 0;
                 int iteration{};
 
                 //CUSPARSE APIs
                 cublasHandle_t cublasHandle = nullptr;
                 cusparseHandle_t handle = nullptr, handleB = nullptr;
                 cusparseSpMatDescr_t matA{}, matB{};
-                cusparseDnVecDescr_t vecX{}, vecY{}, vecXPrime{}, vecRw{};
+                cusparseDnMatDescr_t matC{}, matD{};
+                cusparseDnVecDescr_t vecRw{}, vecX{}, vecXPrime{}, vecY{};
                 void *dBuffer = nullptr, *dBufferB = nullptr;
                 size_t bufferSize = 0, bufferSizeB = 0;
 
