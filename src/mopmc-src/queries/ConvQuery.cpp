@@ -21,6 +21,7 @@
 #include "../solvers/CudaOnlyValueIteration.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
+#include "../convex-functions/TotalReLU.h"
 
 
 namespace mopmc::queries {
@@ -109,14 +110,17 @@ namespace mopmc::queries {
         const double eps1{1.e-4};
         const uint_fast64_t maxIter{20};
 
+        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h);
+
         //Iteration
         uint_fast64_t iter = 0;
         T fDiff = 0;
         while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
             std::cout << "Iteration: " << iter << "\n";
-            std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
-            std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
-            fDiff = mopmc::solver::convex::diff(fvt, fvb);
+            //std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
+            //std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
+            //fDiff = mopmc::solver::convex::diff(fvt, fvb);
+            fDiff = std::abs(totalReLu.value(vt) - totalReLu.value(vb));
             if (!Phi.empty()) {
                 // compute the FW and find a new weight vector
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,

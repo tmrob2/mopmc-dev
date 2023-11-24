@@ -6,7 +6,7 @@
 #include <numeric>
 #include <stdexcept>
 
-namespace mopmc::optimisation::convex_functions {
+namespace mopmc::optimization::convex_functions {
 
 
     template<typename V>

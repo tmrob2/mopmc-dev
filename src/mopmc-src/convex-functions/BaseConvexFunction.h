@@ -5,7 +5,7 @@
 #ifndef MOPMC_BASECONVEXFUNCTION_H
 #define MOPMC_BASECONVEXFUNCTION_H
 
-namespace mopmc::optimisation::convex_functions {
+namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     class BaseConvexFunction {

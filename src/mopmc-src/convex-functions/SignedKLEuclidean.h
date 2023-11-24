@@ -12,7 +12,7 @@
 #include "BaseConvexFunction.h"
 #include <cassert>
 
-namespace mopmc::optimisation::convex_functions {
+namespace mopmc::optimization::convex_functions {
     template<typename V>
     class SignedKLEuclidean : public BaseConvexFunction<V> {
     public:

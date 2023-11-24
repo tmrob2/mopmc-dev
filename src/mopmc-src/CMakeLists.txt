@@ -3,6 +3,7 @@ add_subdirectory(solvers)
 add_subdirectory(hybrid-computing)
 add_subdirectory(queries)
 add_subdirectory(convex-functions)
+add_subdirectory(optimizers)
 set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(

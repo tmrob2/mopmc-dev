@@ -8,7 +8,7 @@
 #include <vector>
 #include "BaseConvexFunction.h"
 
-namespace mopmc::optimisation::convex_functions {
+namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     class TotalReLU : public BaseConvexFunction<V> {
