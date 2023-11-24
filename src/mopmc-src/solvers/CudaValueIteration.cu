@@ -70,7 +70,7 @@ namespace mopmc {
                 B_nrows = B_ncols;
                 C_nrows = B_ncols;
                 C_ncols = nobjs;
-                C_ld = C_ncols;
+                C_ld = C_nrows;
                 results_.resize(nobjs+1);
                 //Assertions
                 assert(A_ncols == scheduler_.size());
@@ -286,6 +286,7 @@ namespace mopmc {
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecRw))
                 CHECK_CUSPARSE(cusparseDestroySpMat(matB))
                 CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matD))
                 CHECK_CUSPARSE(cusparseDestroy(handle))
                 // device memory de-allocation
                 CHECK_CUDA(cudaFree(dBuffer))
