@@ -9,23 +9,34 @@
 #include <numeric>
 #include <algorithm>
 #include <cmath>
-#include "BaseConvexFunction.h"
 #include <cassert>
+#include <Eigen/Dense>
+#include "BaseConvexFunction.h"
 
 namespace mopmc::optimization::convex_functions {
+
+    template<typename V>
+    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    template<typename V>
+    using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
+
     template<typename V>
     class SignedKLEuclidean : public BaseConvexFunction<V> {
     public:
         explicit SignedKLEuclidean(std::vector<V> &c);
-
         SignedKLEuclidean(std::vector<V> &c, std::vector<bool> &isProb);
 
+        explicit SignedKLEuclidean(Vector<V> &e);
+        SignedKLEuclidean(Vector<V> &e, std::vector<bool> &isProb);
+
         V value(std::vector<V> &x) override;
+        V value1(Vector<V> &x) override;
 
         std::vector<V> subgradient(std::vector<V> &x) override;
+        Vector<V> subgradient1(Vector<V> &x) override;
 
         std::vector<V> c_;
-        std::vector<bool> isProb_;
+        std::vector<bool> isProb2_;
     };
 
     template<typename V>

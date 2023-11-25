@@ -4,21 +4,12 @@
 
 
 #include <iostream>
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
-#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
-#include <storm/models/sparse/Mdp.h>
+//#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
-#include <storm/adapters/EigenAdapter.h>
 #include "ConvQuery.h"
-#include <storm/api/storm.h>
-#include "../model-checking/SparseMultiObjective.h"
-#include "../model-checking/MOPMCModelChecking.h"
-#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include "../solvers/ConvexQuery.h"
-#include "../solvers/CudaOnlyValueIteration.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
 #include "../convex-functions/TotalReLU.h"
@@ -26,19 +17,18 @@
 
 namespace mopmc::queries {
 
-    // typedef
-    typedef storm::models::sparse::Mdp<double> ModelType;
-    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
-    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
-    typedef Eigen::SparseMatrix<typename ModelType::ValueType, Eigen::RowMajor> EigenSpMatrix;
-    typedef typename ModelType::ValueType T;
+    template<typename V>
+    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
-    //ConvexQuery::ConvexQuery(const mopmc::Data<T,uint64_t> &data, const storm::Environment &env)
-    //        : data_(data), env_(env) {};
-    ConvexQuery::ConvexQuery(const mopmc::Data<T,uint64_t> &data): data_(data){};
+    template<typename V>
+    using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
-    void ConvexQuery::query() {
-        std::vector<T> w0 = {-.5, -.5};
+    template<typename T>
+    ConvexQuery<T>::ConvexQuery(const mopmc::Data<T,uint64_t> &data): data_(data){};
+
+    template<typename T>
+    void ConvexQuery<T>::query() {
+        //std::vector<T> w0 = {-.5, -.5};
         mopmc::Data<double, int> data32 = data_.castToGpuData();
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
                 data32.transitionMatrix,
@@ -86,7 +76,7 @@ namespace mopmc::queries {
         const uint64_t k = data_.colCount; // k: number of states
         assert(data_.rowGroupIndices.size()==k+1);
         std::vector<T> h = data_.thresholds;
-        Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> h_(h.data(), h.size());
+        Vector<T> h_ = Eigen::Map<Vector<T>>(data_.thresholds.data(), data_.thresholds.size());
 
         std::vector<std::vector<T>> rho(m);
         std::vector<T> rho_flat(n * m);//rho: all reward vectors
@@ -94,13 +84,19 @@ namespace mopmc::queries {
         //TODO In future we will use treat them differently in the loss function. :GS
         //Initialisation
         std::vector<std::vector<T>> Phi;
+        std::vector<Vector<T>> Phi_;
         std::vector<std::vector<T>> W;
+        std::vector<Vector<T>> W_;
         std::set<std::vector<T>> wSet;
+        std::set<Vector<T>> sSET_;
         //vt, vb
-        std::vector<T> vt = std::vector<T>(m, static_cast<T>(0.0));
-        std::vector<T> vb = std::vector<T>(m, static_cast<T>(0.0));
+        std::vector<T> vt = std::vector<T>(m, static_cast<T>(0.));
+        Vector<T> vt_ = Vector<T>::Zero(m, 1);
+        std::vector<T> vb = std::vector<T>(m, static_cast<T>(0.));
+        Vector<T> vb_ = Vector<T>::Zero(m, 1);
         //vi: initial vector for Frank-Wolfe
         std::vector<T> *vi;
+        Vector<T> *vi_;
         std::vector<T> r;
         std::vector<T> w = {-.0, -1.};// w: weight vector
                 // std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
@@ -111,24 +107,30 @@ namespace mopmc::queries {
         const uint_fast64_t maxIter{20};
 
         mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h);
+        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu1(h_);
+        assert(h.size()== h_.size());
 
         //Iteration
         uint_fast64_t iter = 0;
         T fDiff = 0;
+        T fDiff1 = 0;
         while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
             std::cout << "Iteration: " << iter << "\n";
             //std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
             //std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
             //fDiff = mopmc::solver::convex::diff(fvt, fvb);
             fDiff = std::abs(totalReLu.value(vt) - totalReLu.value(vb));
+            fDiff1 = std::abs(totalReLu1.value1(vt_) - totalReLu1.value1(vb_));
+            //assert(fDiff1==fDiff);
             if (!Phi.empty()) {
                 // compute the FW and find a new weight vector
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
                                                        *vi, 100, W, Phi, h);
+                vt_ = VectorMap<T>(vt.data(), vt.size());
                 //GS: To be consistent, may change the arg type of
                 // reluGradient() to vector. :GS
-                Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
-                Eigen::Matrix<T, Eigen::Dynamic, 1> cx = h_ - vt_;
+                //Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
+                Vector<T> cx = h_ - vt_;
                 std::vector<T> grad = mopmc::solver::convex::reluGradient(cx);
                 //GS: exit if the gradient is very small. :SG
                 if (mopmc::solver::convex::l1Norm(grad) < eps_p) { break; }
@@ -203,4 +205,5 @@ namespace mopmc::queries {
         std::cout << "----------------------------------------------\n";
     }
 
+    template class ConvexQuery<double>;
 }
