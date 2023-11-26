@@ -5,38 +5,50 @@
 #include "LinOpt.h"
 
 namespace mopmc::optimization::optimizers {
+
     template<typename V>
-    int LinOpt<V>::argmin(std::vector<std::vector<V>> &Phi, std::vector<std::vector<V>> &W, PolytopeRep &rep,
-                          std::vector<V> d, std::vector<V> &optValues) {
+    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d,
+                          Vector<V> &optValues) {
         //Reference https://lpsolve.sourceforge.net/5.5/
         lprec *lp;
         int Ncol, *colno = NULL, ret = 0;
         V *row = NULL;
+
+        assert(!Phi.empty());
         if (rep == VRep) {
-            /* We will build the model row by row
-            So we start with creating a model with 0 rows and @Ncol columns */
-            Ncol = Phi.size(); /* there are @Phi.size() variables in the model */
-            lp = make_lp(0, Ncol);
-            if (lp == NULL) ret = 1; /* couldn't construct a new model... */
+            // number of variables in V case
+            Ncol = Phi.size();
+        } else {
+            assert(!W.empty());
+            // number of variables in H case
+            Ncol = W[0].size();
+        }
+
+        /* We start with creating a model with 0 rows and @Ncol columns */
+        lp = make_lp(0, Ncol);
+        if (lp == NULL)
+            ret = 1; /* couldn't construct a new model... */
+        if (ret == 0) {
+            /* let us name our variables. Not required, but can be useful for debugging */
+            //for (int j=0; j<Ncol; ++j) {
+            //    set_col_name(lp, j+1, std::(j));
+            //}
+            colno = (int *) malloc(Ncol * sizeof(*colno));
+            row = (V *) malloc(Ncol * sizeof(*row));
+            if ((colno == NULL) || (row == NULL))
+                ret = 2;
+        }
+
+        /* We will build the model row by row, depending on each case */
+        if (rep == VRep) {
             if (ret == 0) {
-                /* let us name our variables. Not required, but can be useful for debugging */
-                //for (int j=0; j<Ncol; ++j) {
-                //    set_col_name(lp, j+1, std::(j));
-                //}
-                colno = (int *) malloc(Ncol * sizeof(*colno));
-                row = (V *) malloc(Ncol * sizeof(*row));
-                if ((colno == NULL) || (row == NULL)) {
-                    ret = 2;
-                }
-            }
-            if (ret == 0) {
-                std::vector<V> c(Ncol);
+                Vector<V> c(Ncol);
                 for (int j = 0; j < Ncol; ++j) {
-                    std::vector<V> r = Phi[j];
+                    Vector<V> r = Phi[j];
                     assert(r.size() == d.size());
-                    c[j] = std::inner_product(d.begin(), d.end(), r.begin(), static_cast<V>(0.));
+                    c(j) = d.dot(r);
                     colno[j] = j + 1;
-                    row[j] = c[j];
+                    row[j] = c(j);
                 }
                 /* set the objective in lpsolve */
                 if (!set_obj_fnex(lp, Ncol, row, colno))
@@ -62,20 +74,10 @@ namespace mopmc::optimization::optimizers {
                 set_add_rowmode(lp, FALSE);
             }
         } else {
-            assert (!W.empty());
-
-            Ncol = W[0].size();
-            if (ret == 0) {
-                colno = (int *) malloc(Ncol * sizeof(*colno));
-                row = (V *) malloc(Ncol * sizeof(*row));
-                if ((colno == NULL) || (row == NULL)) {
-                    ret = 2;
-                }
-            }
             if (ret == 0) {
                 for (int j = 0; j < Ncol; ++j) {
                     colno[j] = j + 1;
-                    row[j] = d[j];
+                    row[j] = d(j);
                 }
                 /* set the objective in lpsolve */
                 if (!set_obj_fnex(lp, Ncol, row, colno))
@@ -84,13 +86,12 @@ namespace mopmc::optimization::optimizers {
             if (ret == 0) {
                 set_add_rowmode(lp, TRUE);  /* makes building the model faster if it is done rows by row */
                 // constraints
-                //std::vector<V> c(Ncol);
                 for (int i = 0; i < Phi.size(); ++i) {
                     for (int j = 0; j < Ncol; ++j) {
                         colno[0] = j + 1;
-                        row[0] = W[i][j];
+                        row[0] = W[i](j);
                     }
-                    V e = std::inner_product(W[i].begin(), W[i].end(), Phi[i].begin(), static_cast<V>(0.));
+                    V e = W[i].dot(Phi[i]);
                     if (!add_constraintex(lp, Ncol, row, colno, LE, e))
                         ret = 3;
                 }
@@ -113,7 +114,7 @@ namespace mopmc::optimization::optimizers {
         if (ret == 0) {
             /* a solution is calculated, now lets get some results */
             /* objective value */
-            printf("Objective value: %f\n", get_objective(lp));
+            printf("Objective value1: %f\n", get_objective(lp));
             /* variable values */
             get_variables(lp, row);
             //for(int j = 0; j < Ncol; j++)
@@ -126,13 +127,12 @@ namespace mopmc::optimization::optimizers {
         if (lp != NULL) { delete_lp(lp); }
 
         return (ret);
-    }
-
+    };
 
     template<typename V>
-    int LinOpt<V>::argmin(std::vector<std::vector<V>> &Phi, PolytopeRep &rep, std::vector<V> d,
-                          std::vector<V> &optValues) {
-        std::vector<std::vector<V>> W0 = std::vector<std::vector<V>>();
+    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues) {
+
+        std::vector<Vector<V>> W0;
         return argmin(Phi, W0, rep, d, optValues);
     }
 

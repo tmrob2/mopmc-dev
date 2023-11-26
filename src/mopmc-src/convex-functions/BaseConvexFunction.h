@@ -25,11 +25,11 @@ namespace mopmc::optimization::convex_functions {
         explicit BaseConvexFunction(VectorMap<V> &e) : e_(e){}
         explicit BaseConvexFunction(VectorMap<V> &e, std::vector<bool> isProb) : e_(e), isProb_(std::move(isProb)){}
 
-        virtual V value(std::vector<V> &x) = 0;
-        virtual V value1(Vector<V> &x) = 0;
+        virtual V value1(std::vector<V> &x) = 0;
+        virtual V value(Vector<V> &x) = 0;
 
-        virtual std::vector<V> subgradient(std::vector<V> &x) = 0;
-        virtual Vector<V> subgradient1(Vector<V> &x) = 0;
+        virtual std::vector<V> subgradient1(std::vector<V> &x) = 0;
+        virtual Vector<V> subgradient(Vector<V> &x) = 0;
 
         Vector<V> e_;
         std::vector<bool> isProb_;

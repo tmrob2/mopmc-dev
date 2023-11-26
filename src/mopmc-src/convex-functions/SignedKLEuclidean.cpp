@@ -36,7 +36,7 @@ namespace mopmc::optimization::convex_functions {
 
 
     template<typename V>
-    V SignedKLEuclidean<V>::value(std::vector<V> &x) {
+    V SignedKLEuclidean<V>::value1(std::vector<V> &x) {
 
         if (c_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
@@ -53,7 +53,7 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    V SignedKLEuclidean<V>::value1(Vector<V> &x) {
+    V SignedKLEuclidean<V>::value(Vector<V> &x) {
 
         if (this->e_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
@@ -70,7 +70,7 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    std::vector<V> SignedKLEuclidean<V>::subgradient(std::vector<V> &x) {
+    std::vector<V> SignedKLEuclidean<V>::subgradient1(std::vector<V> &x) {
         if (c_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
         }
@@ -87,7 +87,7 @@ namespace mopmc::optimization::convex_functions {
 
 
     template<typename V>
-    Vector<V> SignedKLEuclidean<V>::subgradient1(Vector<V> &x) {
+    Vector<V> SignedKLEuclidean<V>::subgradient(Vector<V> &x) {
         if (this->e_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
         }

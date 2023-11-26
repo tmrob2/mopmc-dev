@@ -17,7 +17,7 @@ namespace mopmc::optimization::convex_functions {
     TotalReLU<V>::TotalReLU(VectorMap<V> &e) : BaseConvexFunction<V>(e) {}
 
     template<typename V>
-    V TotalReLU<V>::value(std::vector<V> &x) {
+    V TotalReLU<V>::value1(std::vector<V> &x) {
 
         if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
@@ -31,7 +31,7 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    std::vector<V> TotalReLU<V>::subgradient(std::vector<V> &x) {
+    std::vector<V> TotalReLU<V>::subgradient1(std::vector<V> &x) {
 
         if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
@@ -49,7 +49,7 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    V TotalReLU<V>::value1(Vector<V> &x) {
+    V TotalReLU<V>::value(Vector<V> &x) {
         std::cout << "x.size(): " << x.size() << ", e_.size(): " << this->e_.size() <<std::endl;
         if (x.size() != this->e_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
@@ -62,7 +62,7 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    Vector<V> TotalReLU<V>::subgradient1(Vector<V> &x) {
+    Vector<V> TotalReLU<V>::subgradient(Vector<V> &x) {
         if (x.size() != this->e_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }

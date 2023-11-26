@@ -14,18 +14,23 @@
 #include <numeric>
 #include <cstring>
 #include <stdexcept>
+#include <Eigen/Dense>
 #include "lp_lib.h"
 
 namespace mopmc::optimization::optimizers {
 
     template<typename V>
+    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    template<typename V>
+    using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
+
+    template<typename V>
     class LinOpt {
     public:
-        int argmin(std::vector<std::vector<V>> &Phi, std::vector<std::vector<V>> &W,
-                              PolytopeRep &rep, std::vector<V> d, std::vector<V> &optValues);
 
-        int argmin(std::vector<std::vector<V>> &Phi, PolytopeRep &rep,
-                   std::vector<V> d, std::vector<V> &optValues);
+        int argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues);
+
+        int argmin(std::vector<Vector<V>> &Phi, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues);
 
     };
 }

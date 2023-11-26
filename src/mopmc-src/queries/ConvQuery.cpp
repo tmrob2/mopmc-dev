@@ -13,6 +13,8 @@
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
 #include "../convex-functions/TotalReLU.h"
+#include "../optimizers/FrankWolfe.h"
+#include "../optimizers/PolytopeRepresentation.h"
 
 
 namespace mopmc::queries {
@@ -106,27 +108,30 @@ namespace mopmc::queries {
         const double eps1{1.e-4};
         const uint_fast64_t maxIter{20};
 
-        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h);
-        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu1(h_);
+        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu1(h);
+        mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h_);
         assert(h.size()== h_.size());
 
         //Iteration
         uint_fast64_t iter = 0;
-        T fDiff = 0;
         T fDiff1 = 0;
-        while (iter < maxIter && (Phi.size() < 3 || fDiff > eps)) {
+        T fDiff = 0;
+        while (iter < maxIter && (Phi.size() < 3 || fDiff1 > eps)) {
             std::cout << "Iteration: " << iter << "\n";
             //std::vector<T> fvt = mopmc::solver::convex::ReLU(vt, h);
             //std::vector<T> fvb = mopmc::solver::convex::ReLU(vb, h);
             //fDiff = mopmc::solver::convex::diff(fvt, fvb);
-            fDiff = std::abs(totalReLu.value(vt) - totalReLu.value(vb));
-            fDiff1 = std::abs(totalReLu1.value1(vt_) - totalReLu1.value1(vb_));
+            fDiff1 = std::abs(totalReLu1.value1(vt) - totalReLu1.value1(vb));
+            fDiff = std::abs(totalReLu.value(vt_) - totalReLu.value(vb_));
+            mopmc::optimization::convex_functions::TotalReLU<T> fn(h_);
+            mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
             //assert(fDiff1==fDiff);
             if (!Phi.empty()) {
                 // compute the FW and find a new weight vector
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
                                                        *vi, 100, W, Phi, h);
-                vt_ = VectorMap<T>(vt.data(), vt.size());
+                Vector<T> vt11_ = frankWolfe.argmin(Phi_, *vi_,VRep, true);
+                //vt_ = VectorMap<T>(vt.data(), vt.size());
                 //GS: To be consistent, may change the arg type of
                 // reluGradient() to vector. :GS
                 //Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());

@@ -24,11 +24,11 @@ namespace mopmc::optimization::convex_functions {
         explicit TotalReLU(Vector<V> &e);
         explicit TotalReLU(VectorMap<V> &e);
 
-        V value(std::vector<V> &x) override;
-        V value1(Vector<V> &x) override;
+        V value1(std::vector<V> &x) override;
+        V value(Vector<V> &x) override;
 
-        std::vector<V> subgradient(std::vector<V> &x) override;
-        Vector<V> subgradient1(Vector<V> &x) override;
+        std::vector<V> subgradient1(std::vector<V> &x) override;
+        Vector<V> subgradient(Vector<V> &x) override;
 
         std::vector<V> c_;
     };

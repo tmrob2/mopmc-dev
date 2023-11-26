@@ -12,8 +12,6 @@ namespace mopmc::queries {
 
     template<typename T>
     class ConvexQuery{
-        //typedef storm::models::sparse::Mdp<double> ModelType;
-        //typedef typename ModelType::ValueType T;
 
     public:
 
