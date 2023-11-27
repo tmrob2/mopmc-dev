@@ -28,7 +28,7 @@ namespace mopmc::optimization::optimizers {
     class LinOpt {
     public:
 
-        int argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues);
+        int argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d, Vector<V> &out);
 
         int argmin(std::vector<Vector<V>> &Phi, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues);
 

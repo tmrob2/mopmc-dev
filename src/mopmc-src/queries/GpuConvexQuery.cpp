@@ -4,11 +4,10 @@
 
 
 #include <iostream>
-//#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
-#include "ConvQuery.h"
+#include "GpuConvexQuery.h"
 #include "../solvers/ConvexQuery.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
@@ -16,22 +15,12 @@
 #include "../optimizers/FrankWolfe.h"
 #include "../optimizers/PolytopeRepresentation.h"
 
-
 namespace mopmc::queries {
 
-    template<typename V>
-    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
-
-    template<typename V>
-    using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
-
     template<typename T>
-    ConvexQuery<T>::ConvexQuery(const mopmc::Data<T,uint64_t> &data): data_(data){};
-
-    template<typename T>
-    void ConvexQuery<T>::query() {
+    void GpuConvexQuery<T>::query() {
         //std::vector<T> w0 = {-.5, -.5};
-        mopmc::Data<double, int> data32 = data_.castToGpuData();
+        mopmc::Data<double, int> data32 = this->data_.castToGpuData();
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
                 data32.transitionMatrix,
                 data32.rowGroupIndices,
@@ -43,42 +32,13 @@ namespace mopmc::queries {
         );
         cudaVIHandler.initialise();
 
-        //CUDA ONLY TEST BLOCK
-        /*
-        {
-            mopmc::Data<double, int> data32 = data_.castToGpuData();
-            mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                    data32.transitionMatrix,
-                    data32.rowGroupIndices,
-                    data32.row2RowGroupMapping,
-                    data32.flattenRewardVector,
-                    data32.defaultScheduler,
-                    data32.initialRow,
-                    data32.objectiveCount
-            );
-            cudaVIHandler.initialise();
-            cudaVIHandler.valueIterationPhaseOne(w);
-            cudaVIHandler.valueIterationPhaseTwo();
-            cudaVIHandler.exit();
-                std::cout << "----------------------------------------------\n";
-                std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
-                std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
-                std::cout << "Result at initial state ";
-                for (int i = 0; i < data32.objectiveCount; ++i) {
-                    std::cout << "- Objective " << i << ": " << cudaVIHandler.results_[i] << " ";
-                }std::cout <<"\n";
-                std::cout << "(Negative) Weighted result: " << cudaVIHandler.results_[data32.objectiveCount] << "\n";
-                std::cout << "----------------------------------------------\n";
-        }
-         */
-
         //variable definitions
-        const uint64_t m = data_.objectiveCount; // m: number of objectives
-        const uint64_t n = data_.rowCount; // n: number of choices / state-action pairs
-        const uint64_t k = data_.colCount; // k: number of states
-        assert(data_.rowGroupIndices.size()==k+1);
-        std::vector<T> h = data_.thresholds;
-        Vector<T> h_ = Eigen::Map<Vector<T>>(data_.thresholds.data(), data_.thresholds.size());
+        const uint64_t m = this->data_.objectiveCount; // m: number of objectives
+        const uint64_t n = this->data_.rowCount; // n: number of choices / state-action pairs
+        const uint64_t k = this->data_.colCount; // k: number of states
+        assert(this->data_.rowGroupIndices.size()==k+1);
+        std::vector<T> h = this->data_.thresholds;
+        Vector<T> h_ = Eigen::Map<Vector<T>>(this->data_.thresholds.data(), this->data_.thresholds.size());
 
         std::vector<std::vector<T>> rho(m);
         std::vector<T> rho_flat(n * m);//rho: all reward vectors
@@ -90,7 +50,7 @@ namespace mopmc::queries {
         std::vector<std::vector<T>> W;
         std::vector<Vector<T>> W_;
         std::set<std::vector<T>> wSet;
-        std::set<Vector<T>> sSET_;
+        std::set<Vector<T>> wSet_;
         //vt, vb
         std::vector<T> vt = std::vector<T>(m, static_cast<T>(0.));
         Vector<T> vt_ = Vector<T>::Zero(m, 1);
@@ -100,13 +60,15 @@ namespace mopmc::queries {
         std::vector<T> *vi;
         Vector<T> *vi_;
         std::vector<T> r;
+        Vector<T> r_;
         std::vector<T> w = {-.0, -1.};// w: weight vector
                 // std::vector<T>(m, static_cast<T>(-1.0) / static_cast<T>(m));
+        Vector<T> w_ = VectorMap<T> (w.data(), w.size());
         //thresholds for stopping the iteration
         const double eps{0.};
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
-        const uint_fast64_t maxIter{20};
+        const uint_fast64_t maxIter{4};
 
         mopmc::optimization::convex_functions::TotalReLU<T> totalReLu1(h);
         mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h_);
@@ -123,6 +85,9 @@ namespace mopmc::queries {
             //fDiff = mopmc::solver::convex::diff(fvt, fvb);
             fDiff1 = std::abs(totalReLu1.value1(vt) - totalReLu1.value1(vb));
             fDiff = std::abs(totalReLu.value(vt_) - totalReLu.value(vb_));
+            std::cout << "fDiff1 by std vector: " << fDiff1 << ", fDiff by eigen vector: " << fDiff <<"\n";
+            std::cout << "vt by std vector: [" << vt[0] <<", " << vt[1] <<"]\n";
+            std::cout << "vt_ by eigen: [" << vt_(0) <<", " << vt_(1) <<"]\n";
             mopmc::optimization::convex_functions::TotalReLU<T> fn(h_);
             mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
             //assert(fDiff1==fDiff);
@@ -130,31 +95,50 @@ namespace mopmc::queries {
                 // compute the FW and find a new weight vector
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
                                                        *vi, 100, W, Phi, h);
-                Vector<T> vt11_ = frankWolfe.argmin(Phi_, *vi_,VRep, true);
-                //vt_ = VectorMap<T>(vt.data(), vt.size());
+                vt_ = frankWolfe.argmin(Phi_, *vi_, VRep, false);
+
+                Vector<T> vt1_ = VectorMap<T>(vt.data(), vt.size());
                 //GS: To be consistent, may change the arg type of
                 // reluGradient() to vector. :GS
                 //Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> vt_(vt.data(), vt.size());
-                Vector<T> cx = h_ - vt_;
+                Vector<T> cx = h_ - vt1_;
                 std::vector<T> grad = mopmc::solver::convex::reluGradient(cx);
+                Vector<T> grad_ = fn.subgradient(vt_);
                 //GS: exit if the gradient is very small. :SG
-                if (mopmc::solver::convex::l1Norm(grad) < eps_p) { break; }
+                //std::cout << "L1 norm of gradient by std vector: " << mopmc::solver::convex::l1Norm(grad) <<"\n";
+                if (mopmc::solver::convex::l1Norm(grad) < eps_p) {
+                    break;
+                }
                 w = mopmc::solver::convex::computeNewW(grad);
                 for (double & i : w) {
                  i = -i;
                 }
+
+                //if (grad_.template lpNorm<1>() < eps_p ) { break; }
+                //assert (grad_.size() == 2);
+                //std::cout << "grad_(0): " << grad_(0) <<std::endl;
+                //std::cout << "grad_(1): " << grad_(1) <<std::endl;
+                //std::cout << "grad_.template lpNorm<1>(): " << grad_.template lpNorm<1>() <<std::endl;
+                w_ = static_cast<T>(-1.) * grad_ / grad_.template lpNorm<1>();
             }
-
-
-            std::cout << "w*: ";
+            /*
+            std::cout << "w in std vector: ";
             for (double i : w){
                 std::cout << i << ",";
             }
             std::cout << "\n";
+            std::cout << "w_ in eigen: ";
+            for (int i=0; i<w_.size(); ++i){
+                std::cout << w_(i) << ",";
+            }
+            std::cout << "\n";
+             */
+
 
             //GS: As mention, double check whether we need to
             // maintain W and wSet. :SG
             // if the w generated is already contained with W
+
             if (wSet.find(w) != wSet.end()) {
                 std::cout << "W already in set => W ";
                 for (auto val: w) {
@@ -164,17 +148,28 @@ namespace mopmc::queries {
                 break;
             }
 
-
             // compute a new supporting hyperplane
+            std::vector<T> w1(w_.data(), w_.data() + w_.size());
+            /*
+            std::cout << "w1 before value iteration: ";
+            for (double i : w1){
+                std::cout << i << ",";
+            }
+            std::cout << "\n";
+             */
+            //cudaVIHandler.valueIteration(w1);
             cudaVIHandler.valueIteration(w);
             // get the first m elements of cudaVIHandler.results_
             r = cudaVIHandler.getResults();
             r.resize(m);
-
+            r_ = VectorMap<T>(r.data(), r.size());
+            //std::cout << "HEHE!!!\n";
             Phi.push_back(r);
+            Phi_.push_back(r_);
             //LambdaL.push_back(w);
             //LambdaR.push_back(r);
             W.push_back(w);
+            W_.push_back(w_);
             wSet.insert(w);
 
             //GS: Compute the initial for frank-wolfe and projectedGD.
@@ -186,14 +181,23 @@ namespace mopmc::queries {
                 vi = &vt;
             }
 
+            if (Phi_.size() == 1) {
+                vi_ = &r_;
+            } else {
+                vi_ = &vt_;
+            }
+
             T wr = std::inner_product(w.begin(), w.end(), r.begin(), static_cast<T>(0.));
+            T wr_ = w_.dot(r_);
             T wvb = std::inner_product(w.begin(), w.end(), vb.begin(), static_cast<T>(0.));
+            T wvb_ = w_.dot(vb_);
             if (W.size() == 1 || wr < wvb) {
                 T gamma = static_cast<T>(0.1);
                 std::cout << "|Phi|: " << Phi.size() << "\n";
                 vb = mopmc::solver::convex::projectedGradientDescent(
                         mopmc::solver::convex::reluGradient,
                         *vi, gamma, 10, Phi, W, Phi.size(), h, eps1);
+                vb_ = frankWolfe.argmin(Phi_, W_, *vi_, HRep, false);
             }
             ++iter;
         }
@@ -210,5 +214,5 @@ namespace mopmc::queries {
         std::cout << "----------------------------------------------\n";
     }
 
-    template class ConvexQuery<double>;
+    template class GpuConvexQuery<double>;
 }

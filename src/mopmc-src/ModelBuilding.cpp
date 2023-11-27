@@ -21,8 +21,8 @@
 
 namespace mopmc {
 
-    typedef storm::models::sparse::Mdp<double> ModelType;
-    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
+    //typedef storm::models::sparse::Mdp<double> ModelType;
+    //typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
     //typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
 
     template<typename M>
@@ -75,5 +75,5 @@ namespace mopmc {
         return prepResult;
     }
 
-    template class ModelBuilder<ModelType>;
+    template class ModelBuilder<storm::models::sparse::Mdp<double>>;
 }

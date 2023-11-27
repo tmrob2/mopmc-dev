@@ -23,7 +23,7 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     class FrankWolfe {
     public:
-        FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
+        explicit FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          std::vector<Vector<V>> &W,
@@ -43,7 +43,7 @@ namespace mopmc::optimization::optimizers {
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
         V epsilon = 1e-3;
         V gamma;
-        V gamma0 = static_cast<V>(2.0);
+        V gamma0 = static_cast<V>(0.1);
         int maxIter = 100;
     };
 

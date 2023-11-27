@@ -63,7 +63,7 @@ namespace mopmc::optimization::optimizers {
                 }
                 /* add the row to lpsolve */
                 if (!add_constraintex(lp, Ncol, row, colno, LE, static_cast<V>(1.)))
-                    ret = 3;;
+                    ret = 3;
                 // other constraints
                 for (int j = 0; j < Ncol; ++j) {
                     colno[0] = j + 1;
@@ -91,8 +91,8 @@ namespace mopmc::optimization::optimizers {
                         colno[0] = j + 1;
                         row[0] = W[i](j);
                     }
-                    V e = W[i].dot(Phi[i]);
-                    if (!add_constraintex(lp, Ncol, row, colno, LE, e))
+                    V wr = W[i].dot(Phi[i]);
+                    if (!add_constraintex(lp, Ncol, row, colno, LE, wr))
                         ret = 3;
                 }
                 set_add_rowmode(lp, FALSE);
@@ -102,9 +102,9 @@ namespace mopmc::optimization::optimizers {
         if (ret == 0) {
             /* set the object direction to maximize */
             set_minim(lp);
-            /* just out of curioucity, now show the model in lp format on screen */
+            /* just out of curiosity, now show the model in lp format on screen */
             /* this only works if this is a console application. If not, use write_lp and a filename */
-            write_LP(lp, stdout); /* write_lp(lp, "model.lp"); */
+            //write_LP(lp, stdout); /* write_lp(lp, "model.lp"); */
             /* only to see important messages on screen while solving */
             set_verbose(lp, IMPORTANT);
             /* Now let lpsolve calculate a solution */
@@ -114,13 +114,24 @@ namespace mopmc::optimization::optimizers {
         if (ret == 0) {
             /* a solution is calculated, now lets get some results */
             /* objective value */
-            printf("Objective value1: %f\n", get_objective(lp));
+            //printf("Objective value1: %f\n", get_objective(lp));
             /* variable values */
             get_variables(lp, row);
-            //for(int j = 0; j < Ncol; j++)
-            //    printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
+            //for(int j = 0; j < Ncol; ++j)
+            //   printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
             /* we are done now */
         }
+        if (rep== VRep) {
+            //VectorMap<V> sol(row, Ncol);
+            optValues.setZero();
+            for (int j = 0; j < Ncol; ++j ){
+                optValues += row[j] * Phi[j];
+            }
+        } else {
+            optValues = VectorMap<V> (row, Ncol);
+        }
+
+
         /* free allocated memory */
         if (row != NULL) { free(row); }
         if (colno != NULL) { free(colno); }

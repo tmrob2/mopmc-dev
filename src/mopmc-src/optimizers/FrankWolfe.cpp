@@ -3,10 +3,11 @@
 //
 
 #include <cmath>
+#include <iostream>
 #include "FrankWolfe.h"
 #include "../convex-functions/BaseConvexFunction.h"
 
-namespace mopmc::optimization::optimizers{
+namespace mopmc::optimization::optimizers {
 
     template<typename V>
     Vector<V> FrankWolfe<V>::argmin(std::vector<Vector<V>> &Phi,
@@ -14,31 +15,47 @@ namespace mopmc::optimization::optimizers{
                                     Vector<V> &xIn,
                                     PolytopeRep rep,
                                     bool doLineSearch) {
-        if (rep==HRep) {
-            assert (!W.empty());
+        if (Phi.empty()) {
+            throw std::runtime_error("The set of vertices cannot be empty");
         }
+        if (rep == HRep) {
+            if (W.size() != Phi.size()) {
+                throw std::runtime_error("The numbers of vertices and weights are not the same");
+            }
+        }
+        mopmc::optimization::optimizers::LinOpt<V> linOpt;
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
         auto m = xIn.size();
         Vector<V> xOld(m), xNew = xIn;
         Vector<V> vStar(m);
         for (int i = 0; i < maxIter; ++i) {
+            std::cout << "**xNew in FrankWolfe**: [" << xNew(0) <<", "<< xNew(1) << "]\n";
             xOld = xNew;
             Vector<V> d = this->fn->subgradient(xOld);
-            mopmc::optimization::optimizers::LinOpt<V> linOpt;
-            if (static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld) <= epsilon) {
-                break;
-            }
-            if (rep == VRep ) {
+            if (rep == VRep) {
+                //std::cout << "**vStar for VRep before linOpt: [";
+                for(int j=0; j < vStar.size(); ++j) {
+                    std::cout << vStar(j) << " ";
+                }
+                std::cout <<"]\n";
                 linOpt.argmin(Phi, rep, d, vStar);
+                std::cout << "**vStar for VRep after linOpt after " << i << " iteration: [";
+                for(int j=0; j < vStar.size(); ++j) {
+                    std::cout << vStar(j) << " ";
+                }
+                std::cout <<"]\n";
             } else {
                 linOpt.argmin(Phi, W, rep, d, vStar);
+            }
+            if (static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld) <= epsilon) {
+                break;
             }
             if (!doLineSearch) {
                 gamma = gamma0;
             } else {
                 gamma = lineSearch.findOptimalPoint(xOld, vStar);
             }
-            xNew = gamma * xOld + (1-gamma) * vStar;
+            xNew = gamma * xOld + (1 - gamma) * vStar;
         }
         return xNew;
     }
@@ -56,7 +73,8 @@ namespace mopmc::optimization::optimizers{
 
     template<typename V>
     FrankWolfe<V>::FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
-            : fn(f){}
+            : fn(f) {}
 
-    template class FrankWolfe<double>;
+    template
+    class FrankWolfe<double>;
 }

@@ -50,7 +50,7 @@ namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     V TotalReLU<V>::value(Vector<V> &x) {
-        std::cout << "x.size(): " << x.size() << ", e_.size(): " << this->e_.size() <<std::endl;
+        //std::cout << "x.size(): " << x.size() << ", e_.size(): " << this->e_.size() <<std::endl;
         if (x.size() != this->e_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }
