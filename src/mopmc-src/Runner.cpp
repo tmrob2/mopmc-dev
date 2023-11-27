@@ -2,37 +2,27 @@
 // Created by guoxin on 2/11/23.
 //
 
-#include <storm/api/storm.h>
+
 #include <storm-parsers/api/storm-parsers.h>
-#include <storm-parsers/parser/PrismParser.h>
-#include <storm/storage/prism/Program.h>
-#include "ExplicitModelBuilder.h"
-//#include "model-checking/SparseMultiObjective.h"
 #include <string>
 #include <iostream>
 #include <storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h>
 #include <storm/environment/Environment.h>
 #include <storm/models/sparse/Mdp.h>
-
-#include "Runner.h"
-#include "model-checking/MultiObjectivePreprocessor.h"
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
-//#include <storm/modelchecker/multiobjective/pcaa/StandardPcaaWeightVectorChecker.h>
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
-#include <storm/storage/sparse/StateType.h>
-
-#include <storm/storage/BitVector.h>
-#include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
-#include <storm/adapters/EigenAdapter.h>
-#include "queries/ConvQuery.h"
-#include "./model-checking/MOPMCModelChecking.h"
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h>
+#include "Runner.h"
+//#include "ExplicitModelBuilder.h"
 #include "ModelBuilding.h"
 #include "Transformation.h"
 #include "Data.h"
-
+#include "queries/GpuConvexQuery.h"
+#include "convex-functions/TotalReLU.h"
+#include "convex-functions/SignedKLEuclidean.h"
+#include "queries/TestingQuery.h"
+#include <Eigen/Dense>
 
 namespace mopmc {
 
@@ -49,54 +39,38 @@ namespace mopmc {
         assert (typeid(IndexType)==typeid(uint64_t));
 
         storm::Environment env;
-        auto prepResult = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
-        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform(prepResult);
-        mopmc::queries::ConvexQuery q(data, env);
+        auto prep = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
+        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform(prep);
+        mopmc::queries::TestingQuery<ValueType> q(data);
+        //mopmc::queries::GpuConvexQuery<ValueType> q(data);
         q.query();
+
+        /*
+        std::vector<double> c = {2.0, 0.5};
+        std::vector<bool> b = {false, true};
+        std::vector<double> x = {1.8, 0.42};
+
+        mopmc::optimization::convex_functions::SignedKLEuclidean<double> kle(c, b);
+        std::cout << "## std::vector results: \n";
+        std::cout << "kle value1 at x = {1.8, 0.42}: " << kle.value1(x) << "\n";
+        std::cout << "kle gradient at x = {1.8, 0.42}: [ " << kle.subgradient1(x)[0] << ", " << kle.subgradient1(x)[1] << "]\n";
+        std::cout << "kle value1 at c = {2.0, 0.5}: " << kle.value1(c) << "\n";
+        std::cout << "kle gradient c = {2.0, 0.5}: [ " << kle.subgradient1(c)[0] << ", " << kle.subgradient1(c)[1] << "]\n";
+
+        using Vector =  Eigen::Matrix<double, Eigen::Dynamic, 1>;
+        using VectorMap = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, 1>>;
+
+        Vector c_ = VectorMap(c.data(), c.size());
+        Vector x_ = VectorMap(x.data(), x.size());
+        std::cout << "## Eigen vector results: \n";
+        mopmc::optimization::convex_functions::SignedKLEuclidean<double> kle1(c_, b);
+        std::cout << "kle value1 at x = {1.8, 0.42}: " << kle1.value(x_) << "\n";
+        std::cout << "kle gradient at x = {1.8, 0.42}: [ " << kle1.subgradient(x_)(0) << ", " << kle1.subgradient(x_)(1) << "]\n";
+        std::cout << "kle value1 at c = {2.0, 0.5}: " << kle1.value(c_) << "\n";
+        std::cout << "kle gradient c = {2.0, 0.5}: [ " << kle1.subgradient(c_)(0) << ", " << kle1.subgradient(c_)(1) << "]\n";
+         */
+
         return true;
 
     }
-
-    /*
-        env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
-        //auto program = storm::parser::PrismParser::parse(path_to_model);
-        storm::prism::Program program = storm::api::parseProgram(path_to_model);
-        program = storm::utility::prism::preprocess(program, "");
-        //std::cout << "Model Type: " << program.getModelType() << std::endl;
-        // Then parse the properties, passing the program to give context to some potential variables.
-        auto properties = storm::api::parsePropertiesForPrismProgram(property_string, program);
-        // Translate properties into the more low-level formulae.
-        auto formulas = storm::api::extractFormulasFromProperties(properties);
-
-        std::shared_ptr<storm::models::sparse::Mdp<ModelType::ValueType>> mdp =
-                storm::api::buildSparseModel<ModelType::ValueType>(program, formulas)->as<ModelType>();
-
-        std::cout << "Number of states in original mdp: " << mdp->getNumberOfStates() << "\n";
-        std::cout << "Number of choices in original mdp: " << mdp->getNumberOfChoices() << "\n";
-
-        const auto formula = formulas[0]->asMultiObjectiveFormula();
-        PreprocessedType::ReturnType prepResult =
-                PreprocessedType::preprocess(env, *mdp, formula);
-
-        auto rewardAnalysis = storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectiveRewardAnalysis<ModelType>::analyze(prepResult);
-        std::string s1 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::AllFinite ? "yes" : "no";
-        std::string s2 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::ExistsParetoFinite ? "yes" : "no";
-        std::cout << "[!] The expected reward is finite for all objectives and all schedulers: " << s1 << std::endl;
-        std::cout << "[!] There is a Pareto optimal scheduler yielding finite rewards for all objectives: " << s2 << std::endl;
-
-
-        //std::ostream &outputStream = std::cout;
-        //prepResult.preprocessedModel->printModelInformationToStream(outputStream);
-
-        //Objectives must be total rewards
-        if (!prepResult.containsOnlyTotalRewardFormulas()) {
-            throw std::runtime_error("This framework handles total rewards only.");
-        }
-        //Confine the property (syntax) to achievability query
-        // We will convert it to a convex query.
-        if (prepResult.queryType != storm::modelchecker::multiobjective::preprocessing
-        ::SparseMultiObjectivePreprocessorResult<ModelType>::QueryType::Achievability) {
-            throw std::runtime_error("The input property should be achievability query type.");
-        }
-         */
 }

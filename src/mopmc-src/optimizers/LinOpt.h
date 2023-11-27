@@ -5,7 +5,7 @@
 #ifndef MOPMC_LINOPT_H
 #define MOPMC_LINOPT_H
 
-#include "PolytopeRepresentation.h"
+#include "PolytopeTypeEnum.h"
 #include <vector>
 #include <cassert>
 #include <cstdio>
@@ -28,9 +28,9 @@ namespace mopmc::optimization::optimizers {
     class LinOpt {
     public:
 
-        int argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d, Vector<V> &out);
+        int argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeType &rep, Vector<V> d, Vector<V> &out);
 
-        int argmin(std::vector<Vector<V>> &Phi, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues);
+        int argmin(std::vector<Vector<V>> &Phi, PolytopeType &rep, Vector<V> d, Vector<V> &optValues);
 
     };
 }

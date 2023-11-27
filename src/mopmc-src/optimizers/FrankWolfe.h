@@ -9,7 +9,7 @@
 #include <cassert>
 #include <algorithm>
 #include <Eigen/Dense>
-#include "PolytopeRepresentation.h"
+#include "PolytopeTypeEnum.h"
 #include "../convex-functions/BaseConvexFunction.h"
 #include "../convex-functions/TotalReLU.h"
 #include "LinOpt.h"
@@ -28,12 +28,12 @@ namespace mopmc::optimization::optimizers {
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          std::vector<Vector<V>> &W,
                          Vector<V> &xIn,
-                         PolytopeRep rep,
+                         PolytopeType rep,
                          bool doLineSearch);
 
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          Vector<V> &xIn,
-                         PolytopeRep rep,
+                         PolytopeType rep,
                          bool doLineSearch);
 
         V lineSearch(Vector<V> &vLeft, Vector<V> &vRight, V epsilon2) {

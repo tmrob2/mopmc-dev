@@ -13,12 +13,12 @@ namespace mopmc::optimization::optimizers {
     Vector<V> FrankWolfe<V>::argmin(std::vector<Vector<V>> &Phi,
                                     std::vector<Vector<V>> &W,
                                     Vector<V> &xIn,
-                                    PolytopeRep rep,
+                                    PolytopeType rep,
                                     bool doLineSearch) {
         if (Phi.empty()) {
             throw std::runtime_error("The set of vertices cannot be empty");
         }
-        if (rep == HRep) {
+        if (rep == Halfspace) {
             if (W.size() != Phi.size()) {
                 throw std::runtime_error("The numbers of vertices and weights are not the same");
             }
@@ -32,7 +32,7 @@ namespace mopmc::optimization::optimizers {
             std::cout << "**xNew in FrankWolfe**: [" << xNew(0) <<", "<< xNew(1) << "]\n";
             xOld = xNew;
             Vector<V> d = this->fn->subgradient(xOld);
-            if (rep == VRep) {
+            if (rep == Vertex) {
                 //std::cout << "**vStar for VRep before linOpt: [";
                 for(int j=0; j < vStar.size(); ++j) {
                     std::cout << vStar(j) << " ";
@@ -64,7 +64,7 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     Vector<V> FrankWolfe<V>::argmin(std::vector<Vector<V>> &Phi,
                                     Vector<V> &xIn,
-                                    PolytopeRep rep,
+                                    PolytopeType rep,
                                     bool doLineSearch) {
         std::vector<Vector<V>> W0;
         return this->argmin(Phi, W0, xIn, rep, doLineSearch);

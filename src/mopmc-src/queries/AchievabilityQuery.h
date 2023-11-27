@@ -6,7 +6,7 @@
 #define MOPMC_ACHIEVABILITYQUERY_H
 
 
-namespace mopmc::achivabilityquery {
+namespace mopmc::queries {
  // TODO
 }
 

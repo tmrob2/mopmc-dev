@@ -13,7 +13,7 @@
 #include "../Data.h"
 #include "../convex-functions/TotalReLU.h"
 #include "../optimizers/FrankWolfe.h"
-#include "../optimizers/PolytopeRepresentation.h"
+#include "../optimizers/PolytopeTypeEnum.h"
 
 namespace mopmc::queries {
 
@@ -95,7 +95,7 @@ namespace mopmc::queries {
                 // compute the FW and find a new weight vector
                 vt = mopmc::solver::convex::frankWolfe(mopmc::solver::convex::reluGradient<T>,
                                                        *vi, 100, W, Phi, h);
-                vt_ = frankWolfe.argmin(Phi_, *vi_, VRep, false);
+                vt_ = frankWolfe.argmin(Phi_, *vi_, Vertex, false);
 
                 Vector<T> vt1_ = VectorMap<T>(vt.data(), vt.size());
                 //GS: To be consistent, may change the arg type of
@@ -197,7 +197,7 @@ namespace mopmc::queries {
                 vb = mopmc::solver::convex::projectedGradientDescent(
                         mopmc::solver::convex::reluGradient,
                         *vi, gamma, 10, Phi, W, Phi.size(), h, eps1);
-                vb_ = frankWolfe.argmin(Phi_, W_, *vi_, HRep, false);
+                vb_ = frankWolfe.argmin(Phi_, W_, *vi_, Halfspace, false);
             }
             ++iter;
         }

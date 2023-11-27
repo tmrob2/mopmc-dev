@@ -7,7 +7,7 @@
 namespace mopmc::optimization::optimizers {
 
     template<typename V>
-    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeRep &rep, Vector<V> d,
+    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeType &rep, Vector<V> d,
                           Vector<V> &optValues) {
         //Reference https://lpsolve.sourceforge.net/5.5/
         lprec *lp;
@@ -15,7 +15,7 @@ namespace mopmc::optimization::optimizers {
         V *row = NULL;
 
         assert(!Phi.empty());
-        if (rep == VRep) {
+        if (rep == Vertex) {
             // number of variables in V case
             Ncol = Phi.size();
         } else {
@@ -40,7 +40,7 @@ namespace mopmc::optimization::optimizers {
         }
 
         /* We will build the model row by row, depending on each case */
-        if (rep == VRep) {
+        if (rep == Vertex) {
             if (ret == 0) {
                 Vector<V> c(Ncol);
                 for (int j = 0; j < Ncol; ++j) {
@@ -121,7 +121,7 @@ namespace mopmc::optimization::optimizers {
             //   printf("%s: %f\n", get_col_name(lp, j + 1), row[j]);
             /* we are done now */
         }
-        if (rep== VRep) {
+        if (rep == Vertex) {
             //VectorMap<V> sol(row, Ncol);
             optValues.setZero();
             for (int j = 0; j < Ncol; ++j ){
@@ -141,7 +141,7 @@ namespace mopmc::optimization::optimizers {
     };
 
     template<typename V>
-    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, PolytopeRep &rep, Vector<V> d, Vector<V> &optValues) {
+    int LinOpt<V>::argmin(std::vector<Vector<V>> &Phi, PolytopeType &rep, Vector<V> d, Vector<V> &optValues) {
 
         std::vector<Vector<V>> W0;
         return argmin(Phi, W0, rep, d, optValues);
