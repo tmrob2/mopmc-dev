@@ -44,7 +44,8 @@ namespace mopmc::optimization::optimizers {
                     std::cout << vStar(j) << " ";
                 }
                 std::cout <<"]\n";
-            } else {
+            }
+            if (rep == Halfspace) {
                 linOpt.argmin(Phi, W, rep, d, vStar);
             }
             if (static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld) <= epsilon) {

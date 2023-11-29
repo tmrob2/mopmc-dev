@@ -5,6 +5,6 @@
 #ifndef MOPMC_POLYTOPETYPEENUM_H
 #define MOPMC_POLYTOPETYPEENUM_H
 
-enum PolytopeType {Vertex, Halfspace};
+enum PolytopeType {Vertex, Halfspace, Closure};
 
 #endif //MOPMC_POLYTOPETYPEENUM_H

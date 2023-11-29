@@ -19,9 +19,12 @@
 #include "Transformation.h"
 #include "Data.h"
 #include "queries/GpuConvexQuery.h"
+#include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
 #include "queries/TestingQuery.h"
+#include "lp_lib.h"
+//#include "/home/guoxin/Downloads/lp_solve_5.5.2.11_dev_ux64/lp_lib.h"
 #include <Eigen/Dense>
 
 namespace mopmc {
@@ -41,8 +44,9 @@ namespace mopmc {
         storm::Environment env;
         auto prep = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
         auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform(prep);
-        mopmc::queries::TestingQuery<ValueType> q(data);
+        //mopmc::queries::TestingQuery<ValueType> q(data);
         //mopmc::queries::GpuConvexQuery<ValueType> q(data);
+        mopmc::queries::AchievabilityQuery<ValueType> q(data);
         q.query();
 
         /*
