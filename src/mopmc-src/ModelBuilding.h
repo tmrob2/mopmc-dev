@@ -12,33 +12,36 @@
 #include <storm/environment/Environment.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
+#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 
 
 namespace  mopmc {
 
     template<typename M>
-    class ModelBuilder {
+    class ModelBuilder : public storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<M> {
     public:
+        explicit ModelBuilder(typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType returnType) :
+                storm::modelchecker::multiobjective::StandardMdpPcaaWeightVectorChecker<M>(returnType){};
 
-        static typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType build(
-                std::string const &path_to_model, std::string const &property_string, storm::Environment &env);
+        static typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType preprocess(
+                const std::string &path_to_model, const std::string &property_string, storm::Environment &env);
 
-        Eigen::SparseMatrix<double> transitionMatrix;
-        uint64_t rowCount{};
-        uint64_t colCount{};
-        std::vector<uint64_t> rowGroupIndices;
-        std::vector<uint64_t> row2RowGroupMapping;
-        std::vector<std::vector<typename M::ValueType>> rewardVectors;
-        std::vector<typename M::ValueType> flattenRewardVector;
-        uint64_t objectiveCount{};
-        std::vector<bool> probObjectives;
-        std::vector<typename M::ValueType> thresholds;
-        std::vector<typename M::ValueType> weightedVector;
-        std::vector<uint64_t> defaultScheduler;
-        uint64_t initialRow{};
+        static ModelBuilder<M> build(
+                typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &preliminaryData);
+
+        storm::storage::SparseMatrix<typename M::ValueType> getTransitionMatrix() {
+            return this->transitionMatrix;
+        }
+
+        std::vector<std::vector<typename M::ValueType>> getActionRewards() {
+            return this->actionRewards;
+        }
+
+        [[nodiscard]] uint64_t getInitialState() const {
+            return this->initialState;
+        }
 
     };
-
 
 }
 

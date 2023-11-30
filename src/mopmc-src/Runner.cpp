@@ -25,6 +25,8 @@
 #include "queries/TestingQuery.h"
 #include "lp_lib.h"
 #include <Eigen/Dense>
+#include <stdio.h>
+#include <time.h>
 
 namespace mopmc {
 
@@ -40,14 +42,27 @@ namespace mopmc {
         assert (typeid(ValueType)==typeid(double));
         assert (typeid(IndexType)==typeid(uint64_t));
 
-        storm::Environment env;
-        auto prep = mopmc::ModelBuilder<ModelType>::build(path_to_model, property_string, env);
-        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32(prep);
-        mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
-        //mopmc::queries::TestingQuery<ValueType, int> q(data);
-        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
-        q.query();
 
+
+        storm::Environment env;
+        clock_t time0 = clock();
+        auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);
+        clock_t time05 = clock();
+        auto preparedModel = mopmc::ModelBuilder<ModelType>::build(preprocessedResult);
+        clock_t time1 = clock();
+        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);
+        clock_t time2 = clock();
+        //mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
+        //mopmc::queries::TestingQuery<ValueType, int> q(data);
+        mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
+        q.query();
+        clock_t time3 = clock();
+
+        std::cout<<"       TIME STATISTICS        \n";
+        printf("Model building stage 1: %.3f seconds.\n", double(time05 - time0)/CLOCKS_PER_SEC);
+        printf("Model building stage 2: %.3f seconds.\n", double(time1 - time05)/CLOCKS_PER_SEC);
+        printf("Input data transformation: %.3f seconds.\n", double(time2 - time1)/CLOCKS_PER_SEC);
+        printf("Model checking: %.3f seconds.\n", double(time3 - time2)/CLOCKS_PER_SEC);
         /*
         std::vector<double> c = {2.0, 0.5};
         std::vector<bool> b = {false, true};

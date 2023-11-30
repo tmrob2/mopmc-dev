@@ -27,8 +27,8 @@ namespace mopmc {
 
     template<typename M>
     typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType
-    ModelBuilder<M>::build(const std::string &path_to_model, const std::string &property_string,
-                           storm::Environment &env) {
+    ModelBuilder<M>::preprocess(const std::string &path_to_model, const std::string &property_string,
+                                storm::Environment &env) {
 
         env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
@@ -75,6 +75,15 @@ namespace mopmc {
 
         return prepResult;
     }
+
+    template<typename M>
+    mopmc::ModelBuilder<M> ModelBuilder<M>::build(
+            typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &preliminaryData) {
+
+        ModelBuilder<M> prepModel(preliminaryData);
+        return prepModel;
+    }
+
 
     template class ModelBuilder<storm::models::sparse::Mdp<double>>;
 }

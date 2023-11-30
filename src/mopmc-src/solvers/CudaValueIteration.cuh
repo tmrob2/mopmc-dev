@@ -74,7 +74,7 @@ namespace mopmc {
 
                 double alpha=1.0, alpha2=-1.0, beta=1.0;
                 double eps=1.0, maxEps=0.0;
-                int maxIter=1000, maxInd = 0;
+                int maxIter=2000, maxInd = 0;
                 int iteration{};
 
                 //CUSPARSE APIs
