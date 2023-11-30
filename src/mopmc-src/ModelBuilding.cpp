@@ -51,12 +51,13 @@ namespace mopmc {
         typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType prepResult =
                 storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::preprocess(env, *mdp, formula);
 
+        /*
         auto rewardAnalysis = storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectiveRewardAnalysis<M>::analyze(prepResult);
         std::string s1 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::AllFinite ? "yes" : "no";
         std::string s2 = rewardAnalysis.rewardFinitenessType == storm::modelchecker::multiobjective::preprocessing::RewardFinitenessType::ExistsParetoFinite ? "yes" : "no";
         std::cout << "[!] The expected reward is finite for all objectives and all schedulers: " << s1 << std::endl;
         std::cout << "[!] There is a Pareto optimal scheduler yielding finite rewards for all objectives: " << s2 << std::endl;
-
+         */
 
         //std::ostream &outputStream = std::cout;
         //prepResult.preprocessedModel->printModelInformationToStream(outputStream);

@@ -18,11 +18,11 @@ namespace mopmc::queries {
     template<typename V>
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
-    template<typename T>
-    class TestingQuery : public BaseQuery<T>{
+    template<typename T, typename I>
+    class TestingQuery : public BaseQuery<T, I>{
     public:
 
-        explicit TestingQuery(const mopmc::Data<T,uint64_t> &data) : BaseQuery<T>(data) {};
+        explicit TestingQuery(const mopmc::Data<T,I> &data) : BaseQuery<T, I>(data) {};
         void query() override;
 
     };

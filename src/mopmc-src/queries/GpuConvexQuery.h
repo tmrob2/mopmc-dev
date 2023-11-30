@@ -16,16 +16,14 @@ namespace mopmc::queries {
     template<typename V>
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
-    template<typename T>
-    class GpuConvexQuery : public BaseQuery<T>{
+    template<typename T, typename I>
+    class GpuConvexQuery : public BaseQuery<T, I>{
     public:
-        explicit GpuConvexQuery(const mopmc::Data<T, uint64_t> &data) : BaseQuery<T>(data) {};
+        explicit GpuConvexQuery(const mopmc::Data<T, I> &data) : BaseQuery<T, I>(data) {};
 
         void query() override;
 
         Eigen::SparseMatrix<T, Eigen::RowMajor> P_;
-        //storm::Environment env_;
-        //mopmc::Data<T, uint64_t> data_;
     };
 }
 

@@ -19,24 +19,24 @@ namespace mopmc::queries {
     template<typename V>
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
-    template<typename T>
-    class AchievabilityQuery : public BaseQuery<T>{
+    template<typename T, typename I>
+    class AchievabilityQuery : public BaseQuery<T, I>{
     public:
-        explicit AchievabilityQuery(const mopmc::Data<T,uint64_t> &data) : BaseQuery<T>(data) {};
+        explicit AchievabilityQuery(const mopmc::Data<T,I> &data) : BaseQuery<T, I>(data) {};
         void query() override;
     };
 
-    template<typename T>
-    void AchievabilityQuery<T>::query() {
-        mopmc::Data<double, int> data32 = this->data_.castToGpuData();
+    template<typename T, typename I>
+    void AchievabilityQuery<T, I>::query() {
+
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                data32.transitionMatrix,
-                data32.rowGroupIndices,
-                data32.row2RowGroupMapping,
-                data32.flattenRewardVector,
-                data32.defaultScheduler,
-                data32.initialRow,
-                data32.objectiveCount
+                this->data_.transitionMatrix,
+                this->data_.rowGroupIndices,
+                this->data_.row2RowGroupMapping,
+                this->data_.flattenRewardVector,
+                this->data_.defaultScheduler,
+                this->data_.initialRow,
+                this->data_.objectiveCount
         );
         cudaVIHandler.initialise();
 
@@ -108,7 +108,8 @@ namespace mopmc::queries {
         std::cout << "----------------------------------------------\n";
     }
 
-    template class AchievabilityQuery<double>;
+    //template class AchievabilityQuery<double, uint64_t>;
+    template class AchievabilityQuery<double, int>;
 }
 
 

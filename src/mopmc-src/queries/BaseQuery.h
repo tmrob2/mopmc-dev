@@ -10,16 +10,16 @@
 
 namespace mopmc::queries {
 
-    template<typename T>
+    template<typename T, typename I>
     class BaseQuery {
     public:
 
         explicit BaseQuery() = default;
-        explicit BaseQuery(const mopmc::Data<T,uint64_t> &data): data_(data){};
+        explicit BaseQuery(const mopmc::Data<T,I> &data): data_(data){};
 
         virtual void query() = 0 ;
 
-        mopmc::Data<T, uint64_t> data_;
+        mopmc::Data<T, I> data_;
         storm::Environment env_;
     };
 

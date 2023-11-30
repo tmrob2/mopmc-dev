@@ -21,7 +21,12 @@ namespace mopmc {
         static mopmc::Data<V, I> transform(
                 typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn);
 
+        static mopmc::Data<V, int> transform_i32(
+                typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn);
+
     };
+
+
 }
 
 
