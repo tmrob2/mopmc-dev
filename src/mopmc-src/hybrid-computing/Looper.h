@@ -22,11 +22,7 @@
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
 namespace hybrid {
-
-enum ThreadSpecialisation {
-    GPU,
-    CPU
-};
+using namespace mopmc;
 
 /*!
  * Loopers are objects which contain or are attached to a thread with a conditional infinite loop.
@@ -77,7 +73,8 @@ using Runnable = std::function<void()>;
 template <typename M, typename ValueType>
 class CLooper {
 public:
-
+    typedef typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType PrepReturnType;
+    typedef SchedulerProblem<ValueType> Sch;
     typedef Eigen::SparseMatrix<ValueType, Eigen::RowMajor> SpMat;
 
     CLooper(uint id) : id(id), mRunning(false), mAbortRequested(false), mRunnables(),
@@ -86,7 +83,9 @@ public:
 
     };
 
-    CLooper(uint id, ThreadSpecialisation spec, PreprocessedData<M>)
+    CLooper(uint id_, ThreadSpecialisation spec, PrepReturnType const& model, std::vector<int> const& rowGroupIndices);
+
+
     // Copy denied, move to be implemented
 
     ~CLooper() {
@@ -110,8 +109,7 @@ public:
     bool getAbortRequested() const;
 
     // Send data
-    void sendDataGPU(SpMat& matrix, std::vector<int> const& rowGroupIndices,
-                     std::vector<int>& pi);
+    void sendDataGPU(SpMat& matrix, std::vector<int> const& rowGroupIndices);
 
     void sendDataCPU(SpMat& matrix);
 
@@ -119,7 +117,7 @@ public:
     std::vector<std::pair<int, double>> getSolution();
 
     // Computes the next problem
-    boost::optional<SchedulerProblem<ValueType>> next();
+    boost::optional<Sch> next();
 
     // Flag to check if all tasks have been computed by the thread
     bool solutionsReady();
@@ -132,7 +130,7 @@ public:
 
         // Idea: make this more generic and send problems of different structures
         // for example a MDP scheduler generation function vs a DTMC problem
-        bool post(T &&aRunnable) {
+        bool post(Sch &&aRunnable) {
             return mAssignedLooper.post(std::move(aRunnable));
         }
 
@@ -153,14 +151,14 @@ private:
     // Implements a thread function
     void runFunc();
 
-    bool post(T &&aRunnable);
+    bool post(Sch &&aRunnable);
 
 
     std::thread mThread;
     std::atomic_bool mRunning;
     std::atomic_bool mBusy;
     std::atomic_bool mAbortRequested;
-    std::queue<T> mRunnables; /* This is just a standard queue it can take anything
+    std::queue<Sch> mRunnables; /* This is just a standard queue it can take anything
                                   * probably the best thing to do is insert a class
                                   * The class could evn be a functor which calls its own
                                   * model checking operation
@@ -173,6 +171,10 @@ private:
     hybrid::utilities::CuMDPMatrix<ValueType> cuTransitionMatrix;
     // TODO specialise the thread for serving GPU or CPU operations
     hybrid::ThreadSpecialisation threadType;
+    const uint64_t m, n, k;
+    std::vector<ValueType> rhoFlat;
+    std::unique_ptr<storm::storage::SparseMatrix<ValueType>> P;
+    std::vector<uint64_t> pi, stateIndices;
 };
 
 template <typename T, typename ValueType>
@@ -194,8 +196,6 @@ public:
     //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU
     //  thread dispatcher and with cuda natively on the GPU thread
     void solve(std::vector<hybrid::SchedulerProblem<ValueType>> tasks);
-
-    void solve(std::vector<hybrid::DTMCProblem<ValueType>> tasks);
 
     void collectSolutions();
 

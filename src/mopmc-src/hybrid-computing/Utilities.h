@@ -47,12 +47,10 @@ template<typename T>
 class CuMDPMatrix {
 public:
     CuMDPMatrix(Eigen::SparseMatrix<T, Eigen::RowMajor> const &transitionSystem,
-                std::vector<int> const& rowGroupIndices,
-                std::vector<int>& pi);
+                std::vector<int> const& rowGroupIndices);
 
     int initialiseMDPMatrix(const Eigen::SparseMatrix<T, Eigen::RowMajor> &transitionSystem,
-                         std::vector<int> const& rowGroupIndices,
-                         std::vector<int>& pi);
+                         std::vector<int> const& rowGroupIndices);
 
     int tearDownMDPMatrix();
 

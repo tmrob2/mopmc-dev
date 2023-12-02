@@ -3,7 +3,7 @@
 //
 
 #include "CudaOnlyValueIteration.h"
-#include "ActionSelection.h"
+#include "../cuda/ActionSelection.h"
 #include "CuFunctions.h"
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
@@ -81,8 +81,6 @@ namespace mopmc::value_iteration::cuda_only {
         for (int i = 0; i < 50; ++i) {
             std::cout << rho_[i] << " ";
         } std::cout << "]\n";
-
-
 
         alpha = 1.0;
         beta = 1.0;

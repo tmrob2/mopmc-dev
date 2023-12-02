@@ -7,21 +7,17 @@ namespace hybrid::utilities {
 
 template<typename T>
 CuMDPMatrix<T>::CuMDPMatrix(const Eigen::SparseMatrix<T, Eigen::RowMajor> &transitionSystem,
-                            std::vector<int> const& rowGroupIndices,
-                            std::vector<int>& pi) {
-    auto initRes = initialiseMatrix(transitionSystem, rowGroupIndices, pi);
-
+                            std::vector<int> const& rowGroupIndices) {
+    auto initRes = initialiseMatrix(transitionSystem, rowGroupIndices);
 }
 
 template <typename T>
 int CuMDPMatrix<T>::initialiseMDPMatrix(const Eigen::SparseMatrix<T, Eigen::RowMajor> &transitionSystem,
-                                     std::vector<int> const& rowGroupIndices,
-                                     std::vector<int>& pi) {
+                                     std::vector<int> const& rowGroupIndices) {
     CHECK_CUDA(cudaMalloc((void**) &dA_csrOffsets, (transitionSystem.rows() + 1) * sizeof(int)))
     CHECK_CUDA(cudaMalloc((void**) &dA_columns, A_nnz * sizeof(int)))
     CHECK_CUDA(cudaMalloc((void**) &dA_values, A_nnz * sizeof(double)))
     CHECK_CUDA(cudaMalloc((void**) &dEnabledActions, A_nCols * sizeof(int )))
-    CHECK_CUDA(cudaMalloc((void**) &dPi, A_nCols * sizeof(uint)))
     cusparseHandle = nullptr;
     cublasHandle = nullptr;
     dBuffer = nullptr;

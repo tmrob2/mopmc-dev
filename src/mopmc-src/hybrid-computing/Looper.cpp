@@ -3,12 +3,57 @@
 //
 #include "Looper.h"
 #include <iostream>
+#include <storm/adapters/EigenAdapter.h>
 
 namespace hybrid {
 
+    template<typename M, typename V>
+    CLooper<M, V>::CLooper(
+            uint id_, hybrid::ThreadSpecialisation spec, PrepReturnType const& model,
+            std::vector<int> const& rowGroupIndices)
+            : id(id_), mRunning(false), mAbortRequested(false), mRunnables(), mRunnablesMutex(),
+              mDispatcher(std::shared_ptr<CDispatcher>(new CDispatcher(*this))),
+              mBusy(false), expectedSolutions(0) {
+        m = model.objectives.size(); // number of objectives
+        n = model.preprocessedModel->getNumberOfChoices();
+        k = model.preprocessedModel->getNumberOfStates();
+
+        {
+            // kill rho at end of block
+            std::vector<std::vector<V>> rho(m);
+            std::vector<V> rhoFlat(n * m);
+
+            for (uint_fast64_t i = 0; i < m; ++i) {
+                auto& name = model.objectives[i].formula->asRewardOperatorFormula().getRewardModelName();
+                rho[i] = model.preprocessedModel->getRewardModel(name)
+                        .getTotalRewardVector(model.preprocessedModel->getTransitionMatrix());
+                for(uint_fast64_t j = 0; j < n; ++j) {
+                    rhoFlat[i * n + j] = rho[i][j];
+                }
+            }
+        }
+
+        P = storm::adapters::EigenAdapter::toEigenSparseMatrix(
+                model.preprocessedModel->getTransitionMatrix());
+
+        P->makeCompressed();
+        pi.resize(k, static_cast<V>(0.0));
+
+        switch (spec) {
+            case ThreadSpecialisation::CPU:
+                // we don't need to do anything here, already a CPU thread
+                break;
+            case ThreadSpecialisation::GPU:
+                // send the data to the GPU
+                sendDataGPU(P, rowGroupIndices);
+                break;
+        }
+
+    }
+
     // Running the infinite loop
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::run() {
+    template <typename M, typename V>
+    bool CLooper<M, V>::run() {
 
         try{
             mThread = std::thread(&CLooper::runFunc, this);
@@ -19,34 +64,34 @@ namespace hybrid {
         return true;
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::stop() {
+    template <typename M, typename V>
+    bool CLooper<M, V>::stop() {
         abortAndJoin();
         return true;
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::getAbortRequested() const {
+    template <typename M, typename V>
+    bool CLooper<M, V>::getAbortRequested() const {
         return mAbortRequested.load();
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::running() const {
+    template <typename M, typename V>
+    bool CLooper<M, V>::running() const {
         return mRunning.load();
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::busy() const {
+    template <typename M, typename V>
+    bool CLooper<M, V>::busy() const {
         return mBusy.load();
     }
 
-    template <typename T, typename ValueType>
-    boost::optional<T> CLooper<T, ValueType>::next() {
+    template <typename M, typename V>
+    boost::optional<typename CLooper<M, V>::Sch> CLooper<M, V>::next() {
         // A mutex is required to guard against simultaneous access to the task collection
         // by the worker and dispatching threads.
         std::lock_guard guard(mRunnablesMutex); // only works with Cxx17 but we force this standard in the CMAKE
 
-        boost::optional<T> problem;
+        boost::optional<typename CLooper<M, V>::Sch> problem;
         if(!mRunnables.empty()) {
             problem = mRunnables.front();
             mRunnables.pop();
@@ -57,22 +102,22 @@ namespace hybrid {
     }
 
     // explicit instantiations of send data overloaded
-    template <typename T, typename ValueType>
-    void sendDataGPU(typename CLooper<T, ValueType>::SpMat& matrix,
+    template <typename M, typename V>
+    void sendDataGPU(typename CLooper<M, V>::SpMat& matrix,
                      std::vector<int> const& rowGroupIndices,
                      std::vector<int>& pi) {
         // allocate a matrix
-        cuTransitionMatrix (matrix, rowGroupIndices, pi);
+        cuTransitionMatrix (matrix, rowGroupIndices);
     }
 
-    template <typename T, typename ValueType>
-    void sendDataCPU(typename CLooper<T, ValueType>::SpMat& matrix) {
+    template <typename M, typename V>
+    void sendDataCPU(typename CLooper<M, V>::SpMat& matrix) {
         // let this thread take ownership of the transition matrix for CPU operations
     }
 
     //! Empties all of the values in the solution vector
-    template <typename T, typename ValueType>
-    std::vector<std::pair<int, double>> CLooper<T, ValueType>::getSolution() {
+    template <typename M, typename V>
+    std::vector<std::pair<int, double>> CLooper<M, V>::getSolution() {
         std::vector<std::pair<int, double>> rtn = {};
         if (!solutions.empty()) {
             solutions.swap(rtn);
@@ -80,8 +125,8 @@ namespace hybrid {
         return rtn;
     }
 
-    template <typename T, typename ValueType>
-    void CLooper<T, ValueType>::runFunc() {
+    template <typename M, typename V>
+    void CLooper<M, V>::runFunc() {
         mRunning.store(true);
 
         while (!mAbortRequested.load()) {
@@ -90,7 +135,7 @@ namespace hybrid {
                 // Do something
                 using namespace std::chrono_literals;
                 //std::cout << "Calling next()\n";
-                boost::optional<T> r = next();
+                boost::optional<M> r = next();
                 if(r && !r.get().isEmpty()) {
                     //std::cout << "r: " << r.get().getFirst() << "\n";
                     mBusy.store(true);
@@ -114,16 +159,16 @@ namespace hybrid {
         mRunning.store(false);
     }
 
-    template <typename T, typename ValueType>
-    void CLooper<T, ValueType>::abortAndJoin() {
+    template <typename M, typename V>
+    void CLooper<M, V>::abortAndJoin() {
         mAbortRequested.store(true);
         if (mThread.joinable()) {
             mThread.join();
         }
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::poolAbortAndJoin() {
+    template <typename M, typename V>
+    bool CLooper<M, V>::poolAbortAndJoin() {
         mAbortRequested.store(true);
         if (mThread.joinable()) {
             mThread.join();
@@ -133,16 +178,16 @@ namespace hybrid {
         return true;
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::solutionsReady() {
+    template <typename M, typename V>
+    bool CLooper<M, V>::solutionsReady() {
         if (solutions.size() == expectedSolutions) {
             return true;
         }
         return false;
     }
 
-    template <typename T, typename ValueType>
-    bool CLooper<T, ValueType>::post(T &&aRunnable) {
+    template <typename M, typename V>
+    bool CLooper<M, V>::post(typename CLooper<M, V>::Sch &&aRunnable) {
         if(not running()) {
             // deny insertion
             std::cout << "Looper not running\n";
@@ -160,16 +205,16 @@ namespace hybrid {
         return true;
     }
 
-    template <typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::stop() {
+    template <typename M, typename V>
+    void CLooperPool<M, V>::stop() {
         // for each running thread stop it
         for (const auto & looper: mLoopers) {
             looper->stop();
         }
     }
 
-    template <typename T, typename ValueType>
-    bool CLooperPool<T, ValueType>::run() {
+    template <typename M, typename V>
+    bool CLooperPool<M, V>::run() {
         // start each thread in the threadpool
         std::vector<bool> started(mLoopers.size(), false);
         for(uint i = 0; i < mLoopers.size(); ++i) {
@@ -185,8 +230,8 @@ namespace hybrid {
         }
     }
 
-    template <typename T, typename ValueType>
-    bool CLooperPool<T, ValueType>::running() {
+    template <typename M, typename V>
+    bool CLooperPool<M, V>::running() {
         bool check = true;
         for (const auto & mLooper : mLoopers) {
             if(!mLooper->running()) {
@@ -196,8 +241,8 @@ namespace hybrid {
         return true;
     }
 
-    template<typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::collectSolutions() {
+    template<typename M, typename V>
+    void CLooperPool<M, V>::collectSolutions() {
         bool allLoopersReady = false;
         while(!allLoopersReady) {
             allLoopersReady = true;
@@ -214,17 +259,17 @@ namespace hybrid {
         }
     }
 
-    template <typename T, typename ValueType>
-    std::vector<std::shared_ptr<typename CLooper<T, ValueType>::CDispatcher>> CLooperPool<T, ValueType>::getDispatchers() {
-        std::vector<std::shared_ptr<typename CLooper<T, ValueType>::CDispatcher>> dispatchers;
+    template <typename M, typename V>
+    std::vector<std::shared_ptr<typename CLooper<M, V>::CDispatcher>> CLooperPool<M, V>::getDispatchers() {
+        std::vector<std::shared_ptr<typename CLooper<M, V>::CDispatcher>> dispatchers;
         for (const auto & mLooper : mLoopers) {
             dispatchers.push_back(mLooper->getDispatcher());
         }
         return dispatchers;
     }
 
-    template <typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::solve(std::vector<hybrid::SchedulerProblem<ValueType>> tasks) {
+    template <typename M, typename V>
+    void CLooperPool<M, V>::solve(std::vector<hybrid::SchedulerProblem<V>> tasks) {
         // implementation of the scheduler solver
 
         auto dispatchers = getDispatchers();
@@ -246,13 +291,8 @@ namespace hybrid {
         collectSolutions();
     }
 
-    template <typename T, typename ValueType>
-    void CLooperPool<T, ValueType>::solve(std::vector<hybrid::DTMCProblem<ValueType>> tasks) {
-        // implementation of the DTMC solver
-    }
-
-    template<typename T, typename ValueType>
-    std::vector<std::pair<uint, double>>& CLooperPool<T, ValueType>::getSolutions() {
+    template<typename M, typename V>
+    std::vector<std::pair<uint, double>>& CLooperPool<M, V>::getSolutions() {
 
         std::sort(solutions.begin(), solutions.end(), [](const auto& left, const auto&right){
             return left.first < right.first;
@@ -260,15 +300,8 @@ namespace hybrid {
         return solutions;
     }
 
-    template <typename ValueType>
-    void hybrid::SchedulerProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
-        index_ = this->index;
-        x_ = this->x;
-        y_ = this->y;
-    }
-
-    template <typename ValueType>
-    void hybrid::DTMCProblem<ValueType>::getProblemData(uint &index_, double &x_, double &y_) {
+    template <typename V>
+    void hybrid::SchedulerProblem<V>::getProblemData(uint &index_, double &x_, double &y_) {
         index_ = this->index;
         x_ = this->x;
         y_ = this->y;

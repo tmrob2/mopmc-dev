@@ -14,8 +14,8 @@ void controller() {
     typedef hybrid::SchedulerProblem<ValueType> P;
     //std::vector<std::unique_ptr<CLooper<P, ValueType>>> threads(2);
 
-    auto cpuThread = std::make_unique<CLooper<P, ValueType>>(0, );
-    auto gpuThread = std::make_unique<CLooper<P, ValueType>>(1, );
+    auto cpuThread = std::make_unique<CLooper<P, ValueType>>(0);
+    auto gpuThread = std::make_unique<CLooper<P, ValueType>>(1);
 
     // the threads should already start with their assigned data
     // this means that we don't need to assign data to them at a later stage
