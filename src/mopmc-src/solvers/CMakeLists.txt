@@ -16,6 +16,8 @@ list(
         "${dir}/CudaOnlyValueIteration.h"
         "${dir}/CuFunctions.cu"
         "${dir}/CuFunctions.h"
+        "${dir}/CudaValueIteration.cu"
+        "${dir}/CudaValueIteration.cuh"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)
