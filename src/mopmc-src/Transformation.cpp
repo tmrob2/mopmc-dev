@@ -15,6 +15,7 @@
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include <Eigen/Sparse>
 #include <storm/adapters/EigenAdapter.h>
+#include <storm/solver/OptimizationDirection.h>
 #include "model-checking/MOPMCModelChecking.h"
 
 namespace mopmc {
@@ -56,9 +57,11 @@ namespace mopmc {
         }
         data.thresholds.resize(data.objectiveCount);
         data.probObjectives.resize(data.objectiveCount);
+        data.optDirections.resize(data.objectiveCount);
         for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
             data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
             data.probObjectives[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
+            data.optDirections[i] = (prepReturn.objectives[i].formula->getOptimalityType() == storm::solver::OptimizationDirection::Minimize);
         }
 
         data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));

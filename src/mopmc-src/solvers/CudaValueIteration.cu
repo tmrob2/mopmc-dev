@@ -14,6 +14,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/device_ptr.h>
 #include <thrust/execution_policy.h>
+#include <iostream>
 
 
 #define CHECK_CUDA(func)                                                       \
@@ -80,7 +81,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::initialise() {
-
+                std::cout << ("____ CUDA INITIALIZING ____\n");
                 // cudaMalloc CONSTANTS -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dA_csrOffsets, (A_nrows + 1) * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dA_columns, A_nnz * sizeof(int)))
@@ -168,7 +169,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w) {
-
+                std::cout << "____ VI PHASE ONE ...\n" ;
                 CHECK_CUDA(cudaMemcpy(dW, w.data(), nobjs * sizeof(double), cudaMemcpyHostToDevice))
                 mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
 
@@ -198,7 +199,7 @@ namespace mopmc {
                     //printf("___ VI PHASE ONE, ITERATION %i, maxEps %f\n", iteration, maxEps);
                 } while (maxEps > 1e-5 && iteration < maxIter);
 
-                printf("___ VI PHASE ONE, terminated at ITERATION %i\n", iteration);
+                std::cout << "terminated after " << iteration <<" iterations.\n";
                 //copy result
                 thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + nobjs);
 
@@ -207,6 +208,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo() {
+                std::cout << "____ VI PHASE TWO";
                 // generate a DTMC transition matrix as a csr matrix
                 CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
                                                 CUSPARSE_INDEX_BASE_ZERO));
@@ -264,7 +266,8 @@ namespace mopmc {
                         ++iteration;
 
                     } while (maxEps > 1e-5 && iteration < maxIter);
-                    printf("___ VI PHASE TWO, OBJECTIVE %i, terminated at ITERATION %i\n", obj, iteration);
+                    std::cout << "objective " << obj
+                    << " terminated after " << iteration << " iterations\n";
                     // copy results
                     thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
                 }
@@ -313,7 +316,7 @@ namespace mopmc {
                 CHECK_CUDA(cudaFree(dMasking_nnz))
                 CHECK_CUDA(cudaFree(dResult))
 
-                printf("____ CUDA EXIT!! ____\n");
+                std::cout << ("____ CUDA EXIT ____\n");
                 return EXIT_SUCCESS;
             }
 

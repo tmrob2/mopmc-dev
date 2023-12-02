@@ -67,7 +67,7 @@ namespace mopmc::queries {
         const double eps{0.};
         const double eps_p{1.e-6};
         const double eps1{1.e-4};
-        const uint_fast64_t maxIter{4};
+        const uint_fast64_t maxIter{20};
 
         mopmc::optimization::convex_functions::TotalReLU<T> totalReLu1(h);
         mopmc::optimization::convex_functions::TotalReLU<T> totalReLu(h_);
@@ -203,8 +203,8 @@ namespace mopmc::queries {
 
         cudaVIHandler.exit();
         std::cout << "----------------------------------------------\n";
-        std::cout << "@_@ CUDA VI TESTING OUTPUT: \n";
-        std::cout << "weight: [" << w[0] << ", " << w[1] << "]\n";
+        std::cout << "@_@ CUDA CONVEX QUERY terminates after " << iter << " iteration(s) \n";
+        std::cout << "*Distance to thresholds*: " << totalReLu.value(vt_) << "\n";
         std::cout << "Result at initial state ";
         for (int i = 0; i < this->data_.objectiveCount; ++i) {
             std::cout << "- Objective " << i << ": " << cudaVIHandler.getResults()[i] << " ";
