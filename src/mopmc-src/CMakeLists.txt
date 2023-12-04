@@ -18,6 +18,7 @@ list(
         "${dir}/Data.h"
         "${dir}/Transformation.cpp"
         "${dir}/Transformation.h"
+        "${dir}/StormModelCheckingWrapper.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

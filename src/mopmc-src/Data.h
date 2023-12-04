@@ -31,11 +31,11 @@ namespace mopmc {
         std::vector<I> defaultScheduler;
 
         std::vector<bool> probObjectives;
+        std::vector<bool> optDirections; // Minimize = 0, Maximize = 1
 
-        //cast to double for values and int for indices
-        Data<double, int> castToGpuData();
     };
 
+    template struct Data<double, uint64_t>;
 }
 
 

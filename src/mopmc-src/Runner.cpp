@@ -25,9 +25,10 @@
 #include "convex-functions/SignedKLEuclidean.h"
 #include "queries/TestingQuery.h"
 #include "lp_lib.h"
+#include "StormModelCheckingWrapper.h"
 #include <Eigen/Dense>
-#include <stdio.h>
-#include <time.h>
+#include <cstdio>
+#include <ctime>
 
 namespace mopmc {
 
@@ -46,9 +47,13 @@ namespace mopmc {
 
 
         storm::Environment env;
+
         clock_t time0 = clock();
         auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);
         clock_t time05 = clock();
+        mopmc::wrapper::StormModelCheckingWrapper<ModelType> stormModelCheckingWrapper(preprocessedResult);
+        //env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+        //stormModelCheckingWrapper.performMultiObjectiveModelChecking(env);
         auto preparedModel = mopmc::ModelBuilder<ModelType>::build(preprocessedResult);
         clock_t time1 = clock();
         auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);

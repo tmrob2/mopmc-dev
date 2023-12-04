@@ -20,17 +20,19 @@
 namespace mopmc::queries {
 
     template<typename V>
-    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
     template<typename V>
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename T, typename I>
-    class AchievabilityQuery : public BaseQuery<T, I>{
+    class AchievabilityQuery : public BaseQuery<T, I> {
     public:
-        explicit AchievabilityQuery(const mopmc::Data<T,I> &data) : BaseQuery<T, I>(data) {};
+        explicit AchievabilityQuery(const mopmc::Data<T, I> &data) : BaseQuery<T, I>(data) {};
+
         void query() override;
         void hybridQuery(hybrid::ThreadSpecialisation archPref);
     };
+<<<<<<< HEAD
 
     template<typename T, typename I>
     void AchievabilityQuery<T, I>::query() {
@@ -202,7 +204,8 @@ namespace mopmc::queries {
 
     //template class AchievabilityQuery<double, uint64_t>;
     template class AchievabilityQuery<double, int>;
+=======
+>>>>>>> a35b997eb27323bf9018e5ac3d3126109d72ff1a
 }
-
 
 #endif //MOPMC_ACHIEVABILITYQUERY_H

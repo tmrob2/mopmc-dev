@@ -26,27 +26,16 @@ namespace mopmc::optimization::optimizers {
         mopmc::optimization::optimizers::LinOpt<V> linOpt;
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
         auto m = xIn.size();
-        Vector<V> xOld(m), xNew = xIn;
-        Vector<V> vStar(m);
+        Vector<V> xOld(m), xNew = xIn, vStar(m);
         for (int i = 0; i < maxIter; ++i) {
-            std::cout << "**xNew in FrankWolfe**: [" << xNew(0) <<", "<< xNew(1) << "]\n";
+            //std::cout << "**xNew in FrankWolfe**: [" << xNew(0) <<", "<< xNew(1) << "]\n";
             xOld = xNew;
             Vector<V> d = this->fn->subgradient(xOld);
             if (rep == Vertex) {
-                //std::cout << "**vStar for VRep before linOpt: [";
-                for(int j=0; j < vStar.size(); ++j) {
-                    std::cout << vStar(j) << " ";
-                }
-                std::cout <<"]\n";
-                linOpt.argmin(Phi, rep, d, vStar);
-                std::cout << "**vStar for VRep after linOpt after " << i << " iteration: [";
-                for(int j=0; j < vStar.size(); ++j) {
-                    std::cout << vStar(j) << " ";
-                }
-                std::cout <<"]\n";
+                linOpt.optimizeInFW(Phi, rep, d, vStar);
             }
             if (rep == Halfspace) {
-                linOpt.argmin(Phi, W, rep, d, vStar);
+                linOpt.optimizeInFW(Phi, W, rep, d, vStar);
             }
             if (static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld) <= epsilon) {
                 break;
