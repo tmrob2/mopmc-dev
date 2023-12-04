@@ -61,8 +61,8 @@ namespace mopmc {
         //mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
         //mopmc::queries::TestingQuery<ValueType, int> q(data);
         mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
-        //q.query();
-        q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
+        q.query();
+        //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();
 
         std::cout<<"       TIME STATISTICS        \n";
