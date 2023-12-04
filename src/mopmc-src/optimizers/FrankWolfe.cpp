@@ -35,17 +35,17 @@ namespace mopmc::optimization::optimizers {
                 throw std::runtime_error("The numbers of vertices and weights are not the same");
             }
         }
+
         mopmc::optimization::optimizers::LinOpt<V> linOpt;
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
-        auto m = xIn.size();
-        Vector<V> xOld(m), xNew = xIn, vStar(m);
 
-        V epsilon = 1.e-5;
-        V gamma;
-        V gamma0 = static_cast<V>(0.1);
-        int maxIter = 10000;
+        auto m = xIn.size();
+        Vector<V> xCurrent(m), xNew = xIn, vStar(m);
+        const V epsilon{1.e-5}, gamma0{static_cast<V>(0.1)};
+        const int maxIter = 10000;
+        V gamma, tolerance;
         int i;
-        V tolerance;
+
         for (i = 0; i < maxIter; ++i) {
             /*{
                 std::cout << "**xNew in FrankWolfe**: [";
@@ -54,8 +54,8 @@ namespace mopmc::optimization::optimizers {
                 } std::cout << "]\n";
             }*/
 
-            xOld = xNew;
-            Vector<V> d = this->fn->subgradient(xOld);
+            xCurrent = xNew;
+            Vector<V> d = this->fn->subgradient(xCurrent);
             if (rep == Vertex) {
                 linOpt.optimizeVtx(Phi, rep, d, vStar);
             }
@@ -64,7 +64,7 @@ namespace mopmc::optimization::optimizers {
             }
 
             //tolerance = cosine<V>(static_cast<V>(-1.) * this->fn->subgradient(xOld), vStar - xOld, static_cast<V>(0.));
-            tolerance = static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld);
+            tolerance = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(vStar - xCurrent);
             /*{
                 std::cout << "**Frank-Wolfe** decent gap: "
                           << gap
@@ -75,19 +75,19 @@ namespace mopmc::optimization::optimizers {
                 } std::cout << "]\n";
 
             }*/
-            if (tolerance <= epsilon ) {
+            if (tolerance <= epsilon) {
                 break;
             }
             if (!doLineSearch) {
-                gamma = gamma0 * 2 / (i+2);// / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
+                gamma = gamma0 * 2 / (i + 2);// / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
             } else {
                 //TODO
                 //gamma = lineSearch.findOptimalPoint(xOld, vStar);
-                gamma = gamma0 * 2/ (i+2); // / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
+                gamma = gamma0 * 2 / (i + 2); // / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
             }
-            xNew = (1-gamma) * xOld + gamma * vStar;
+            xNew = (1 - gamma) * xCurrent + gamma * vStar;
         }
-        std::cout << "*Frank-Wolfe* stops at iteration " << i <<", tolerance: " << tolerance <<" \n";
+        std::cout << "*Frank-Wolfe* stops at iteration " << i << ", tolerance: " << tolerance << " \n";
         return xNew;
     }
 
@@ -103,5 +103,6 @@ namespace mopmc::optimization::optimizers {
     FrankWolfe<V>::FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
             : fn(f) {}
 
-    template class FrankWolfe<double>;
+    template
+    class FrankWolfe<double>;
 }

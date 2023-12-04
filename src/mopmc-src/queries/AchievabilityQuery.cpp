@@ -23,37 +23,31 @@ namespace mopmc::queries {
         cudaVIHandler.initialise();
 
         mopmc::optimization::optimizers::LinOpt<T> linOpt;
+        PolytopeType rep = Closure;
+
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives
         Vector<T> h = Eigen::Map<Vector<T>>(this->data_.thresholds.data(), this->data_.thresholds.size());
-        std::vector<Vector<T>> Phi;
-        std::vector<Vector<T>> W;
-        Vector<T> sgn(m);
-        for (uint_fast64_t i=0; i<sgn.size(); ++i) {
-            sgn(i) = this->data_.optDirections[i] ? static_cast<T>(-1) : static_cast<T>(1);
-        }
-        std::vector<T> w1;
-        Vector<T> dirVec(m + 1);
-        bool achievable = true;
-        Vector<T> r(m);
-        std::vector<double> r_(m + 1);
-        Vector<T> w(m);
-        //----(initial w for testing)----
-        //w << 0.5, 0.5;
-        w.setConstant(static_cast<T>(1.0) / m);
-        //-------------------------------
-        std::vector<double> w_(m);
-        Vector<T> sw(m);
-        T delta;
-        PolytopeType rep = Closure;
-        const uint64_t maxIter{20};
+        std::vector<Vector<T>> Phi, W;
 
-        uint_fast64_t iteration = 0;
-        while (iteration < maxIter) {
+        Vector<T> sgn(m); // optimisation direction
+        for (uint_fast64_t i=0; i<sgn.size(); ++i) {
+            sgn(i) = this->data_.maxDirections[i] ? static_cast<T>(-1) : static_cast<T>(1);
+        }
+
+        Vector<T> r(m), w(m), w1(m + 1);
+        std::vector<double> r_(m + 1), w_(m);
+
+        const uint64_t maxIter{20};
+        uint_fast64_t iter = 0;
+        w.setConstant(static_cast<T>(1.0) / m); //initial direction
+        bool achievable = true;
+        T delta;
+
+        while (iter < maxIter) {
             if (!Phi.empty()) {
-                linOpt.findOptimalSeparatingDirection(Phi, rep, h, sgn, dirVec);
-                assert(dirVec.size() == m + 1);
-                w = VectorMap<T>(dirVec.data(), dirVec.size() - 1);
-                delta = dirVec(dirVec.size() - 1);
+                linOpt.findOptimalSeparatingDirection(Phi, rep, h, sgn, w1);
+                w = VectorMap<T>(w1.data(), w1.size() - 1);
+                delta = w1(w1.size() - 1);
                 if (delta <= 0)
                     break;
             }
@@ -63,7 +57,6 @@ namespace mopmc::queries {
             }
             cudaVIHandler.valueIteration(w_);
             r_ = cudaVIHandler.getResults();
-            assert(dirVec.size() == m + 1);
             r_.resize(m);
             for (uint_fast64_t i = 0; i < r_.size(); ++i) {
                 r(i) = (T) r_[i];
@@ -71,23 +64,21 @@ namespace mopmc::queries {
             Phi.push_back(r);
             W.push_back(w);
 
-            std::cout << "weighted value: " << cudaVIHandler.getResults()[m]<<"\n";
-
-            sw = (sgn.array() * w.array()).matrix();
-            if (sw.dot(h - r) > 0) {
+            Vector<T> wTemp = (sgn.array() * w.array()).matrix();
+            if (wTemp.dot(h - r) > 0) {
                 achievable = false;
                 break;
             }
-            ++iteration;
+            //std::cout << "weighted value: " << cudaVIHandler.getResults()[m]<<"\n";
+            ++iter;
         }
         cudaVIHandler.exit();
         std::cout << "----------------------------------------------\n";
-        std::cout << "@_@ Achievability Query terminates after " << iteration << " iteration(s) \n";
-        std::cout << "*OUTPUT*: " << std::boolalpha << achievable << "\n";
+        std::cout << "Achievability Query terminates after " << iter << " iteration(s) \n";
+        std::cout << "OUTPUT: " << std::boolalpha << achievable << "\n";
         std::cout << "----------------------------------------------\n";
     }
 
-    //template class AchievabilityQuery<double, uint64_t>;
     template
     class AchievabilityQuery<double, int>;
 }

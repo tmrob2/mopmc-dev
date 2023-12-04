@@ -31,7 +31,7 @@ namespace mopmc {
         std::vector<I> defaultScheduler;
 
         std::vector<bool> probObjectives;
-        std::vector<bool> optDirections; // Minimize = 0, Maximize = 1
+        std::vector<bool> maxDirections;
 
     };
 
