@@ -6,22 +6,22 @@ const int y_max = 99;
 const double p = 0.65;
 const double q = 0.20;
 
-module M1
+module Rise_and_Dive
 
 x : [0..x_max] init 0; //step
 y : [0..y_max] init 0; //height
 z : [0..1] init 0; //game on or not
 
-[down]	x < x_max & z = 0 ->
+[rise]  x < x_max & z = 0 ->
 		p : (x'= x+1) & (y'= max(y-1, 0)) +
 		q : (x'= x+1) & (y'= y) +
 		1-p-q : (x'= x+1) & (y'= min(y+1, y_max)) ;
-[up]	x < x_max & z = 0 ->
+[dive]  x < x_max & z = 0 ->
 		p : (x'= x+1) & (y'= min(y+1, y_max)) +
 		q : (x'= x+1) & (y'= y) +
 		1-p-q: (x'= x+1) & (y'= max(y-1, 0)) ;
 [end]	x = x_max -> (x'= 0) & (y'= 0) & (z'= 1) ;
-[loop]	z = 1 -> 1 : true ;
+[none]	z = 1 -> 1 : true ;
 
 endmodule
 
