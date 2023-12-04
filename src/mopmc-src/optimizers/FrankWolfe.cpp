@@ -40,11 +40,12 @@ namespace mopmc::optimization::optimizers {
         auto m = xIn.size();
         Vector<V> xOld(m), xNew = xIn, vStar(m);
 
-        V epsilon = 1.e-3;
+        V epsilon = 1.e-5;
         V gamma;
         V gamma0 = static_cast<V>(0.1);
-        int maxIter = 5000;
+        int maxIter = 10000;
         int i;
+        V tolerance;
         for (i = 0; i < maxIter; ++i) {
             /*{
                 std::cout << "**xNew in FrankWolfe**: [";
@@ -62,8 +63,8 @@ namespace mopmc::optimization::optimizers {
                 linOpt.optimizeHlsp(Phi, W, rep, d, vStar);
             }
 
-            //V gap = cosine<V>(static_cast<V>(-1.) * this->fn->subgradient(xOld), vStar - xOld, static_cast<V>(0.));
-            V gap = static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld);
+            //tolerance = cosine<V>(static_cast<V>(-1.) * this->fn->subgradient(xOld), vStar - xOld, static_cast<V>(0.));
+            tolerance = static_cast<V>(-1.) * this->fn->subgradient(xOld).dot(vStar - xOld);
             /*{
                 std::cout << "**Frank-Wolfe** decent gap: "
                           << gap
@@ -74,19 +75,19 @@ namespace mopmc::optimization::optimizers {
                 } std::cout << "]\n";
 
             }*/
-            if (gap <= epsilon ) {
+            if (tolerance <= epsilon ) {
                 break;
             }
             if (!doLineSearch) {
-                gamma = gamma0 / std::log(i+2); //static_cast<V>(i+1); //std::pow(static_cast<V>(1.01), i) ;
+                gamma = gamma0 * 2 / (i+2);// / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
             } else {
-                gamma = gamma0 / std::log(i+2); static_cast<V>(i+1); //std::pow(static_cast<V>(1.01), i) ;
+                //TODO
                 //gamma = lineSearch.findOptimalPoint(xOld, vStar);
+                gamma = gamma0 * 2/ (i+2); // / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
             }
             xNew = (1-gamma) * xOld + gamma * vStar;
-            //std::cout << "fn(xNew): " << this->fn->value(xNew) <<"\n";
         }
-        std::cout << "**Frank-Wolfe** stops at iteration " << i <<"\n";
+        std::cout << "*Frank-Wolfe* stops at iteration " << i <<", tolerance: " << tolerance <<" \n";
         return xNew;
     }
 

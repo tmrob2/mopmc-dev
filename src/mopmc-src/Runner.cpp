@@ -55,8 +55,8 @@ namespace mopmc {
         clock_t time1 = clock();
         auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);
         clock_t time2 = clock();
-        //mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
-        mopmc::queries::GpuConvexQueryAlt<ValueType, int> q(data);
+        mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
+        //mopmc::queries::GpuConvexQueryAlt<ValueType, int> q(data);
         //mopmc::queries::TestingQuery<ValueType, int> q(data);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
         q.query();

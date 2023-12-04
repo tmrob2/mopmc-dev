@@ -130,11 +130,14 @@ namespace mopmc::queries {
             if (!Phi.empty()) {
                 mopmc::optimization::convex_functions::EuclideanDistance<T> fn1(r_);
                 mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe1(&fn1);
+                /*
                 rTemp_ = frankWolfe.argmin(Phi_, *vi_, Vertex, false);
                 if ((rTemp_ - r_).template lpNorm<1>() < 0.001) {
                     //std::cout << "loop exit due to ...\n";
                     break;
                 }
+                 */
+                /*
                 bool b = false;
                 for (uint_fast64_t j = 0; j < Phi_.size(); ++j) {
                     if ((Phi_[j] - r_).template lpNorm<1>() < 1.e-8) {
@@ -146,6 +149,7 @@ namespace mopmc::queries {
                     //std::cout << "loop exit due to ...\n";
                     //break;
                 }
+                 */
                 {
                     /*
                     for (int i = 0; i < m; ++i) {
