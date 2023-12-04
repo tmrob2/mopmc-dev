@@ -18,6 +18,7 @@
 #include "ModelBuilding.h"
 #include "Transformation.h"
 #include "Data.h"
+#include "mopmc-src/hybrid-computing/Problem.h"
 #include "queries/GpuConvexQuery.h"
 #include "queries/GpuConvexQueryAlt.h"
 #include "queries/AchievabilityQuery.h"
@@ -59,6 +60,7 @@ namespace mopmc {
         //mopmc::queries::TestingQuery<ValueType, int> q(data);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
         q.query();
+        //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();
 
         std::cout<<"       TIME STATISTICS        \n";

@@ -125,6 +125,7 @@ private:
 
     // Members
     SpMat eigenTransitionMatrix;
+    SpMat dtmcTransitionMatrix;
     std::vector<typename SparseModelType::ValueType> weightedResult;
     // The results for the individual objectives (w.r.t. all states of the model)
 

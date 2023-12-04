@@ -2,10 +2,8 @@
 // Created by thomas on 26/09/23.
 //
 #include "CuVISolver.h"
-#include "ActionSelection.h"
-#include <thrust/device_vector.h>
+#include "mopmc-src/solvers/ActionSelection.h"
 #include <thrust/device_ptr.h>
-#include <thrust/extrema.h>
 
 #define CHECK_CUDA(func)                                                       \
 {                                                                              \

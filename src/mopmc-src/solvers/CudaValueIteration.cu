@@ -105,8 +105,8 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dB_rows_extra, A_nnz * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
-                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double)))
-                CHECK_CUDA(cudaMalloc((void **) &dRj, nobjs * B_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double))) // TR TODO: extra allocated mem which we possibly won't use in the hybrid version
+                CHECK_CUDA(cudaMalloc((void **) &dRj, nobjs * B_nrows * sizeof(double))) // TR TODO: ^ 
                 CHECK_CUDA(cudaMalloc((void **) &dZ, nobjs * A_ncols * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dZPrime, nobjs * A_ncols * sizeof(double)))
                 // cudaMemcpy -------------------------------------------------------------
@@ -205,6 +205,9 @@ namespace mopmc {
                 //std::cout << "terminated after " << iteration <<" iterations.\n";
                 //copy result
                 thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + nobjs);
+                if(toHost) {
+                    CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
+                }
 
                 return EXIT_SUCCESS;
             }
@@ -275,8 +278,131 @@ namespace mopmc {
                     //std::cout << "objective " << obj  << " terminated after " << iteration << " iterations\n";
                     // copy results
                     thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
+
                 }
 
+                //-------------------------------------------------------------------------
+                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
+                return EXIT_SUCCESS;
+            }
+
+            template<typename ValueType>
+            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo_v2(int beginObj, int endObj) {
+                // generate a DTMC transition matrix as a csr matrix
+                CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
+                                                CUSPARSE_INDEX_BASE_ZERO));
+
+                mopmc::functions::cuda::binaryMaskingLauncher(dA_csrOffsets,
+                                                              dRowGroupIndices, dRow2RowGroupMapping,
+                                                              dPi, dMasking_nrows, dMasking_nnz, A_nrows);
+                thrust::copy_if(thrust::device, dA_values, dA_values + A_nnz - 1,
+                                dMasking_nnz, dB_values, mopmc::functions::cuda::is_not_zero<int>());
+                thrust::copy_if(thrust::device, dA_columns, dA_columns + A_nnz - 1,
+                                dMasking_nnz, dB_columns, mopmc::functions::cuda::is_not_zero<int>());
+                thrust::copy_if(thrust::device, dA_rows_extra, dA_rows_extra + A_nnz - 1,
+                                dMasking_nnz, dB_rows_extra, mopmc::functions::cuda::is_not_zero<int>());
+                // @B_nnz: number of non-zero entries in the DTMC transition matrix
+                B_nnz = (int) thrust::count_if(thrust::device, dMasking_nnz, dMasking_nnz + A_nnz - 1,
+                                               mopmc::functions::cuda::is_not_zero<double>());
+                mopmc::functions::cuda::row2RowGroupLauncher(dRow2RowGroupMapping, dB_rows_extra, B_nnz);
+                CHECK_CUSPARSE(cusparseXcoo2csr(handle, dB_rows_extra, B_nnz, B_nrows,
+                                                dB_csrOffsets, CUSPARSE_INDEX_BASE_ZERO));
+                CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
+                                                 dB_csrOffsets, dB_columns, dB_values,
+                                                 CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+                                                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
+
+                // value iteration for all objectives
+                // !! As gpu does the main work, we can use mult-threading to send as many
+                // individual objective data to gpu as possible.
+                //
+                // TR: We should avoid this loop and group together windows of the R vector into a matrix
+                // one way to do this is just by copying a portion of dR
+                //
+                double* dRPortion, *dMaskTiled;
+                size_t bufferSizeMM;
+                void *dBufferMM = nullptr;
+                CHECK_CUDA(cudaMalloc((void**) &dRPortion, (endObj - beginObj) * B_nrows * sizeof(double)))
+                // also tile dMasking_nrows (endObj - beginObj) times
+                CHECK_CUDA(cudaMalloc((void**) &dMaskTiled, (endObj - beginObj) * A_nrows * sizeof(double)))
+                for (uint i = 0; i < (endObj - beginObj); ++i) {
+                    //thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
+                    thrust::copy(thrust::device, dMasking_nrows, dMasking_nrows + A_nrows - 1, dMaskTiled + i * A_nrows);
+                }
+
+                // create a mask of dR based on the tiled dMasking rows starting at the objective index
+                thrust::copy_if(thrust::device, dR + beginObj * A_nrows, dR + ((endObj - beginObj) + beginObj) * A_nrows - 1, 
+                                dMaskTiled, dRPortion, mopmc::functions::cuda::is_not_zero<double>());
+
+                // Make dRPortion into a dense matrix
+                // create a new cuBlas handle => this can be preallocated
+                double *dY2, *dX2; // TODO rename using proper convention -> insert into initialise once working
+                CHECK_CUDA(cudaMalloc((void**) &dY2, (endObj - beginObj) * B_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void**) &dX2, (endObj - beginObj) * B_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMemset(dX2, 0, (endObj - beginObj) * B_nrows * sizeof(double)))
+                cusparseDnMatDescr_t matY2, matX2; //descrR
+                // Create the dense matrices with the cusparse dense api
+                CHECK_CUSPARSE(cusparseCreateDnMat(&matY2, B_nrows, (endObj - beginObj), B_nrows,
+                                                  dY2, CUDA_R_64F, CUSPARSE_ORDER_COL))
+                CHECK_CUSPARSE(cusparseCreateDnMat(&matX2, B_nrows, (endObj - beginObj), B_nrows, 
+                                                  dX2, CUDA_R_64F, CUSPARSE_ORDER_COL))
+
+                // set the values of the dense matrix dC to vector dRPortion
+                CHECK_CUSPARSE(cusparseDnMatSetValues(matY2, dRPortion))
+                // copy the values of dRPortion whihc is an (endObj - beginOb) * A+ncols
+                // in this computation we want to use the kernel formulation
+                // C = alpha * op(A) . op(B) + beta * C 
+                CHECK_CUSPARSE(cusparseSpMM_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, 
+                        CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matX2, &beta, matY2, 
+                        CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, &bufferSizeMM))
+
+                CHECK_CUDA(cudaMalloc(&dBufferMM, bufferSizeMM));
+
+                CHECK_CUSPARSE(cusparseSpMM_preprocess(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE, 
+                               &alpha, matA, matX2, &beta, matY2, CUDA_R_64F, 
+                               CUSPARSE_SPMM_ALG_DEFAULT, &dBufferMM))
+
+                CHECK_CUSPARSE(cusparseSpMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                               &alpha, matA, matX2, &beta, matY2, CUDA_R_64F, 
+                               CUSPARSE_SPMM_ALG_DEFAULT, &dBufferMM))
+
+                /*iteration = 0;
+                do {
+                    // x = ri
+                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dX, 1));
+                    // initialise x' as ri too
+                    if (iteration == 0) {
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dXPrime, 1));
+                    }
+                    // x = B.x' + ri where x = ri
+                    CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                                &alpha, matB, vecXPrime, &beta, vecX, CUDA_R_64F,
+                                                CUSPARSE_SPMV_ALG_DEFAULT, dBuffer));
+                    // x' = -1 * x + x'
+                    CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dX, 1, dXPrime, 1));
+                    // max |x'|
+                    CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dXPrime, 1, &maxInd));
+                    // get maxEps
+                    CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
+                    maxEps = (maxEps >= 0) ? maxEps : -maxEps;
+                    // x' = x
+                    CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dX, 1, dXPrime, 1));
+
+                    //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
+                    ++iteration;
+
+                } while (maxEps > 1e-5 && iteration < maxIter);
+                printf("___ VI PHASE TWO, OBJECTIVE %i, terminated at ITERATION %i\n", obj, iteration);
+                // copy results
+                thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
+                */
+                // clean up
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matX2))
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matY2))
+                CHECK_CUDA(cudaFree(dRPortion))
+                CHECK_CUDA(cudaFree(dMaskTiled))
+                CHECK_CUDA(cudaFree(dBufferMM))
                 //-------------------------------------------------------------------------
                 CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
                 CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
