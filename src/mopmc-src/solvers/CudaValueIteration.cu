@@ -168,7 +168,7 @@ namespace mopmc {
             }
 
             template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w) {
+            int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w, bool toHost) {
                 std::cout << "____ VI PHASE ONE ____\n" ;
                 CHECK_CUDA(cudaMemcpy(dW, w.data(), nobjs * sizeof(double), cudaMemcpyHostToDevice))
                 mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
