@@ -20,7 +20,7 @@
 #include <storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h>
 #include <storm/solver/LinearEquationSolver.h>
 #include "../solvers/ConvexQuery.h"
-#include "../cuda/WarmUp.h"
+#include "../solvers/WarmUp.h"
 
 namespace mopmc {
 namespace multiobjective {

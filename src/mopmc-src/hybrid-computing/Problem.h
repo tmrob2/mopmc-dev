@@ -5,13 +5,14 @@
 #ifndef MOPMC_PROBLEM_H
 #define MOPMC_PROBLEM_H
 
-
 #include <cstdint>
+#include <memory>
 #include <storm/storage/SparseMatrix.h>
 #include <storm/utility/constants.h>
 #include <Eigen/Sparse>
-#include "mopmc-src/solvers/CuVISolver.h"
-#include "Looper.h"
+#include <vector>
+#include "mopmc-src/Data.h"
+#include "mopmc-src/solvers/CudaValueIteration.cuh"
 
 namespace hybrid {
 
@@ -26,11 +27,12 @@ enum Problem {
 };
 
 template<typename ValueType>
-class SchedulerProblem {
+class ThreadProblem {
 public:
     //! The problem needs to solve a value iteration problem.
     //! Take the inputs for the value iteration problem
-    SchedulerProblem(uint index, std::vector<ValueType> w, ThreadSpecialisation spec) {
+    ThreadProblem(uint index_, std::vector<ValueType> w_, ThreadSpecialisation spec_, Problem probType_):
+    w(w_), spec(spec_), probType(probType_), index(index_) {
         // Intentionally left blank
     }
 
@@ -46,35 +48,51 @@ public:
         return index;
     }
 
-    void getProblemData(uint &index_, double &x_, double &y_);
+    void setProblemData(std::shared_ptr<mopmc::Data<double, int>> cpuData){
+        data = cpuData;
+    }
+
+    void setProblemData(std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<double>>& gpuData_){
+        gpuData = gpuData_;
+    }
+
+    ThreadSpecialisation getSpec() { return spec; }
 
     // SchedulerProblem callable
-    std::pair<int, double> operator()() const {
-        //using namespace std::chrono_literals;
-        //std::this_thread::sleep_for(5s);
-
-        // TODO if the thread is a GPU specialisation then send the data to the CPU for computation
-        //   here, which will involve launching some kernel
-
-        // TODO another specialisation is the type of problem to solve, is it a DTMC problem
-        //  or is it a scheduler optimisation problem
-
-        // A key question at this point is what data does the Problem have access to, and where does it
-        // live. 
-        std::pair<uint, double> sol;
-        sol.first = index;
-        // run value iteration on a problem
-        sol.second = 0.;
-        return sol;
+    // The goal of a scheduler problem is to compute an optimal scheduler. 
+    int operator()() const {
+        //std::cout << "function called..\n";
+        switch (probType) {
+            case Problem::Scheduler:
+                if (spec == ThreadSpecialisation::CPU) {
+                    // do VI ops on CPU
+                } else {
+                    // do VI ops on GPU
+                    gpuData->valueIterationPhaseOne(w, true);
+                }
+                break;
+            case Problem::DTMC:
+                // do some DTMC stuff
+                if (spec == ThreadSpecialisation::CPU) {
+                    // do DTMC ops on the CPU
+                } else {
+                    // do DTMC ops on the GPU
+                }
+                break;
+        }
+        return 1;
+        // A scheduler problem is relatively easy to solve
     }
 
 private:
+    bool empty;
     uint index;
-    Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &matrix;
-    Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x;
-    std::vector<ValueType> &r;
-    std::vector<uint64_t> &pi;
-    std::vector<typename storm::storage::SparseMatrix<ValueType>::indexType> const &rowGroupIndices;
+    ThreadSpecialisation spec;
+    std::shared_ptr<mopmc::Data<double, int>> data;
+    std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<double>> gpuData;
+    std::vector<ValueType> w;
+    std::shared_ptr<std::vector<uint64_t>> scheduler;
+    Problem probType;
 };
 }
 #endif //MOPMC_PROBLEM_H

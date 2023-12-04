@@ -21,14 +21,14 @@ namespace mopmc {
             public:
 
                 CudaValueIterationHandler(
-                        const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                        const std::vector<int> &rowGroupIndices,
-                        const std::vector<int> &row2RowGroupMapping,
-                        std::vector<ValueType> &rho_flat,
-                        std::vector<int> &pi,
-                        int iniRow,
-                        //std::vector<double> &w
-                        int objCount);
+                    const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
+                    const std::vector<int> &rowGroupIndices,
+                    const std::vector<int> &row2RowGroupMapping,
+                    std::vector<ValueType> &rho_flat,
+                    std::vector<int> &pi,
+                    int iniRow,
+                    //std::vector<double> &w
+                    int objCount);
 
 
                 int initialise();
@@ -37,9 +37,11 @@ namespace mopmc {
 
                 int valueIteration(const std::vector<double> &w);
 
-                int valueIterationPhaseOne(const std::vector<double> &w);
+                int valueIterationPhaseOne(const std::vector<double> &w, bool toHost=false);
 
                 int valueIterationPhaseTwo();
+
+                int valueIterationPhaseTwo_v2(int beginObj, int endObj);
 
                 Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
                 std::vector<ValueType> flattenRewardVector_;

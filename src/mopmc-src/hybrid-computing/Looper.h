@@ -9,7 +9,6 @@
 #include <atomic>
 #include <memory>
 #include <functional>
-#include <stdexcept>
 #include <queue>
 #include <mutex>
 #include <boost/optional.hpp>
@@ -18,9 +17,8 @@
 #include <Eigen/Sparse>
 #include "Problem.h"
 #include "Utilities.h"
-// storm
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
+#include "../Data.h"
+#include "mopmc-src/solvers/CudaValueIteration.cuh"
 namespace hybrid {
 using namespace mopmc;
 
@@ -70,12 +68,11 @@ using Runnable = std::function<void()>;
 // callable and each problem has the same structure then
 // we can insert any problem into the queue. As a problem is a
 // functor it is easy to satisfy the compiler.
-template <typename M, typename ValueType>
+template <typename ValueType>
 class CLooper {
 public:
-    typedef typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType PrepReturnType;
-    typedef SchedulerProblem<ValueType> Sch;
-    typedef Eigen::SparseMatrix<ValueType, Eigen::RowMajor> SpMat;
+    typedef ThreadProblem<ValueType> Sch;
+    typedef Eigen::SparseMatrix<ValueType> SpMat;
 
     CLooper(uint id) : id(id), mRunning(false), mAbortRequested(false), mRunnables(),
                        mRunnablesMutex(), mDispatcher(std::shared_ptr<CDispatcher>(new CDispatcher(*this))),
@@ -83,7 +80,7 @@ public:
 
     };
 
-    CLooper(uint id_, ThreadSpecialisation spec, PrepReturnType const& model, std::vector<int> const& rowGroupIndices);
+    CLooper(uint id_, ThreadSpecialisation spec, Data<ValueType, int>& model);
 
 
     // Copy denied, move to be implemented
@@ -109,12 +106,10 @@ public:
     bool getAbortRequested() const;
 
     // Send data
-    void sendDataGPU(SpMat& matrix, std::vector<int> const& rowGroupIndices);
-
-    void sendDataCPU(SpMat& matrix);
+    void sendDataGPU(mopmc::Data<ValueType, int>& data);
 
     // Return solutions from the thread
-    std::vector<std::pair<int, double>> getSolution();
+    std::vector<int> getSolution();
 
     // Computes the next problem
     boost::optional<Sch> next();
@@ -165,22 +160,18 @@ private:
                                   */
     std::recursive_mutex mRunnablesMutex;
     std::shared_ptr<CDispatcher> mDispatcher;
-    std::vector<std::pair<int, double>> solutions;
+    std::vector<int> solutions;
     uint expectedSolutions;
     uint id;
-    hybrid::utilities::CuMDPMatrix<ValueType> cuTransitionMatrix;
-    // TODO specialise the thread for serving GPU or CPU operations
+    std::shared_ptr<Data<ValueType, int>> data;
+    std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<ValueType>> gpuData;
     hybrid::ThreadSpecialisation threadType;
-    const uint64_t m, n, k;
-    std::vector<ValueType> rhoFlat;
-    std::unique_ptr<storm::storage::SparseMatrix<ValueType>> P;
-    std::vector<uint64_t> pi, stateIndices;
 };
 
-template <typename T, typename ValueType>
+template <typename ValueType>
 class CLooperPool {
 public:
-    CLooperPool(std::vector<std::unique_ptr<CLooper<T, ValueType>>>&& loopers): mLoopers(std::move(loopers)){};
+    CLooperPool(std::vector<std::unique_ptr<CLooper<ValueType>>>&& loopers): mLoopers(std::move(loopers)){};
 
     ~CLooperPool() {
         stop();
@@ -192,21 +183,24 @@ public:
 
     void stop();
 
+    template <typename D>
+    void assignGlobalData(mopmc::Data<ValueType, int> const& data);
+
     // TODO The CLooperPool is currently not fit for purpose because we really only need two threads
     //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU
     //  thread dispatcher and with cuda natively on the GPU thread
-    void solve(std::vector<hybrid::SchedulerProblem<ValueType>> tasks);
+    void solve(std::vector<hybrid::ThreadProblem<ValueType>> tasks);
 
     void collectSolutions();
 
     // Every problem needs to return the same configuration or overload get solutions
-    std::vector<std::pair<uint, double>>& getSolutions();
+    std::vector<int>& getSolutions();
 
-    std::vector<std::shared_ptr<typename CLooper<T, ValueType>::CDispatcher>> getDispatchers();
+    std::vector<std::shared_ptr<typename CLooper<ValueType>::CDispatcher>> getDispatchers();
 
 private:
-    std::vector<std::unique_ptr<T>>&& mLoopers;
-    std::vector<std::pair<uint, double>> solutions;
+    std::vector<std::unique_ptr<CLooper<ValueType>>>&& mLoopers;
+    std::vector<int> solutions;
 };
 }
 #endif //MOPMC_LOOPER_H

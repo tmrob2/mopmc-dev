@@ -38,12 +38,12 @@ enable_testing()
 #add_subdirectory(googletest)
 
 set(LibHeaders
-    src/mopmc-src/cuda/ActionSelection.h
-    src/mopmc-src/cuda/WarmUp.h
+    src/mopmc-src/solvers/ActionSelection.h
+    src/mopmc-src/solvers/WarmUp.h
 )
 set(LibSources
-    src/mopmc-src/cuda/ActionSelection.cu
-    src/mopmc-src/cuda/WarmUp.cu
+    src/mopmc-src/solvers/ActionSelection.cu
+    src/mopmc-src/solvers/WarmUp.cu
 )
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3)
