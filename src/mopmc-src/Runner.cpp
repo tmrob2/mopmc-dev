@@ -19,6 +19,7 @@
 #include "Transformation.h"
 #include "Data.h"
 #include "queries/GpuConvexQuery.h"
+#include "queries/GpuConvexQueryAlt.h"
 #include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
@@ -43,23 +44,20 @@ namespace mopmc {
         assert (typeid(ValueType)==typeid(double));
         assert (typeid(IndexType)==typeid(uint64_t));
 
-
-
         storm::Environment env;
-
         clock_t time0 = clock();
         auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);
         clock_t time05 = clock();
-        mopmc::wrapper::StormModelCheckingWrapper<ModelType> stormModelCheckingWrapper(preprocessedResult);
-        //env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+        //mopmc::wrapper::StormModelCheckingWrapper<ModelType> stormModelCheckingWrapper(preprocessedResult);
         //stormModelCheckingWrapper.performMultiObjectiveModelChecking(env);
         auto preparedModel = mopmc::ModelBuilder<ModelType>::build(preprocessedResult);
         clock_t time1 = clock();
         auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);
         clock_t time2 = clock();
         //mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
+        mopmc::queries::GpuConvexQueryAlt<ValueType, int> q(data);
         //mopmc::queries::TestingQuery<ValueType, int> q(data);
-        mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
+        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
         q.query();
         clock_t time3 = clock();
 

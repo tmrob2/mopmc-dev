@@ -7,6 +7,8 @@ list(
         "${dir}/BaseQuery.h"
         "${dir}/GpuConvexQuery.cpp"
         "${dir}/GpuConvexQuery.h"
+        "${dir}/GpuConvexQueryAlt.cpp"
+        "${dir}/GpuConvexQueryAlt.h"
         "${dir}/TestingQuery.cpp"
         "${dir}/TestingQuery.h"
 )

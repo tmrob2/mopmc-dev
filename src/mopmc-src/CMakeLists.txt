@@ -8,14 +8,13 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 list(
         APPEND Sources
+        "${dir}/Data.h"
         "${dir}/ExplicitModelBuilder.cpp"
         "${dir}/ExplicitModelBuilder.h"
         "${dir}/Runner.cpp"
         "${dir}/Runner.h"
         "${dir}/ModelBuilding.cpp"
         "${dir}/ModelBuilding.h"
-        "${dir}/Data.cpp"
-        "${dir}/Data.h"
         "${dir}/Transformation.cpp"
         "${dir}/Transformation.h"
         "${dir}/StormModelCheckingWrapper.h"

@@ -7,6 +7,8 @@ list(
         "${dir}/TotalReLU.h"
         "${dir}/SignedKLEuclidean.cpp"
         "${dir}/SignedKLEuclidean.h"
+        "${dir}/EuclideanDistance.cpp"
+        "${dir}/EuclideanDistance.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

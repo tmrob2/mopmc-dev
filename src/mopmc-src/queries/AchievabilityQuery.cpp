@@ -10,6 +10,7 @@ namespace mopmc::queries {
     template<typename T, typename I>
     void AchievabilityQuery<T, I>::query() {
 
+        assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
                 this->data_.transitionMatrix,
                 this->data_.rowGroupIndices,
@@ -22,15 +23,8 @@ namespace mopmc::queries {
         cudaVIHandler.initialise();
 
         mopmc::optimization::optimizers::LinOpt<T> linOpt;
-
-        //variable definitions
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives
-        const uint64_t n = this->data_.rowCount; // n: number of choices / state-action pairs
-        const uint64_t k = this->data_.colCount; // k: number of states
-        assert(this->data_.rowGroupIndices.size() == k + 1);
         Vector<T> h = Eigen::Map<Vector<T>>(this->data_.thresholds.data(), this->data_.thresholds.size());
-        std::vector<std::vector<T>> rho(m);
-        std::vector<T> rho_flat(n * m);
         std::vector<Vector<T>> Phi;
         std::vector<Vector<T>> W;
         Vector<T> sgn(m);
@@ -56,7 +50,7 @@ namespace mopmc::queries {
         uint_fast64_t iteration = 0;
         while (iteration < maxIter) {
             if (!Phi.empty()) {
-                linOpt.optimize(Phi, rep, h, sgn, dirVec);
+                linOpt.findOptimalSeparatingDirection(Phi, rep, h, sgn, dirVec);
                 assert(dirVec.size() == m + 1);
                 w = VectorMap<T>(dirVec.data(), dirVec.size() - 1);
                 delta = dirVec(dirVec.size() - 1);

@@ -25,7 +25,7 @@ namespace mopmc::optimization::optimizers {
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_;
         Vector<V> vLeft_, vRight_;
-        V epsilon2 = 1e-4;
+        V epsilon2 = 1e-3;
 
         V g(V lambda) {
             assert(lambda >= static_cast<V>(0.) && lambda <= static_cast<V>(1.));

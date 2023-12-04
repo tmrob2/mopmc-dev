@@ -169,7 +169,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::valueIterationPhaseOne(const std::vector<double> &w) {
-                std::cout << "____ VI PHASE ONE ...\n" ;
+                std::cout << "____ VI PHASE ONE ____\n" ;
                 CHECK_CUDA(cudaMemcpy(dW, w.data(), nobjs * sizeof(double), cudaMemcpyHostToDevice))
                 mopmc::functions::cuda::aggregateLauncher(dW, dR, dRw, A_nrows, nobjs);
 
@@ -199,7 +199,10 @@ namespace mopmc {
                     //printf("___ VI PHASE ONE, ITERATION %i, maxEps %f\n", iteration, maxEps);
                 } while (maxEps > 1e-5 && iteration < maxIter);
 
-                std::cout << "terminated after " << iteration <<" iterations.\n";
+                if (iteration == maxIter) {
+                    std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
+                }
+                //std::cout << "terminated after " << iteration <<" iterations.\n";
                 //copy result
                 thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + nobjs);
 
@@ -208,7 +211,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo() {
-                std::cout << "____ VI PHASE TWO";
+                std::cout << "____ VI PHASE TWO ____\n";
                 // generate a DTMC transition matrix as a csr matrix
                 CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
                                                 CUSPARSE_INDEX_BASE_ZERO));
@@ -266,8 +269,10 @@ namespace mopmc {
                         ++iteration;
 
                     } while (maxEps > 1e-5 && iteration < maxIter);
-                    std::cout << "objective " << obj
-                    << " terminated after " << iteration << " iterations\n";
+                    if (iteration == maxIter) {
+                        std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
+                    }
+                    //std::cout << "objective " << obj  << " terminated after " << iteration << " iterations\n";
                     // copy results
                     thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
                 }

@@ -29,29 +29,26 @@ namespace mopmc::optimization::optimizers {
     class LinOpt {
     public:
 
-        int argmin(std::vector<Vector<V>> &Phi,
-                   std::vector<Vector<V>> &W,
-                   PolytopeType &rep,
-                   Vector<V> &d,
-                   Vector<V> &sgn,
-                   Vector<V> &out);
+        int findOptimalSeparatingDirection(std::vector<Vector<V>> &Phi,
+                                           PolytopeType &rep,
+                                           Vector<V> &d,
+                                           Vector<V> &sgn,
+                                           Vector<V> &optimalDirection);
 
-        int optimizeInFW(std::vector<Vector<V>> &Phi,
+        int checkFeasibility(std::vector<Vector<V>> &Phi,
+                             Vector<V> &newPoint,
+                             bool &feasible);
+
+        int optimizeVtx(std::vector<Vector<V>> &Phi,
+                        PolytopeType &rep,
+                        Vector<V> &d,
+                        Vector<V> &optimalPoint);
+
+        int optimizeHlsp(std::vector<Vector<V>> &Phi,
                          std::vector<Vector<V>> &W,
                          PolytopeType &rep,
                          Vector<V> &d,
-                         Vector<V> &out);
-
-        int optimizeInFW(std::vector<Vector<V>> &Phi,
-                         PolytopeType &rep,
-                         Vector<V> &d,
-                         Vector<V> &out);
-
-        int optimize(std::vector<Vector<V>> &Phi,
-                     PolytopeType &rep,
-                     Vector<V> &d,
-                     Vector<V> &sgn,
-                     Vector<V> &out);
+                         Vector<V> &optimalPoint);
 
     };
 }
