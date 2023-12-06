@@ -56,12 +56,12 @@ namespace mopmc {
             }
         }
         data.thresholds.resize(data.objectiveCount);
-        data.probObjectives.resize(data.objectiveCount);
-        data.maxDirections.resize(data.objectiveCount);
+        data.isProbabilisticObjective.resize(data.objectiveCount);
+        data.isThresholdUpperBound.resize(data.objectiveCount);
         for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
             data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
-            data.probObjectives[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
-            data.maxDirections[i] = (prepReturn.objectives[i].formula->getOptimalityType() == storm::solver::OptimizationDirection::Minimize);
+            data.isProbabilisticObjective[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
+            data.isThresholdUpperBound[i] = (prepReturn.objectives[i].formula->getOptimalityType() == storm::solver::OptimizationDirection::Minimize);
         }
 
         data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));
@@ -101,10 +101,10 @@ namespace mopmc {
             }
         }
         data.thresholds.resize(data.objectiveCount);
-        data.probObjectives.resize(data.objectiveCount);
+        data.isProbabilisticObjective.resize(data.objectiveCount);
         for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
             data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
-            data.probObjectives[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
+            data.isProbabilisticObjective[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
         }
 
         data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));
@@ -150,10 +150,10 @@ namespace mopmc {
             }
         }
         data.thresholds.resize(data.objectiveCount);
-        data.probObjectives.resize(data.objectiveCount);
+        data.isProbabilisticObjective.resize(data.objectiveCount);
         for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
             data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
-            data.probObjectives[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
+            data.isProbabilisticObjective[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
         }
 
         data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));

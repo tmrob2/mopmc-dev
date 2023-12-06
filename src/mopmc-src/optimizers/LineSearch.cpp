@@ -3,6 +3,8 @@
 //
 
 #include "LineSearch.h"
+#include <iostream>
+
 namespace mopmc::optimization::optimizers {
 
     template<typename V>
@@ -12,27 +14,46 @@ namespace mopmc::optimization::optimizers {
     LineSearch<V>::LineSearch(convex_functions::BaseConvexFunction<V> *f) : f_(f) {}
 
     template<typename V>
-    V LineSearch<V>::findOptimalPoint(Vector<V> &vLeft, Vector<V> &vRight) {
+    V LineSearch<V>::findOptimalDecentDistance(Vector<V> &vLeft, Vector<V> &vRight) {
+
+        const V epsilon2 = 1e-12;
         this->vLeft_ = vLeft;
         this->vRight_ = vRight;
-        V lambda1 = static_cast<V>(1.), lambda2 = static_cast<V>(0.);
-        if (dg(lambda1) * dg(lambda2) >= lambda2) {
-            if (g(lambda1) >= g(lambda2)) {
-                return lambda1;
-            } else {
-                return lambda2;
-            }
+        V lambda0 = static_cast<V>(0.), lambda1 = static_cast<V>(1.);
+        if (dg(lambda0) == static_cast<V>(0.)) {
+            return lambda0;
+        }
+        if (dg(lambda1) == static_cast<V>(0.)) {
+            return lambda1;
         }
         V delta = static_cast<V>(1.);
-        while (delta > epsilon2 ) {
-            if ( dg(lambda1) * dg(static_cast<V>(0.5) * (lambda1+lambda2)) >= static_cast<V>(0.) ) {
-                lambda1 = static_cast<V>(0.5) * (lambda1+lambda2);
+        uint64_t iter = 0;
+        while (lambda1 - lambda0 > epsilon2 ) {
+            if (dg(lambda0) * dg(static_cast<V>(0.5) * (lambda0 + lambda1)) > static_cast<V>(0.) ) {
+                lambda0 = static_cast<V>(0.5) * (lambda0 + lambda1);
+            } else if (dg(lambda0) * dg(static_cast<V>(0.5) * (lambda0 + lambda1)) < static_cast<V>(0.)) {
+                lambda1 = static_cast<V>(0.5) * (lambda0 + lambda1);
             } else {
-                lambda2 = static_cast<V>(0.5) * (lambda1+lambda2);
+                break;
             }
-            delta = static_cast<V>(0.5) * delta;
+            ++iter;
         }
-        return static_cast<V>(0.5) * (lambda1+lambda2);
+
+        return static_cast<V>(0.5) * (lambda0 + lambda1);
+    }
+
+    template<typename V>
+    V LineSearch<V>::g(V lambda) {
+        assert(lambda >= static_cast<V>(0.) && lambda <= static_cast<V>(1.));
+        Vector<V> vOut = lambda * this->vLeft_ + (static_cast<V>(1.)-lambda) * this->vRight_;
+        return this->f_->value(vOut);
+    }
+
+    template<typename V>
+    V LineSearch<V>::dg(V lambda) {
+        Vector<V> v1 = lambda * this->vLeft_ + (static_cast<V>(1.)-lambda) * this->vRight_;
+        Vector<V> v2 = this->vLeft_ - this->vRight_;
+        return this->f_->subgradient(v1).dot(v2);
     }
 
     template class LineSearch<double>;

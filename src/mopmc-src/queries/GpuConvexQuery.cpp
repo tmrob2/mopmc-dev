@@ -39,10 +39,9 @@ namespace mopmc::queries {
         Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
         Vector<T> *vPtr;
         Vector<T> r(m), w(m);
-        //std::vector<T> r1;
         w.setConstant(static_cast<T>(1.0) / m);
 
-        const double eps{1.e-6}, eps1{1.e-6};
+        const double eps{1.e-6}, eps1{1.e-6}, eps2{1.e-8};
         const uint_fast64_t maxIter{100};
 
         mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
@@ -53,7 +52,7 @@ namespace mopmc::queries {
         uint_fast64_t iter = 0;
         T delta = 0;
         // at least iterate twice
-        while (iter < maxIter && (Phi.size() < 3 || delta > eps)) {
+        while (iter < maxIter && (Phi.size() < 2 || delta > eps)) {
             std::cout << "Main query loop: Iteration " << iter << "\n";
             if (!Phi.empty()) {
                 vt = frankWolfe.argmin(Phi, *vPtr, Vertex, true);
@@ -74,6 +73,13 @@ namespace mopmc::queries {
             std::vector<T> r1 = cudaVIHandler.getResults();
             r1.resize(m);
             r = VectorMap<T>(r1.data(), r1.size());
+
+            if (!Phi.empty()) {
+                if ((r - Phi.back()).template lpNorm<1>() < eps2) {
+                    break;
+                }
+            }
+
             Phi.push_back(r);
             W.push_back(w);
 
@@ -93,22 +99,16 @@ namespace mopmc::queries {
 
         cudaVIHandler.exit();
 
-        std::cout << "----------------------------------------------\n";
-        std::cout << "CUDA CONVEX QUERY terminates after " << iter << " iteration(s) \n";
-        std::cout << "*Threshold approximation* - upper bound: " << fn.value(vt)
-                  << ", lower bound: " << fn.value(vb)
-                  << ", gap: " << delta << "\n";
-        std::cout << "upper bound point: [";
+        Vector<T> vOut = (vb+vt) * static_cast<T>(0.5);
+        std::cout << "----------------------------------------------\n"
+        << "CUDA CONVEX QUERY terminates after " << iter << " iteration(s)\n"
+        << "Estimated closest point: [";
         for (int i = 0; i < m; ++i) {
-            std::cout << vt(i) << " ";
+            std::cout << vOut(i) << " ";
         }
-        std::cout << "]\n";
-        std::cout << "lower bound point: [";
-        for (int i = 0; i < m; ++i) {
-            std::cout << vb(i) << " ";
-        }
-        std::cout << "]\n";
-        std::cout << "----------------------------------------------\n";
+        std::cout << "]\n"
+        << "Estimated distance to threshold: " << fn.value(vOut)
+        << "\n----------------------------------------------\n";
     }
 
     template

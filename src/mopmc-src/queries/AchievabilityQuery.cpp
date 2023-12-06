@@ -31,7 +31,7 @@ namespace mopmc::queries {
 
         Vector<T> sgn(m); // optimisation direction
         for (uint_fast64_t i=0; i<sgn.size(); ++i) {
-            sgn(i) = this->data_.maxDirections[i] ? static_cast<T>(-1) : static_cast<T>(1);
+            sgn(i) = this->data_.isThresholdUpperBound[i] ? static_cast<T>(-1) : static_cast<T>(1);
         }
 
         Vector<T> r(m), w(m), w1(m + 1);

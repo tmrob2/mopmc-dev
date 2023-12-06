@@ -34,7 +34,7 @@ namespace mopmc::optimization::optimizers {
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          Vector<V> &xIn,
                          PolytopeType rep,
-                         bool doLineSearch);
+                         bool doLineSearch=true);
 
         V lineSearch(Vector<V> &vLeft, Vector<V> &vRight, V epsilon2) {
             return 1.0;

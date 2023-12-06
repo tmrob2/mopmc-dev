@@ -30,8 +30,8 @@ namespace mopmc {
         std::vector<I> row2RowGroupMapping;
         std::vector<I> defaultScheduler;
 
-        std::vector<bool> probObjectives;
-        std::vector<bool> maxDirections;
+        std::vector<bool> isProbabilisticObjective;
+        std::vector<bool> isThresholdUpperBound;
 
     };
 

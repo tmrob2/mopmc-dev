@@ -42,17 +42,11 @@ namespace mopmc::optimization::optimizers {
         auto m = xIn.size();
         Vector<V> xCurrent(m), xNew = xIn, vStar(m);
         const V epsilon{1.e-5}, gamma0{static_cast<V>(0.1)};
-        const int maxIter = 10000;
+        const uint64_t maxIter = 10000;
         V gamma, tolerance;
-        int i;
+        uint64_t i;
 
         for (i = 0; i < maxIter; ++i) {
-            /*{
-                std::cout << "**xNew in FrankWolfe**: [";
-                for (int j = 0; j < xNew.size(); ++j) {
-                   std::cout << xNew(0) <<" ";
-                } std::cout << "]\n";
-            }*/
 
             xCurrent = xNew;
             Vector<V> d = this->fn->subgradient(xCurrent);
@@ -63,29 +57,16 @@ namespace mopmc::optimization::optimizers {
                 linOpt.optimizeHlsp(Phi, W, rep, d, vStar);
             }
 
-            //tolerance = cosine<V>(static_cast<V>(-1.) * this->fn->subgradient(xOld), vStar - xOld, static_cast<V>(0.));
             tolerance = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(vStar - xCurrent);
-            /*{
-                std::cout << "**Frank-Wolfe** decent gap: "
-                          << gap
-                          << " at iteration " << i << " and epsilon is " << epsilon <<"\n";
-                std::cout << "**Frank-Wolfe** vStar: [";
-                for (int j = 0; j < vStar.size(); ++j) {
-                    std::cout << vStar[j] << " ";
-                } std::cout << "]\n";
-
-            }*/
             if (tolerance <= epsilon) {
                 break;
             }
-            if (!doLineSearch) {
-                gamma = gamma0 * 2 / (i + 2);// / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
+            if (doLineSearch) {
+                gamma = static_cast<V>(1.) - lineSearch.findOptimalDecentDistance(xCurrent, vStar);
             } else {
-                //TODO
-                //gamma = lineSearch.findOptimalPoint(xOld, vStar);
-                gamma = gamma0 * 2 / (i + 2); // / std::log(i+2); //std::pow(static_cast<V>(1.01), i) ;
+                gamma = gamma0 * static_cast<V>(2) / static_cast<V>(i + 2); ;
             }
-            xNew = (1 - gamma) * xCurrent + gamma * vStar;
+            xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
         }
         std::cout << "*Frank-Wolfe* stops at iteration " << i << ", tolerance: " << tolerance << " \n";
         return xNew;
