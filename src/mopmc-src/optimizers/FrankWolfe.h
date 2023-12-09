@@ -6,6 +6,7 @@
 #define MOPMC_FRANKWOLFE_H
 
 #include <vector>
+#include <set>
 #include <cassert>
 #include <algorithm>
 #include <Eigen/Dense>
@@ -20,27 +21,38 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
+    enum FWOptimizationMethod {
+        LP, AWAY_STEP
+    };
+
     template<typename V>
     class FrankWolfe {
     public:
         explicit FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
+        FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
+                   uint64_t maxSize);
+
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          std::vector<Vector<V>> &W,
                          Vector<V> &xIn,
-                         PolytopeType rep,
-                         bool doLineSearch);
+                         PolytopeType polytopeType,
+                         bool doLineSearch=true);
 
         Vector<V> argmin(std::vector<Vector<V>> &Phi,
                          Vector<V> &xIn,
-                         PolytopeType rep,
+                         PolytopeType polytopeType,
                          bool doLineSearch=true);
 
-        V lineSearch(Vector<V> &vLeft, Vector<V> &vRight, V epsilon2) {
-            return 1.0;
-        };
+        Vector<V> argminByAwayStep(std::vector<Vector<V>> &Phi,
+                                   Vector<V> &xIn,
+                                   bool doLineSearch=true);
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
+
+        Vector<V> alpha;
+        std::set<V> S;
+
     };
 
 

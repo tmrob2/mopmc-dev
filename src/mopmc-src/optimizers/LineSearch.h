@@ -21,7 +21,7 @@ namespace mopmc::optimization::optimizers {
 
         explicit LineSearch(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_);
 
-        V findOptimalDecentDistance(Vector<V> &vLeft, Vector<V> &vRight);
+        V findOptimalDecentDistance(Vector<V> &vLeft, Vector<V> &vRight, V lambdaMax = static_cast<V>(1.));
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_;
         Vector<V> vLeft_, vRight_;
