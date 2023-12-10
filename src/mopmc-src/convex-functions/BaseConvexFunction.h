@@ -20,19 +20,24 @@ namespace mopmc::optimization::convex_functions {
     public:
 
         explicit BaseConvexFunction()= default;
-        explicit BaseConvexFunction(Vector<V> &e) : e_(e){}
-        explicit BaseConvexFunction(Vector<V> &e, std::vector<bool> isProb) : e_(e), isProb_(std::move(isProb)){}
-        explicit BaseConvexFunction(VectorMap<V> &e) : e_(e){}
-        explicit BaseConvexFunction(VectorMap<V> &e, std::vector<bool> isProb) : e_(e), isProb_(std::move(isProb)){}
+        explicit BaseConvexFunction(const Vector<V> &params) : params_(params){}
+        explicit BaseConvexFunction(const Vector<V> &params, const std::vector<bool> &probs)
+            : params_(params), probs_(probs){}
+        explicit BaseConvexFunction(const VectorMap<V> &params) : params_(params){}
+        explicit BaseConvexFunction(const VectorMap<V> &params, const std::vector<bool> &probs)
+            : params_(params), probs_(probs){}
 
-        virtual V value1(std::vector<V> &x) = 0;
-        virtual V value(Vector<V> &x) = 0;
+        virtual V value(const Vector<V> &x) = 0;
+        virtual V value1(const std::vector<V> &x) = 0;
 
-        virtual std::vector<V> subgradient1(std::vector<V> &x) = 0;
-        virtual Vector<V> subgradient(Vector<V> &x) = 0;
+        virtual Vector<V> subgradient(const Vector<V> &x) = 0;
+        virtual std::vector<V> subgradient1(const std::vector<V> &x) = 0;
 
-        Vector<V> e_;
-        std::vector<bool> isProb_;
+        //virtual Vector<V> gradient(const Vector<V> &x) = 0;
+
+        Vector<V> params_;
+        std::vector<bool> probs_;
+        bool smooth{};
 
     };
 }

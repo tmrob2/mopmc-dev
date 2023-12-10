@@ -19,13 +19,13 @@ namespace mopmc::optimization::convex_functions {
     template<typename V>
     class EuclideanDistance : public BaseConvexFunction<V>{
     public:
-        explicit EuclideanDistance(Vector<V> &c);
+        explicit EuclideanDistance(const Vector<V> &c);
 
-        V value1(std::vector<V> &x) override;
-        V value(Vector<V> &x) override;
+        V value1(const std::vector<V> &x) override;
+        V value(const Vector<V> &x) override;
 
-        std::vector<V> subgradient1(std::vector<V> &x) override;
-        Vector<V> subgradient(Vector<V> &x) override;
+        std::vector<V> subgradient1(const std::vector<V> &x) override;
+        Vector<V> subgradient(const Vector<V> &x) override;
 
     };
 

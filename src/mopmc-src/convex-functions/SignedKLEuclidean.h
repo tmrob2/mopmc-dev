@@ -23,17 +23,17 @@ namespace mopmc::optimization::convex_functions {
     template<typename V>
     class SignedKLEuclidean : public BaseConvexFunction<V> {
     public:
-        explicit SignedKLEuclidean(std::vector<V> &c);
-        SignedKLEuclidean(std::vector<V> &c, std::vector<bool> &isProb);
+        explicit SignedKLEuclidean(const std::vector<V> &c);
+        SignedKLEuclidean(const std::vector<V> &c, const std::vector<bool> &isProb);
 
-        explicit SignedKLEuclidean(Vector<V> &e);
-        SignedKLEuclidean(Vector<V> &e, std::vector<bool> &isProb);
+        explicit SignedKLEuclidean(const Vector<V> &e);
+        SignedKLEuclidean(const Vector<V> &e, const std::vector<bool> &isProb);
 
-        V value1(std::vector<V> &x) override;
-        V value(Vector<V> &x) override;
+        V value1(const std::vector<V> &x) override;
+        V value(const Vector<V> &x) override;
 
-        std::vector<V> subgradient1(std::vector<V> &x) override;
-        Vector<V> subgradient(Vector<V> &x) override;
+        std::vector<V> subgradient1(const std::vector<V> &x) override;
+        Vector<V> subgradient(const Vector<V> &x) override;
 
         std::vector<V> c_;
         std::vector<bool> isProb2_;

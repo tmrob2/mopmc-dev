@@ -10,14 +10,16 @@
 namespace mopmc::optimization::convex_functions {
 
     template<typename V>
-    TotalReLU<V>::TotalReLU(std::vector<V> &c) : c_(c), BaseConvexFunction<V>() {}
-    template<typename V>
-    TotalReLU<V>::TotalReLU(Vector<V> &e) : BaseConvexFunction<V>(e) {}
-    template<typename V>
-    TotalReLU<V>::TotalReLU(VectorMap<V> &e) : BaseConvexFunction<V>(e) {}
+    TotalReLU<V>::TotalReLU(const Vector<V> &c) : BaseConvexFunction<V>(c) {
+        this->smooth = false;
+    }
 
     template<typename V>
-    V TotalReLU<V>::value1(std::vector<V> &x) {
+    V TotalReLU<V>::value1(const std::vector<V> &x) {
+
+        std::vector<V> z = x;
+        Vector<V> z1 = VectorMap<V>(z.data(), z.size());
+        return value(z1);
 
         if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
@@ -31,7 +33,12 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    std::vector<V> TotalReLU<V>::subgradient1(std::vector<V> &x) {
+    std::vector<V> TotalReLU<V>::subgradient1(const std::vector<V> &x) {
+
+        std::vector<V> z = x;
+        Vector<V> z1 = VectorMap<V>(z.data(), z.size());
+        Vector<V> z2 = subgradient(z1);
+        return std::vector<V>(z2.data(), z2.data() + z2.size());
 
         if (x.size() != c_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
@@ -49,26 +56,25 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    V TotalReLU<V>::value(Vector<V> &x) {
-        //std::cout << "x.size(): " << x.size() << ", e_.size(): " << this->e_.size() <<std::endl;
-        if (x.size() != this->e_.size()) {
+    V TotalReLU<V>::value(const Vector<V> &x) {
+        if (x.size() != this->params_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }
-        Vector<V> y(this->e_.size());
-        for (uint_fast64_t i = 0; i < this->e_.size(); ++i) {
-            y(i) = std::max(static_cast<V>(0.), this->e_(i) - x(i));
+        Vector<V> y(this->params_.size());
+        for (uint_fast64_t i = 0; i < this->params_.size(); ++i) {
+            y(i) = std::max(static_cast<V>(0.), this->params_(i) - x(i));
         }
         return y.sum();
     }
 
     template<typename V>
-    Vector<V> TotalReLU<V>::subgradient(Vector<V> &x) {
-        if (x.size() != this->e_.size()) {
+    Vector<V> TotalReLU<V>::subgradient(const Vector<V> &x) {
+        if (x.size() != this->params_.size()) {
             throw std::runtime_error("Convex function input does not match its dimension.");
         }
-        Vector<V> dy(this->e_.size());
-        for (uint_fast64_t i = 0; i < this->e_.size(); ++i) {
-            if (x(i) < this->e_(i)) {
+        Vector<V> dy(this->params_.size());
+        for (uint_fast64_t i = 0; i < this->params_.size(); ++i) {
+            if (x(i) < this->params_(i)) {
                 dy(i) = static_cast<V>(-1.);
             } else {
                 dy(i) = static_cast<V>(0.);

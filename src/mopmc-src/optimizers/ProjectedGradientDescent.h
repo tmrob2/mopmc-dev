@@ -12,6 +12,8 @@
 namespace mopmc::optimization::optimizers{
     template<typename V>
     using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    template<typename V>
+    using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename V>
     class ProjectedGradientDescent {
@@ -19,13 +21,18 @@ namespace mopmc::optimization::optimizers{
 
         explicit ProjectedGradientDescent(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
-         Vector<V> findNearestProjectedPoint(Vector<V> &x,
-                                             std::vector<Vector<V>> &Phi,
-                                             std::vector<Vector<V>> &W);
+         Vector<V> projectToNearestHyperplane(Vector<V> &x,
+                                              std::vector<Vector<V>> &Phi,
+                                              std::vector<Vector<V>> &W);
+
+         Vector<V> projectToUnitSimplex(Vector<V> &x);
          
          Vector<V> argmin(Vector<V> &iniPoint,
                           std::vector<Vector<V>> &Phi,
                           std::vector<Vector<V>> &W);
+
+         Vector<V> argminUnitSimplexProjection(Vector<V> &iniPoint,
+                                               std::vector<Vector<V>> &Phi);
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
 

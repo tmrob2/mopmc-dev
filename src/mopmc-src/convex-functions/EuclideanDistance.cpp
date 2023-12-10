@@ -10,35 +10,35 @@
 namespace mopmc::optimization::convex_functions {
 
     template<typename V>
-    EuclideanDistance<V>::EuclideanDistance(Vector<V> &c):BaseConvexFunction<V>(c) {
-
+    EuclideanDistance<V>::EuclideanDistance(const Vector<V> &c):BaseConvexFunction<V>(c) {
+        this->smooth = true;
     }
 
     template<typename V>
-    Vector<V> EuclideanDistance<V>::subgradient(Vector<V> &x) {
+    Vector<V> EuclideanDistance<V>::subgradient(const Vector<V> &x) {
         Vector<V> y(x.size());
         for (uint_fast64_t i = 0; i < x.size(); ++i) {
-            y(i) = 2 * (x(i) - this->e_(i));
+            y(i) = 2 * (x(i) - this->params_(i));
         }
         return y;
     }
 
     template<typename V>
-    std::vector<V> EuclideanDistance<V>::subgradient1(std::vector<V> &x) {
+    std::vector<V> EuclideanDistance<V>::subgradient1(const std::vector<V> &x) {
         return std::vector<V>();
     }
 
     template<typename V>
-    V EuclideanDistance<V>::value(Vector<V> &x) {
+    V EuclideanDistance<V>::value(const Vector<V> &x) {
         V y = static_cast<V>(0.);
         for (uint_fast64_t i = 0; i < x.size(); ++i) {
-            y += std::pow(x(i) - this->e_(i), 2);
+            y += std::pow(x(i) - this->params_(i), 2);
         }
         return y;
     }
 
     template<typename V>
-    V EuclideanDistance<V>::value1(std::vector<V> &x) {
+    V EuclideanDistance<V>::value1(const std::vector<V> &x) {
         return V();
     }
 

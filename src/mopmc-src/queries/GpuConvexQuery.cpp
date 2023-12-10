@@ -55,7 +55,8 @@ namespace mopmc::queries {
             std::cout << "Main loop: Iteration " << iter << "\n";
             if (!Phi.empty()) {
                 //vt = frankWolfe.argminByAwayStep(Phi, *vPtr);
-                vt = frankWolfe.argmin(Phi, *vPtr, Vertex, true);
+                //vt = frankWolfe.argmin(Phi, *vPtr, Vertex, true);
+                vt = projectedGradientDescent.argminUnitSimplexProjection(*vPtr, Phi);
                 Vector <T> grad = fn.subgradient(vt);
 
                 if (grad.template lpNorm<1>() < eps1) {

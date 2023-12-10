@@ -13,30 +13,32 @@ namespace mopmc::optimization::convex_functions {
 
 
     template<typename V>
-    SignedKLEuclidean<V>::SignedKLEuclidean(std::vector<V> &c, std::vector<bool> &isProb) : c_(c), isProb2_(isProb) {
+    SignedKLEuclidean<V>::SignedKLEuclidean(const std::vector<V> &c, const std::vector<bool> &isProb)
+        : c_(c), isProb2_(isProb) {
         if (c_.size() != isProb2_.size()) {
             throw std::runtime_error("<to be inserted>");
         }
     }
 
     template<typename V>
-    SignedKLEuclidean<V>::SignedKLEuclidean(std::vector<V> &c) : c_(c) {
+    SignedKLEuclidean<V>::SignedKLEuclidean(const std::vector<V> &c) : c_(c) {
         isProb2_ = std::vector<bool>(c_.size(), false);
     }
 
     template<typename V>
-    SignedKLEuclidean<V>::SignedKLEuclidean(Vector<V> &e, std::vector<bool> &isProb) : BaseConvexFunction<V>(e, isProb) {
-        if (this->e_.size() != this->isProb_.size()) {
+    SignedKLEuclidean<V>::SignedKLEuclidean(const Vector<V> &e, const std::vector<bool> &isProb)
+        : BaseConvexFunction<V>(e, isProb) {
+        if (this->params_.size() != this->probs_.size()) {
             throw std::runtime_error("<to be inserted>");
         }
     }
 
     template<typename V>
-    SignedKLEuclidean<V>::SignedKLEuclidean(Vector<V> &e) : BaseConvexFunction<V>(e) {}
+    SignedKLEuclidean<V>::SignedKLEuclidean(const Vector<V> &e) : BaseConvexFunction<V>(e) {}
 
 
     template<typename V>
-    V SignedKLEuclidean<V>::value1(std::vector<V> &x) {
+    V SignedKLEuclidean<V>::value1(const std::vector<V> &x) {
 
         if (c_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
@@ -53,24 +55,24 @@ namespace mopmc::optimization::convex_functions {
     }
 
     template<typename V>
-    V SignedKLEuclidean<V>::value(Vector<V> &x) {
+    V SignedKLEuclidean<V>::value(const Vector<V> &x) {
 
-        if (this->e_.size() != x.size()) {
+        if (this->params_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
         }
         V out = static_cast<V>(0.);
-        for (uint_fast64_t i = 0; i < this->isProb_.size(); ++i) {
-            if (this->isProb_[i]) {
-                out += sign_leq(x(i), this->e_(i)) * klDivergence(x(i), this->e_(i));
+        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
+            if (this->probs_[i]) {
+                out += sign_leq(x(i), this->params_(i)) * klDivergence(x(i), this->params_(i));
             } else {
-                out += sign_leq(x(i), this->e_(i)) * squaredDiff(x(i), this->e_(i));
+                out += sign_leq(x(i), this->params_(i)) * squaredDiff(x(i), this->params_(i));
             }
         }
         return out;
     }
 
     template<typename V>
-    std::vector<V> SignedKLEuclidean<V>::subgradient1(std::vector<V> &x) {
+    std::vector<V> SignedKLEuclidean<V>::subgradient1(const std::vector<V> &x) {
         if (c_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
         }
@@ -87,16 +89,16 @@ namespace mopmc::optimization::convex_functions {
 
 
     template<typename V>
-    Vector<V> SignedKLEuclidean<V>::subgradient(Vector<V> &x) {
-        if (this->e_.size() != x.size()) {
+    Vector<V> SignedKLEuclidean<V>::subgradient(const Vector<V> &x) {
+        if (this->params_.size() != x.size()) {
             throw std::runtime_error("<to be inserted>");
         }
         Vector<V> out(x.size());
-        for (uint_fast64_t i = 0; i < this->isProb_.size(); ++i) {
-            if (this->isProb_[i]) {
-                out(i) = d_klDivergence(x(i), this->e_(i));
+        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
+            if (this->probs_[i]) {
+                out(i) = d_klDivergence(x(i), this->params_(i));
             } else {
-                out(i) = d_squaredDiff(x(i), this->e_(i));
+                out(i) = d_squaredDiff(x(i), this->params_(i));
             }
         }
         return out;
