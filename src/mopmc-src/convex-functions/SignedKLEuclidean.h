@@ -29,10 +29,8 @@ namespace mopmc::optimization::convex_functions {
         explicit SignedKLEuclidean(const Vector<V> &e);
         SignedKLEuclidean(const Vector<V> &e, const std::vector<bool> &isProb);
 
-        V value1(const std::vector<V> &x) override;
         V value(const Vector<V> &x) override;
 
-        std::vector<V> subgradient1(const std::vector<V> &x) override;
         Vector<V> subgradient(const Vector<V> &x) override;
 
         std::vector<V> c_;

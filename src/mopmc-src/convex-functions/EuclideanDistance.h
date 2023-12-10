@@ -21,10 +21,8 @@ namespace mopmc::optimization::convex_functions {
     public:
         explicit EuclideanDistance(const Vector<V> &c);
 
-        V value1(const std::vector<V> &x) override;
         V value(const Vector<V> &x) override;
 
-        std::vector<V> subgradient1(const std::vector<V> &x) override;
         Vector<V> subgradient(const Vector<V> &x) override;
 
     };

@@ -28,12 +28,12 @@ namespace mopmc::optimization::convex_functions {
             : params_(params), probs_(probs){}
 
         virtual V value(const Vector<V> &x) = 0;
-        virtual V value1(const std::vector<V> &x) = 0;
-
         virtual Vector<V> subgradient(const Vector<V> &x) = 0;
-        virtual std::vector<V> subgradient1(const std::vector<V> &x) = 0;
+        Vector<V> gradient(const Vector<V> &x);
 
-        //virtual Vector<V> gradient(const Vector<V> &x) = 0;
+        V value1(const std::vector<V> &x);
+        Vector<V> subgradient1(const std::vector<V> &x);
+        Vector<V> gradient1(const Vector<V> &x);
 
         Vector<V> params_;
         std::vector<bool> probs_;
