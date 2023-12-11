@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <memory>
 #include "../convex-functions/BaseConvexFunction.h"
+#include "BaseOptimizer.h"
 
 namespace mopmc::optimization::optimizers{
 
@@ -22,37 +23,36 @@ namespace mopmc::optimization::optimizers{
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename V>
-    class ProjectedGradientDescent {
+    class ProjectedGradientDescent : public BaseOptimizer<V>{
     public:
 
         explicit ProjectedGradientDescent(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
         ProjectedGradientDescent(ProjectionType type, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
+
+        int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) override;
+
+        int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices,
+                     const std::vector<Vector<V>> &Weights) override;
+
+        ProjectionType projectionType{};
+
+    private:
+        Vector<V> argminUnitSimplexProjection(Vector<V> &weightVector,
+                                              const std::vector<Vector<V>> &Points);
+
+        Vector<V> argminNearestHyperplane(Vector<V> &iniPoint,
+                                          const std::vector<Vector<V>> &Phi,
+                                          const std::vector<Vector<V>> &W);
+
         Vector<V> projectToNearestHyperplane(Vector<V> &x,
-                                              std::vector<Vector<V>> &Phi,
-                                              std::vector<Vector<V>> &W);
+                                             const std::vector<Vector<V>> &Phi,
+                                             const std::vector<Vector<V>> &W);
 
         Vector<V> projectToUnitSimplex(Vector<V> &x);
 
-        Vector<V> argminNearestHyperplane(Vector<V> &iniPoint,
-                                          std::vector<Vector<V>> &Phi,
-                                          std::vector<Vector<V>> &W);
-
-
-        Vector<V> argminUnitSimplexProjection(Vector<V> &weightVector,
-                                               std::vector<Vector<V>> &Points);
-
-        Vector<V> argmin(std::vector<Vector<V>> &Vertices,
-                         std::vector<Vector<V>> &Weights,
-                         Vector<V> &initialPoint);
-
-        Vector<V> argmin(std::vector<Vector<V>> &Vertices,
-                         Vector<V> &initialPoint);
-
-        mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
-        ProjectionType projectionType{};
-
+        Vector<V> alpha;
 
     };
 }

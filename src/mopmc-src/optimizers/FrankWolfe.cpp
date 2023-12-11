@@ -19,9 +19,23 @@ namespace mopmc::optimization::optimizers {
         }
     }
 
+    template<typename V>
+    int FrankWolfe<V>::minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) {
+        Vector<V> initialPoint = point;
+
+        if (this->fwOptMethod == LINOPT) {
+            point = argminByLinOpt(Vertices, initialPoint, PolytopeType::Vertex, this->lineSearch);
+        }
+        if (this->fwOptMethod == AWAY_STEP) {
+            point = argminByAwayStep(Vertices, initialPoint, this->lineSearch);
+        }
+
+        return 0;
+    }
+
     //Frank-Wolfe with away steps
     template<typename V>
-    Vector<V> FrankWolfe<V>::argminByAwayStep(std::vector<Vector<V>> &Phi,
+    Vector<V> FrankWolfe<V>::argminByAwayStep(const std::vector<Vector<V>> &Phi,
                                               Vector<V> &xIn,
                                               bool doLineSearch){
         if (Phi.empty())
@@ -41,7 +55,7 @@ namespace mopmc::optimization::optimizers {
 
         if (Phi.size() == 1) {
             this->alpha(0) = static_cast<V>(1.);
-            this->S.insert(0);
+            this->activeSet.insert(0);
         }
 
         xNew.setZero();
@@ -65,7 +79,7 @@ namespace mopmc::optimization::optimizers {
 
             uint64_t awId = 0;
             V dec = std::numeric_limits<V>::min();
-            for (auto j : S) {
+            for (auto j : this->activeSet) {
                 assert(Phi[j].size() == this->fn->subgradient(xCurrent).size());
                 if (Phi[j].dot(this->fn->subgradient(xCurrent)) > dec){
                     awId = j;
@@ -97,10 +111,10 @@ namespace mopmc::optimization::optimizers {
 
             if (isFw) {
                 if (gamma == gammaMax) {
-                    this->S.clear();
-                    this->S.insert(fwId);
+                    this->activeSet.clear();
+                    this->activeSet.insert(fwId);
                 } else {
-                    this->S.insert(fwId);
+                    this->activeSet.insert(fwId);
                 }
 
                 for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
@@ -111,7 +125,7 @@ namespace mopmc::optimization::optimizers {
                 this->alpha(fwId) = (static_cast<V>(1.) - gamma) * this->alpha(fwId) + gamma;
             } else {
                 if (gamma == gammaMax) {
-                    this->S.erase(awId);
+                    this->activeSet.erase(awId);
                 }
                 for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
                     if (l != awId) {
@@ -131,11 +145,11 @@ namespace mopmc::optimization::optimizers {
 
     //Frank-Wolfe with LinOpt (LP)
     template<typename V>
-    Vector<V> FrankWolfe<V>::argmin(std::vector<Vector<V>> &Phi,
-                                    std::vector<Vector<V>> &W,
-                                    Vector<V> &xIn,
-                                    PolytopeType polytopeType,
-                                    bool doLineSearch) {
+    Vector<V> FrankWolfe<V>::argminByLinOpt(const std::vector<Vector<V>> &Phi,
+                                            const std::vector<Vector<V>> &W,
+                                            Vector<V> &xIn,
+                                            PolytopeType polytopeType,
+                                            bool doLineSearch) {
         if (Phi.empty()) {
             throw std::runtime_error("The set of vertices cannot be empty");
         }
@@ -183,19 +197,21 @@ namespace mopmc::optimization::optimizers {
 
 
     template<typename V>
-    Vector<V> FrankWolfe<V>::argmin(std::vector<Vector<V>> &Phi, Vector<V> &xIn, PolytopeType rep, bool doLineSearch) {
+    Vector<V> FrankWolfe<V>::argminByLinOpt(const std::vector<Vector<V>> &Phi, Vector<V> &xIn, PolytopeType rep, bool doLineSearch) {
 
         std::vector<Vector<V>> W0;
-        return this->argmin(Phi, W0, xIn, rep, doLineSearch);
+        return this->argminByLinOpt(Phi, W0, xIn, rep, doLineSearch);
     }
 
+
     template<typename V>
-    FrankWolfe<V>::FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
-            : fn(f) {}
+    FrankWolfe<V>::FrankWolfe(FWOptMethod optMethod, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
+            : fwOptMethod(optMethod), BaseOptimizer<V>(f) {}
+
 
     template<typename V>
     FrankWolfe<V>::FrankWolfe(convex_functions::BaseConvexFunction<V> *f, uint64_t maxSize)
-            : fn(f) { alpha.resize(maxSize); }
+            : BaseOptimizer<V>(f) { alpha.resize(maxSize); }
 
     template
     class FrankWolfe<double>;

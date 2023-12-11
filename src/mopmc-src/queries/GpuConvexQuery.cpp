@@ -46,22 +46,15 @@ namespace mopmc::queries {
         T tol, tol1, tol2;
         uint_fast64_t iter = 0;
 
-        mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
-        mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
-        //mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn, maxIter);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent(
-                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
-
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
             //std::cout << "Tolerance: " << tol << ", Tolerance1: " << tol1 << ", Tolerance2: " << tol2 << "\n";
             if (!Phi.empty()) {
-                //vt = frankWolfe.argminByAwayStep(Phi, vPrv);
-                vt = frankWolfe.argmin(Phi, vPrv, Vertex, true);
-                //vt = projectedGradientDescent.argminUnitSimplexProjection(*vPtr, Phi);
+                vt = vPrv;
+                this->primaryOptimizer->minimize(vt, Phi);
 
                 if (Phi.size() >= 2) {
-                    //err2 = (vPrv - vt).template lpNorm<1>();
+                    //tol2 = (vPrv - vt).template lpNorm<1>();
                     tol2 = (vPrv - vt).template lpNorm<Eigen::Infinity>();
                     if (tol2 < eps2) {
                         std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: " << tol2 << ")\n";
@@ -70,7 +63,7 @@ namespace mopmc::queries {
                     }
                 }
 
-                Vector<T> grad = fn.subgradient(vt);
+                Vector<T> grad = this->fn->subgradient(vt);
                 tol1 = grad.template lpNorm<1>();
                 if (tol1 < eps1) {
                     std::cout << "loop exit due to small gradient (tolerance: " << tol1 << ")\n";
@@ -99,10 +92,11 @@ namespace mopmc::queries {
             }
 
             if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = projectedGradientDescent.argmin(Phi, W, vPrv);
+                vb = vt;
+                this->secondaryOptimizer->minimize(vb, Phi, W);
             }
 
-            tol = std::abs(fn.value(vt) - fn.value(vb));
+            tol = std::abs(this->fn->value(vt) - this->fn->value(vb));
             if (tol < eps) {
                 std::cout << "loop exit due to small distance on threshold (tolerance: " << tol << ")\n";
                 ++iter;
@@ -122,7 +116,7 @@ namespace mopmc::queries {
                 std::cout << vt(i) << " ";
             }
             std::cout << "]\n"
-                    << "Approximate distance: " << fn.value(vt)
+                    << "Approximate distance: " << this->fn->value(vt)
                       //<< "Approximate distance between " << fn.value(vb) << " and " << fn.value(vt)
                       << "\n----------------------------------------------\n";
         }

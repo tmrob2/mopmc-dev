@@ -34,7 +34,6 @@ namespace mopmc::queries {
         std::vector<Vector<T>> Phi, W;
         Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
         Vector<T> vPrv;
-        Vector<T> *vPtr;
         Vector<T> r(m), w(m), q;
 
         const double eps{1.e-6}, eps1{1.e-8}, eps2{1.e-6};
@@ -42,27 +41,13 @@ namespace mopmc::queries {
         T tol, tol1, tol2;
         uint_fast64_t iter = 0;
 
-        mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
-        mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
-        //mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn, maxIter);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent1(
-                mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent2(
-                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
 
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
             if (!Phi.empty()) {
-                //vt = frankWolfe.argminByAwayStep(Phi, vPrv);
-                //vt = frankWolfe.argmin(Phi, vPrv, Vertex, true);
-                q.resize(Phi.size());
-                if (Phi.size() == 1) {
-                    q.setOnes();
-                } else {
-                    q(Phi.size() - 1) = static_cast<T>(0.);
-                }
-                vt = projectedGradientDescent1.argmin(Phi, q);
-                Vector<T> grad = fn.subgradient(vt);
+
+                this->primaryOptimizer->minimize(vt, Phi);
+                Vector<T> grad = this->fn->subgradient(vt);
 
                 tol1 = grad.template lpNorm<1>();
                 if (tol1 < eps1) {
@@ -106,10 +91,11 @@ namespace mopmc::queries {
             }
 
             if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = projectedGradientDescent2.argmin(Phi, W, vPrv);
+                vb = vt;
+                this->secondaryOptimizer->minimize(vb, Phi, W);
             }
             //tol = (vt - vb).template lpNorm<Eigen::Infinity>();
-            tol = std::abs(fn.value(vt) - fn.value(vb));
+            tol = std::abs(this->fn->value(vt) - this->fn->value(vb));
             if (tol < eps) {
                 std::cout << "loop exit due to small distance on threshold (tolerance: " << tol <<")\n";
                 ++iter;
@@ -131,7 +117,7 @@ namespace mopmc::queries {
                 std::cout << vt(i) << " ";
             }
             std::cout << "]\n"
-                      << "Approximate distance: " << fn.value(vt)
+                      << "Approximate distance: " << this->fn->value(vt)
                       //<< "Approximate distance between " << fn.value(vb) << " and " << fn.value(vt)
                       << "\n----------------------------------------------\n";
         }

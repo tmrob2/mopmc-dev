@@ -39,13 +39,13 @@ namespace mopmc::optimization::optimizers {
                              Vector<V> &newPoint,
                              bool &feasible);
 
-        int optimizeVtx(std::vector<Vector<V>> &Phi,
+        int optimizeVtx(const std::vector<Vector<V>> &Phi,
                         PolytopeType &rep,
                         Vector<V> &d,
                         Vector<V> &optimalPoint);
 
-        int optimizeHlsp(std::vector<Vector<V>> &Phi,
-                         std::vector<Vector<V>> &W,
+        int optimizeHlsp(const std::vector<Vector<V>> &Phi,
+                         const std::vector<Vector<V>> &W,
                          PolytopeType &rep,
                          Vector<V> &d,
                          Vector<V> &optimalPoint);

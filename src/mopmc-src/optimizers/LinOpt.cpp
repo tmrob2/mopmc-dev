@@ -8,7 +8,7 @@
 namespace mopmc::optimization::optimizers {
 
     template<typename V>
-    int LinOpt<V>::optimizeHlsp(std::vector<Vector<V>> &Phi, std::vector<Vector<V>> &W, PolytopeType &rep, Vector<V> &d,
+    int LinOpt<V>::optimizeHlsp(const std::vector<Vector<V>> &Phi, const std::vector<Vector<V>> &W, PolytopeType &rep, Vector<V> &d,
                                 Vector<V> &optimalPoint) {
         assert(rep == Halfspace);
         lprec *lp;
@@ -99,7 +99,7 @@ namespace mopmc::optimization::optimizers {
     }
 
     template<typename V>
-    int LinOpt<V>::optimizeVtx(std::vector<Vector<V>> &Phi, PolytopeType &rep, Vector<V> &d,
+    int LinOpt<V>::optimizeVtx(const std::vector<Vector<V>> &Phi, PolytopeType &rep, Vector<V> &d,
                                Vector<V> &optimalPoint) {
         assert(rep == Vertex);
         lprec *lp;

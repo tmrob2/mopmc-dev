@@ -30,34 +30,41 @@ namespace mopmc::optimization::optimizers {
 
         return indices;
     }
-    template<typename V>
-    ProjectedGradientDescent<V>::ProjectedGradientDescent(
-            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f) : fn(f) {};
-
 
     template<typename V>
     ProjectedGradientDescent<V>::ProjectedGradientDescent(ProjectionType type,
                                                           convex_functions::BaseConvexFunction<V> *f)
-            : projectionType(type), fn(f){};
+            : projectionType(type), BaseOptimizer<V>(f){};
 
     template<typename V>
-    Vector<V> ProjectedGradientDescent<V>::argmin(std::vector<Vector<V>> &Vertices, Vector<V> &initialPoint) {
+    int ProjectedGradientDescent<V>::minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) {
         assert(this->projectionType == ProjectionType::UnitSimplex);
-        return argminUnitSimplexProjection(initialPoint, Vertices);
+        assert(!Vertices.empty());
+        if (Vertices.size() == 1) {
+            this->alpha.resize(1);
+            this->alpha(0) = static_cast<V>(1.);
+        } else {
+            assert(this->alpha.size() == Vertices.size() - 1);
+            this->alpha.resize(Vertices.size());
+            this->alpha(alpha.size() - 1) = static_cast<V>(0.);
+        }
+        point = argminUnitSimplexProjection(this->alpha, Vertices);
+        return 0;
     }
 
     template<typename V>
-    Vector<V> ProjectedGradientDescent<V>::argmin(std::vector<Vector<V>> &Vertices,
-                                                  std::vector<Vector<V>> &Weights,
-                                                  Vector<V> &initialPoint) {
+    int ProjectedGradientDescent<V>::minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices,
+                                              const std::vector<Vector<V>> &Weights) {
         assert(this->projectionType == ProjectionType::NearestHyperplane);
-        return argminNearestHyperplane(initialPoint, Vertices, Weights);
+        Vector<V> point1 = point;
+        point = argminNearestHyperplane(point1, Vertices, Weights);
+        return 0;
     }
 
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::argminNearestHyperplane(Vector<V> &iniPoint,
-                                                                   std::vector<Vector<V>> &Phi,
-                                                                   std::vector<Vector<V>> &W) {
+                                                                   const std::vector<Vector<V>> &Phi,
+                                                                   const std::vector<Vector<V>> &W) {
 
         uint64_t maxIter = 1000;
         uint64_t m = iniPoint.size();
@@ -83,7 +90,7 @@ namespace mopmc::optimization::optimizers {
 
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::argminUnitSimplexProjection(Vector<V> &iniPoint,
-                                                                       std::vector<Vector<V>> &Phi) {
+                                                                       const std::vector<Vector<V>> &Phi) {
 
         mopmc::optimization::convex_functions::auxiliary::LinearCombination<V> lincom(this->fn, Phi);
 
@@ -119,8 +126,8 @@ namespace mopmc::optimization::optimizers {
 
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::projectToNearestHyperplane(Vector<V> &x,
-                                                                      std::vector<Vector<V>> &Phi,
-                                                                      std::vector<Vector<V>> &W) {
+                                                                      const std::vector<Vector<V>> &Phi,
+                                                                      const std::vector<Vector<V>> &W) {
 
         assert(W.size() == Phi.size());
         assert(!Phi.empty());

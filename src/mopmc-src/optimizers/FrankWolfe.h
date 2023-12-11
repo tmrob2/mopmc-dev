@@ -10,6 +10,7 @@
 #include <cassert>
 #include <algorithm>
 #include <Eigen/Dense>
+#include "BaseOptimizer.h"
 #include "PolytopeTypeEnum.h"
 #include "../convex-functions/BaseConvexFunction.h"
 #include "../convex-functions/TotalReLU.h"
@@ -21,38 +22,42 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
-    enum FWOptimizationMethod {
-        LP, AWAY_STEP
+    enum FWOptMethod {
+        LINOPT, AWAY_STEP
     };
 
     template<typename V>
-    class FrankWolfe {
+    class FrankWolfe : public BaseOptimizer<V>{
     public:
-        explicit FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
+        explicit FrankWolfe(FWOptMethod optMethod, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
         FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                    uint64_t maxSize);
 
-        Vector<V> argmin(std::vector<Vector<V>> &Phi,
-                         std::vector<Vector<V>> &W,
-                         Vector<V> &xIn,
-                         PolytopeType polytopeType,
-                         bool doLineSearch=true);
+        int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) override;
 
-        Vector<V> argmin(std::vector<Vector<V>> &Phi,
-                         Vector<V> &xIn,
-                         PolytopeType polytopeType,
-                         bool doLineSearch=true);
 
-        Vector<V> argminByAwayStep(std::vector<Vector<V>> &Phi,
+
+        Vector<V> argminByAwayStep(const std::vector<Vector<V>> &Phi,
                                    Vector<V> &xIn,
                                    bool doLineSearch=true);
 
-        mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
-
+        FWOptMethod fwOptMethod{};
         Vector<V> alpha;
-        std::set<V> S;
+        std::set<V> activeSet;
+        bool lineSearch{true};
 
+    private:
+        Vector<V> argminByLinOpt(const std::vector<Vector<V>> &Phi,
+                                 const std::vector<Vector<V>> &W,
+                                 Vector<V> &xIn,
+                                 PolytopeType polytopeType,
+                                 bool doLineSearch= true);
+
+        Vector<V> argminByLinOpt(const std::vector<Vector<V>> &Phi,
+                                 Vector<V> &xIn,
+                                 PolytopeType polytopeType,
+                                 bool doLineSearch= true);
     };
 
 
