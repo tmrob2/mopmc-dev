@@ -38,13 +38,14 @@ namespace mopmc::queries {
         std::vector<Vector<T>> Phi, W;
         Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
         Vector<T> *vPtr;
+        Vector<T> vPrv;
         Vector<T> r(m), w(m);
         w.setConstant(static_cast<T>(1.0) / m);
 
-        const double eps{1.e-6}, eps1{1.e-8}, eps2{1.e-8};
+        const double eps{1.e-6}, eps1{1.e-8}, eps2{1.e-6};
         const uint_fast64_t maxIter{100};
+        T tol, tol1, tol2;
         uint_fast64_t iter = 0;
-        T delta = 0;
 
         mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
         mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
@@ -53,14 +54,26 @@ namespace mopmc::queries {
 
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
+            //std::cout << "Tolerance: " << tol << ", Tolerance1: " << tol1 << ", Tolerance2: " << tol2 << "\n";
             if (!Phi.empty()) {
                 //vt = frankWolfe.argminByAwayStep(Phi, *vPtr);
-                vt = frankWolfe.argmin(Phi, *vPtr, Vertex, true);
+                vt = frankWolfe.argmin(Phi, vPrv, Vertex, true);
                 //vt = projectedGradientDescent.argminUnitSimplexProjection(*vPtr, Phi);
-                Vector <T> grad = fn.subgradient(vt);
 
-                if (grad.template lpNorm<1>() < eps1) {
-                    std::cout << "loop exit due to small gradient\n";
+                if (Phi.size() >= 2) {
+                    //err2 = (vPrv - vt).template lpNorm<1>();
+                    tol2 = (vPrv - vt).template lpNorm<Eigen::Infinity>();
+                    if (tol2 < eps2) {
+                        std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: " << tol2 << ")\n";
+                        ++iter;
+                        break;
+                    }
+                }
+
+                Vector<T> grad = fn.subgradient(vt);
+                tol1 = grad.template lpNorm<1>();
+                if (tol1 < eps1) {
+                    std::cout << "loop exit due to small gradient (tolerance: " << tol1 << ")\n";
                     ++iter;
                     break;
                 }
@@ -76,35 +89,25 @@ namespace mopmc::queries {
             r1.resize(m);
             r = VectorMap<T>(r1.data(), r1.size());
 
-            if (!Phi.empty()) {
-                //if ((r - Phi.back()).template lpNorm<Eigen::Infinity>() < eps2) {
-                if ((r - Phi.back()).template lpNorm<1>() < eps2) {
-                    std::cout << "loop exit due to small improvement on (estimated) nearest point\n";
-                    ++iter;
-                    break;
-                }
-            }
-
             Phi.push_back(r);
             W.push_back(w);
 
-            if (Phi.size() == 1)
-                vPtr = &r;
-            else
-                vPtr = &vt;
+            if (Phi.size() == 1) {
+                vPrv = r;
+            } else {
+                vPrv = vt;
+            }
 
             if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = projectedGradientDescent.argmin(*vPtr, Phi, W);
+                vb = projectedGradientDescent.argmin(vPrv, Phi, W);
             }
-            //delta = (vt - vb).template lpNorm<Eigen::Infinity>();
-            delta = std::abs(fn.value(vt) - fn.value(vb));
 
-            if (delta < eps) {
-                std::cout << "loop exit due to small distance on threshold\n";
+            tol = std::abs(fn.value(vt) - fn.value(vb));
+            if (tol < eps) {
+                std::cout << "loop exit due to small distance on threshold (tolerance: " << tol << ")\n";
                 ++iter;
                 break;
             }
-
             ++iter;
         }
 

@@ -32,8 +32,8 @@ namespace mopmc::optimization::convex_functions {
         Vector<V> gradient(const Vector<V> &x);
 
         V value1(const std::vector<V> &x);
-        Vector<V> subgradient1(const std::vector<V> &x);
-        Vector<V> gradient1(const Vector<V> &x);
+        std::vector<V> subgradient1(const std::vector<V> &x);
+        std::vector<V> gradient1(const std::vector<V> &x);
 
         Vector<V> params_;
         std::vector<bool> probs_;

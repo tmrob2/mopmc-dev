@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include "../convex-functions/auxiliary/Lincom.h"
 
 namespace mopmc::optimization::optimizers {
 
@@ -31,7 +32,8 @@ namespace mopmc::optimization::optimizers {
     }
 
     template<typename V>
-    ProjectedGradientDescent<V>::ProjectedGradientDescent(convex_functions::BaseConvexFunction<V> *f) : fn(f) {}
+    ProjectedGradientDescent<V>::ProjectedGradientDescent(
+            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f) : fn(f) {}
 
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::argmin(Vector<V> &iniPoint,
@@ -60,36 +62,47 @@ namespace mopmc::optimization::optimizers {
         return xCurrent;
     }
 
-    //todo this function is not correct for now.
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::argminUnitSimplexProjection(Vector<V> &iniPoint,
                                                                        std::vector<Vector<V>> &Phi) {
-        uint64_t maxIter = 1000;
-        uint64_t m = iniPoint.size();
+
+        mopmc::optimization::convex_functions::auxiliary::LinearCombination<V> lincom(this->fn, Phi);
+
+        uint64_t maxIter = 1e5;
+        uint64_t k = Phi.size();
+        uint64_t m = Phi[0].size();
         V gamma = static_cast<V>(0.1);
-        V epsilon = static_cast<V>(1.e-8);
-        Vector<V> xCurrent = iniPoint, xNew(m), xTemp(m);
-        Vector<V> grad(m);
+        V epsilon = static_cast<V>(1.e-5);
+        V error;
+        Vector<V> alphaCurrent = iniPoint, alphaNew(k), alphaTemp(k);
+        Vector<V> grad(k);
         uint_fast64_t it;
         for (it = 0; it < maxIter; ++it) {
-            grad = this->fn->subgradient(xCurrent);
-            xTemp = xCurrent - gamma * grad;
-            xNew = projectToUnitSimplex(xTemp);
-            V error = (xNew - xCurrent).template lpNorm<1>();
+            this->fn->subgradient(Phi[0]);
+            grad = lincom.gradient(alphaCurrent);
+            alphaTemp = alphaCurrent - gamma * grad * 0.5 * std::log(2+it); // * 2.0 / (2 + it);
+            alphaNew = projectToUnitSimplex(alphaTemp);
+            error = (alphaNew - alphaCurrent).template lpNorm<1>();
             if (error < epsilon) {
-                xCurrent = xNew;
+                alphaCurrent = alphaNew;
                 break;
             }
-            xCurrent = xNew;
+            alphaCurrent = alphaNew;
         }
-        std::cout << "*Projected GD* (to simplex) stops at iteration " << it << "\n";
-        return xCurrent;
+        std::cout << "*Projected GD* (to simplex) stops at iteration " << it << " with error: " << error << "\n";
+        Vector<V> result(m);
+        result.setZero();
+        for (uint_fast64_t i = 0; i < k; ++i) {
+            result += alphaNew(i) * Phi[i];
+        }
+        return result;
     }
 
     template<typename V>
     Vector<V> ProjectedGradientDescent<V>::projectToNearestHyperplane(Vector<V> &x,
                                                                       std::vector<Vector<V>> &Phi,
                                                                       std::vector<Vector<V>> &W) {
+
         assert(W.size() == Phi.size());
         assert(!Phi.empty());
         uint64_t m = Phi[0].size();
@@ -110,12 +123,8 @@ namespace mopmc::optimization::optimizers {
     Vector<V> ProjectedGradientDescent<V>::projectToUnitSimplex(Vector<V> &x) {
         assert(x.size() > 0);
         uint64_t m = x.size();
-        //It seems that sorting is not well supported
-        // in the Storm's Eigen version.
-        // We convert the vector to a standard vector.
         std::vector<V> y(x.data(), x.data() + m);
         std::vector<uint64_t> ids = argsort(x);
-
         V tmpsum = static_cast<V>(0.), tmax;
         bool bget = false;
         for (uint_fast64_t i = 0; i < m - 1; ++i) {
@@ -135,7 +144,7 @@ namespace mopmc::optimization::optimizers {
             y[ids[j]] = std::max(y[ids[j]] - tmax, static_cast<V>(0.));
         }
         Vector<V> xProj = VectorMap<V>(y.data(), m);
-        std::cout << xProj << "\n" << "---\n";
+        //std::cout << xProj << "\n" << "---\n";
 
         return xProj;
     }

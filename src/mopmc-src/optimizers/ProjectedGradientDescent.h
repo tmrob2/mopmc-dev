@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <Eigen/Dense>
+#include <memory>
 #include "../convex-functions/BaseConvexFunction.h"
 
 namespace mopmc::optimization::optimizers{
@@ -21,20 +22,21 @@ namespace mopmc::optimization::optimizers{
 
         explicit ProjectedGradientDescent(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
-         Vector<V> projectToNearestHyperplane(Vector<V> &x,
+        Vector<V> projectToNearestHyperplane(Vector<V> &x,
                                               std::vector<Vector<V>> &Phi,
                                               std::vector<Vector<V>> &W);
 
-         Vector<V> projectToUnitSimplex(Vector<V> &x);
+        Vector<V> projectToUnitSimplex(Vector<V> &x);
          
-         Vector<V> argmin(Vector<V> &iniPoint,
+        Vector<V> argmin(Vector<V> &iniPoint,
                           std::vector<Vector<V>> &Phi,
                           std::vector<Vector<V>> &W);
 
-         Vector<V> argminUnitSimplexProjection(Vector<V> &iniPoint,
-                                               std::vector<Vector<V>> &Phi);
+        Vector<V> argminUnitSimplexProjection(Vector<V> &weightVector,
+                                               std::vector<Vector<V>> &Points);
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
+
 
     };
 }
