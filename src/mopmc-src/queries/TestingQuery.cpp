@@ -45,20 +45,23 @@ namespace mopmc::queries {
         mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
         mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
         //mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn, maxIter);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent(&fn);
+        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent1(
+                mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
+        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent2(
+                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
 
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
             if (!Phi.empty()) {
-                //vt = frankWolfe.argminByAwayStep(Phi, *vPtr);
-                //vt = frankWolfe.argmin(Phi, *vPtr, Vertex, true);
+                //vt = frankWolfe.argminByAwayStep(Phi, vPrv);
+                //vt = frankWolfe.argmin(Phi, vPrv, Vertex, true);
                 q.resize(Phi.size());
                 if (Phi.size() == 1) {
                     q.setOnes();
                 } else {
                     q(Phi.size() - 1) = static_cast<T>(0.);
                 }
-                vt = projectedGradientDescent.argminUnitSimplexProjection(q, Phi);
+                vt = projectedGradientDescent1.argmin(Phi, q);
                 Vector<T> grad = fn.subgradient(vt);
 
                 tol1 = grad.template lpNorm<1>();
@@ -95,15 +98,15 @@ namespace mopmc::queries {
             W.push_back(w);
 
             if (Phi.size() == 1) {
-                vPtr = &r;
+                //vPtr = &r;
                 vPrv = r;
             } else {
-                vPtr = &vt;
+                //vPtr = &vt;
                 vPrv = vt;
             }
 
             if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = projectedGradientDescent.argmin(*vPtr, Phi, W);
+                vb = projectedGradientDescent2.argmin(Phi, W, vPrv);
             }
             //tol = (vt - vb).template lpNorm<Eigen::Infinity>();
             tol = std::abs(fn.value(vt) - fn.value(vb));

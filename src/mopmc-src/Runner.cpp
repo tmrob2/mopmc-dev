@@ -20,7 +20,6 @@
 #include "Data.h"
 #include "mopmc-src/hybrid-computing/Problem.h"
 #include "queries/GpuConvexQuery.h"
-#include "queries/GpuConvexQueryAlt.h"
 #include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"

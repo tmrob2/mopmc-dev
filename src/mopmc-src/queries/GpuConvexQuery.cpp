@@ -37,7 +37,6 @@ namespace mopmc::queries {
 
         std::vector<Vector<T>> Phi, W;
         Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
-        Vector<T> *vPtr;
         Vector<T> vPrv;
         Vector<T> r(m), w(m);
         w.setConstant(static_cast<T>(1.0) / m);
@@ -50,13 +49,14 @@ namespace mopmc::queries {
         mopmc::optimization::convex_functions::EuclideanDistance<T> fn(h);
         mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn);
         //mopmc::optimization::optimizers::FrankWolfe<T> frankWolfe(&fn, maxIter);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent(&fn);
+        mopmc::optimization::optimizers::ProjectedGradientDescent<T> projectedGradientDescent(
+                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
 
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
             //std::cout << "Tolerance: " << tol << ", Tolerance1: " << tol1 << ", Tolerance2: " << tol2 << "\n";
             if (!Phi.empty()) {
-                //vt = frankWolfe.argminByAwayStep(Phi, *vPtr);
+                //vt = frankWolfe.argminByAwayStep(Phi, vPrv);
                 vt = frankWolfe.argmin(Phi, vPrv, Vertex, true);
                 //vt = projectedGradientDescent.argminUnitSimplexProjection(*vPtr, Phi);
 
@@ -99,7 +99,7 @@ namespace mopmc::queries {
             }
 
             if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = projectedGradientDescent.argmin(vPrv, Phi, W);
+                vb = projectedGradientDescent.argmin(Phi, W, vPrv);
             }
 
             tol = std::abs(fn.value(vt) - fn.value(vb));
