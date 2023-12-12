@@ -70,20 +70,12 @@ namespace mopmc {
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
                 mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
         //value-iteration solver
-        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                data.transitionMatrix,
-                data.rowGroupIndices,
-                data.row2RowGroupMapping,
-                data.flattenRewardVector,
-                data.defaultScheduler,
-                data.initialRow,
-                data.objectiveCount
-        );
+        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(data);
 
         mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::TestingQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGradientDescent);
-        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
+        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
         q.query();
         //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();

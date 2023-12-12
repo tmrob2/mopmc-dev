@@ -11,19 +11,11 @@ namespace mopmc::queries {
     void AchievabilityQuery<T, I>::query() {
 
         assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);
-        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                this->data_.transitionMatrix,
-                this->data_.rowGroupIndices,
-                this->data_.row2RowGroupMapping,
-                this->data_.flattenRewardVector,
-                this->data_.defaultScheduler,
-                this->data_.initialRow,
-                this->data_.objectiveCount
-        );
-        cudaVIHandler.initialize();
-
+        //mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(this->data_);
         mopmc::optimization::optimizers::LinOpt<T> linOpt;
         PolytopeType rep = Closure;
+
+        this->VIhandler->initialize();
 
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives
         Vector<T> h = Eigen::Map<Vector<T>>(this->data_.thresholds.data(), this->data_.thresholds.size());
@@ -55,8 +47,8 @@ namespace mopmc::queries {
             for (uint_fast64_t i = 0; i < w.size(); ++i) {
                 w_[i] = (double) (sgn(i) * w(i));
             }
-            cudaVIHandler.valueIteration(w_);
-            r_ = cudaVIHandler.getResults();
+            this->VIhandler->valueIteration(w_);
+            r_ = this->VIhandler->getResults();
             r_.resize(m);
             for (uint_fast64_t i = 0; i < r_.size(); ++i) {
                 r(i) = (T) r_[i];
@@ -72,7 +64,7 @@ namespace mopmc::queries {
             //std::cout << "weighted value: " << cudaVIHandler.getResults()[m]<<"\n";
             ++iter;
         }
-        cudaVIHandler.exit();
+        this->VIhandler->exit();
         std::cout << "----------------------------------------------\n";
         std::cout << "Achievability Query terminates after " << iter << " iteration(s) \n";
         std::cout << "OUTPUT: " << std::boolalpha << achievable << "\n";

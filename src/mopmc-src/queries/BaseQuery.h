@@ -20,6 +20,9 @@ namespace mopmc::queries {
         explicit BaseQuery() = default;
         explicit BaseQuery(const mopmc::QueryData<V,I> &data): data_(data){};
         explicit BaseQuery(const mopmc::QueryData<V,I> &data,
+                           mopmc::value_iteration::BaseVIHandler<V> *valueIterSolver)
+                           : data_(data), VIhandler(valueIterSolver){};
+        explicit BaseQuery(const mopmc::QueryData<V,I> &data,
                            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt):

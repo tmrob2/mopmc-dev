@@ -20,7 +20,7 @@ namespace mopmc::queries {
     template<typename T, typename I>
     void ConvexQuery<T, I>::query() {
 
-        //where is the best place to warm up gpu?
+        //todo: can write the warmup into initialize()
         mopmc::kernels::launchWarmupKernel();
         this->VIhandler->initialize();
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives

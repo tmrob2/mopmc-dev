@@ -12,6 +12,7 @@
 #include <cusparse.h>
 #include <cublas_v2.h>
 #include "BaseValueIteration.h"
+#include "../QueryData.h"
 
 namespace mopmc {
     namespace value_iteration {
@@ -21,6 +22,8 @@ namespace mopmc {
             class CudaValueIterationHandler : public mopmc::value_iteration::BaseVIHandler<ValueType>{
             public:
 
+                CudaValueIterationHandler(const mopmc::QueryData<ValueType,int> queryData);
+
                 CudaValueIterationHandler(
                     const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
                     const std::vector<int> &rowGroupIndices,
@@ -28,7 +31,6 @@ namespace mopmc {
                     std::vector<ValueType> &rho_flat,
                     std::vector<int> &pi,
                     int iniRow,
-                    //std::vector<double> &w
                     int objCount);
 
 
