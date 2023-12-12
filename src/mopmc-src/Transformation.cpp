@@ -64,62 +64,17 @@ namespace mopmc {
             data.isThresholdUpperBound[i] = (prepReturn.objectives[i].formula->getOptimalityType() == storm::solver::OptimizationDirection::Minimize);
         }
 
-        data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));
+        data.scheduler.assign(data.colCount, static_cast<uint64_t>(0));
         data.initialRow = (int) model.getInitialState();
         return data;
     }
 
-
     template<typename M, typename V, typename I>
-    mopmc::QueryData<V, I> Transformation<M, V, I>::transform_dpc(
-            typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn) {
-
-        mopmc::QueryData<V, I> data;
-        mopmc::multiobjective::MOPMCModelChecking<M> model(prepReturn);
-
-        data.transitionMatrix = *storm::adapters::EigenAdapter::toEigenSparseMatrix(model.getTransitionMatrix());
-        data.transitionMatrix.makeCompressed();
-        data.rowCount = model.getTransitionMatrix().getRowCount();
-        data.colCount = model.getTransitionMatrix().getColumnCount();
-        data.rowGroupIndices = model.getTransitionMatrix().getRowGroupIndices();
-        data.row2RowGroupMapping.resize(data.rowCount);
-
-        for (uint64_t i = 0; i < data.rowGroupIndices.size() - 1; ++i) {
-            size_t currInd = data.rowGroupIndices[i];
-            size_t nextInd = data.rowGroupIndices[i + 1];
-            for (uint64_t j = 0; j < nextInd - currInd; ++j)
-                data.row2RowGroupMapping[currInd + j] = i;
-        }
-        data.objectiveCount = prepReturn.objectives.size();
-        data.rewardVectors = model.getActionRewards();
-        assert(data.rewardVectors.size() == data.objectiveCount);
-        assert(data.rewardVectors[0].size() == data.rowCount);
-        data.flattenRewardVector.resize(data.objectiveCount * data.rowCount);
-        for (uint64_t i = 0; i < data.objectiveCount; ++i) {
-            for (uint_fast64_t j = 0; j < data.rowCount; ++j) {
-                data.flattenRewardVector[i * data.rowCount + j] = data.rewardVectors[i][j];
-            }
-        }
-        data.thresholds.resize(data.objectiveCount);
-        data.isProbabilisticObjective.resize(data.objectiveCount);
-        for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
-            data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
-            data.isProbabilisticObjective[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
-        }
-
-        data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));
-        data.initialRow = model.getInitialState();
-
-        return data;
-    }
-
-    template<typename M, typename V, typename I>
-    QueryData<V, int> Transformation<M, V, I>::transform_i32_dpc(
-            typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn) {
+    std::shared_ptr<QueryData<V, int>> Transformation<M, V, I>::transform_i32(
+            typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn,
+            mopmc::ModelBuilder<M> &model) {
 
         mopmc::QueryData<V, int> data;
-        mopmc::multiobjective::MOPMCModelChecking<M> model(prepReturn);
-
         data.transitionMatrix = *storm::adapters::EigenAdapter::toEigenSparseMatrix(model.getTransitionMatrix());
         assert(data.transitionMatrix.nonZeros() < INT_MAX);
         data.transitionMatrix.makeCompressed();
@@ -151,16 +106,19 @@ namespace mopmc {
         }
         data.thresholds.resize(data.objectiveCount);
         data.isProbabilisticObjective.resize(data.objectiveCount);
+        data.isThresholdUpperBound.resize(data.objectiveCount);
         for (uint_fast64_t i = 0; i < data.objectiveCount; ++i) {
             data.thresholds[i] = prepReturn.objectives[i].formula->template getThresholdAs<V>();
             data.isProbabilisticObjective[i] = prepReturn.objectives[i].originalFormula->isProbabilityOperatorFormula();
+            data.isThresholdUpperBound[i] = (prepReturn.objectives[i].formula->getOptimalityType() == storm::solver::OptimizationDirection::Minimize);
         }
 
-        data.defaultScheduler.assign(data.colCount, static_cast<uint64_t>(0));
+        data.scheduler.assign(data.colCount, static_cast<uint64_t>(0));
         data.initialRow = (int) model.getInitialState();
-
-        return data;
+        return std::make_shared<QueryData<V, int>>(data);
     }
+
+
 
     template class mopmc::Transformation<storm::models::sparse::Mdp<double>, double, uint64_t>;
 

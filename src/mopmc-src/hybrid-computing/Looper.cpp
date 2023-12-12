@@ -80,6 +80,9 @@ namespace hybrid {
     void CLooper<V>::sendDataGPU(mopmc::QueryData<V, int>& data) {
         // allocate a matrix
         //std::vector<int> scheduler(data.defaultScheduler.begin(), data.defaultScheduler.end());
+        //GS: use the new CudaVIHanlder constructor :SG
+        mopmc::value_iteration::gpu::CudaValueIterationHandler<V> cudaVIHandler(&data);
+        /*
         mopmc::value_iteration::gpu::CudaValueIterationHandler<V> cudaVIHandler(
                 data.transitionMatrix,
                 data.rowGroupIndices,
@@ -88,7 +91,7 @@ namespace hybrid {
                 data.defaultScheduler,
                 data.initialRow,
                 data.objectiveCount
-        );
+        );*/
         cudaVIHandler.initialize();
         gpuData = std::make_shared<mopmc::value_iteration::gpu::CudaValueIterationHandler<V>>(cudaVIHandler);
     }

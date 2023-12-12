@@ -20,11 +20,10 @@ namespace mopmc {
     template<typename M, typename V, typename I>
     class Transformation {
     public:
-        static mopmc::QueryData<V, I> transform_dpc(
-                typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn);
 
-        static mopmc::QueryData<V, int> transform_i32_dpc(
-                typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn);
+        static std::shared_ptr<QueryData<V, int>> transform_i32(
+                typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn,
+                mopmc::ModelBuilder<M> &model);
 
         static mopmc::QueryData<V, int> transform_i32_v2(
                 typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn,

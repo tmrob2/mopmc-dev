@@ -15,15 +15,7 @@ namespace mopmc::queries {
     template<typename T, typename I>
     void TestingQuery<T, I>::query() {
 
-        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                this->data_.transitionMatrix,
-                this->data_.rowGroupIndices,
-                this->data_.row2RowGroupMapping,
-                this->data_.flattenRewardVector,
-                this->data_.defaultScheduler,
-                this->data_.initialRow,
-                this->data_.objectiveCount
-        );
+        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&this->data_);
         cudaVIHandler.initialize();
 
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives

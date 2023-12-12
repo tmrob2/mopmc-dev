@@ -22,7 +22,9 @@ namespace mopmc {
             class CudaValueIterationHandler : public mopmc::value_iteration::BaseVIHandler<ValueType>{
             public:
 
-                CudaValueIterationHandler(const mopmc::QueryData<ValueType,int> queryData);
+                explicit CudaValueIterationHandler(mopmc::QueryData<ValueType,int> &queryData);
+
+                explicit CudaValueIterationHandler(mopmc::QueryData<ValueType,int> *queryData);
 
                 CudaValueIterationHandler(
                     const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
@@ -46,14 +48,16 @@ namespace mopmc {
 
                 int valueIterationPhaseTwo_v2(int beginObj, int endObj);
 
+                mopmc::QueryData<ValueType, int> *data;
+
                 Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix_;
                 std::vector<ValueType> flattenRewardVector_;
                 std::vector<int> scheduler_;
                 std::vector<int> rowGroupIndices_;
                 std::vector<int> row2RowGroupMapping_;
-                //std::vector<double> weightVector_;
                 std::vector<double> weightedValueVector_;
-                //std::vector<double> y_;
+
+                
                 std::vector<double> results_;
                 double weightedResult_{};
                 int iniRow_{};
@@ -70,7 +74,7 @@ namespace mopmc {
                 int *dMasking_nnz{}, *dMasking_nrows{}; // this is an array of 0s and 1s
                 double *dA_values{}, *dB_values{};
                 double *dR{};
-                double *dW{}, *dRw{}, *dRi{}, *dRj;
+                double *dW{}, *dRw{}, *dRi{}, *dRj{};
                 double *dX{}, *dXPrime{}, *dY{}, *dZ{}, *dZPrime{};
                 double *dResult{};
                 int A_nnz{}, A_ncols{}, A_nrows{};

@@ -52,39 +52,16 @@ namespace mopmc {
         namespace gpu {
 
             template<typename ValueType>
-            CudaValueIterationHandler<ValueType>::CudaValueIterationHandler(const QueryData<ValueType, int> queryData) :
-                transitionMatrix_(queryData.transitionMatrix),
-                rowGroupIndices_(queryData.rowGroupIndices),
-                row2RowGroupMapping_(queryData.row2RowGroupMapping),
-                flattenRewardVector_(queryData.flattenRewardVector),
-                scheduler_(queryData.defaultScheduler),
-                iniRow_(queryData.initialRow),
-                nobjs(queryData.objectiveCount)
-                {
-                    A_nnz = transitionMatrix_.nonZeros();
-                    A_ncols = transitionMatrix_.cols();
-                    A_nrows = transitionMatrix_.rows();
-                    B_ncols = A_ncols;
-                    B_nrows = B_ncols;
-                    C_nrows = B_ncols;
-                    C_ncols = nobjs;
-                    C_ld = C_nrows;
-                    results_.resize(nobjs+1);
-                }
-
-            template<typename ValueType>
-            CudaValueIterationHandler<ValueType>::CudaValueIterationHandler(
-                    const Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionMatrix,
-                    const std::vector<int> &rowGroupIndices,
-                    const std::vector<int> &row2RowGroupMapping,
-                    std::vector<ValueType> &rho_flat,
-                    std::vector<int> &pi,
-                    int iniRow,
-                    int objCount) :
-                    transitionMatrix_(transitionMatrix), flattenRewardVector_(rho_flat), scheduler_(pi),
-                    rowGroupIndices_(rowGroupIndices), row2RowGroupMapping_(row2RowGroupMapping),
-                    iniRow_(iniRow), nobjs(objCount) {
-
+            CudaValueIterationHandler<ValueType>::CudaValueIterationHandler(QueryData<ValueType, int> *queryData) :
+                    data(queryData),
+                    transitionMatrix_(queryData->transitionMatrix),
+                    rowGroupIndices_(queryData->rowGroupIndices),
+                    row2RowGroupMapping_(queryData->row2RowGroupMapping),
+                    flattenRewardVector_(queryData->flattenRewardVector),
+                    scheduler_(queryData->scheduler),
+                    iniRow_(queryData->initialRow),
+                    nobjs(queryData->objectiveCount)
+            {
                 A_nnz = transitionMatrix_.nonZeros();
                 A_ncols = transitionMatrix_.cols();
                 A_nrows = transitionMatrix_.rows();
@@ -433,6 +410,7 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::exit() {
+
                 // destroy matrix/vector descriptors
                 CHECK_CUSPARSE(cusparseDestroySpMat(matA))
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecX))

@@ -18,6 +18,7 @@ namespace mopmc {
         std::vector<V> flattenRewardVector;
         std::vector<V> thresholds;
         std::vector<V> weightedVector;
+        std::vector<V> results;
 
         I rowCount{};
         I colCount{};
@@ -25,7 +26,7 @@ namespace mopmc {
         I initialRow{};
         std::vector<I> rowGroupIndices;
         std::vector<I> row2RowGroupMapping;
-        std::vector<I> defaultScheduler;
+        std::vector<I> scheduler;
 
         std::vector<bool> isProbabilisticObjective;
         std::vector<bool> isThresholdUpperBound;
