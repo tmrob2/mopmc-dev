@@ -16,7 +16,7 @@
 #include <Eigen/Sparse>
 #include <storm/adapters/EigenAdapter.h>
 #include <storm/solver/OptimizationDirection.h>
-#include "model-checking/MOPMCModelChecking.h"
+#include "_legacy/model-checking/MOPMCModelChecking.h"
 
 namespace mopmc {
 

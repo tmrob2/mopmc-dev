@@ -38,11 +38,9 @@ enable_testing()
 #add_subdirectory(googletest)
 
 set(LibHeaders
-    src/mopmc-src/solvers/ActionSelection.h
     src/mopmc-src/solvers/WarmUp.h
 )
 set(LibSources
-    src/mopmc-src/solvers/ActionSelection.cu
     src/mopmc-src/solvers/WarmUp.cu
 )
 

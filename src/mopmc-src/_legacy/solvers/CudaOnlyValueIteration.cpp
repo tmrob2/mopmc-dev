@@ -4,7 +4,7 @@
 
 #include "CudaOnlyValueIteration.h"
 #include "ActionSelection.h"
-#include "CuFunctions.h"
+#include "mopmc-src/solvers/CuFunctions.h"
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
 #include <cuda_runtime_api.h>

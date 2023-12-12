@@ -2,7 +2,7 @@
 // Created by guoxin on 17/11/23.
 //
 
-#include "ModelBuilding.h"
+#include "StormModelBuildingWrapper.h"
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 #include <storm/models/sparse/Mdp.h>
@@ -17,7 +17,7 @@
 #include <Eigen/Sparse>
 #include <storm/adapters/EigenAdapter.h>
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h>
-#include "model-checking/MOPMCModelChecking.h"
+//#include "legacy/model-checking/MOPMCModelChecking.h"
 
 namespace mopmc {
 

@@ -50,6 +50,10 @@ namespace mopmc::optimization::optimizers {
                          Vector<V> &d,
                          Vector<V> &optimalPoint);
 
+        int optimalStepInSteepestDirection(const std::vector<Vector<V>> &Vertices,
+                                           const Vector<V> &gradient,
+                                           Vector<V> point);
+
     };
 }
 

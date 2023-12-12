@@ -17,7 +17,7 @@
 #include "../solvers/ConvexQuery.h"
 #include <random>
 #include "../solvers/SolverHelper.h"
-#include "mopmc-src/solvers/CuVISolver.h"
+#include "../solvers/CuVISolver.h"
 #include <storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h>
 
 namespace mopmc{

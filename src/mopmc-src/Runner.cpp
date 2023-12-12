@@ -15,7 +15,7 @@
 #include <Eigen/Sparse>
 #include "Runner.h"
 //#include "ExplicitModelBuilder.h"
-#include "ModelBuilding.h"
+#include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
 #include "Transformation.h"
 #include "mopmc-src/hybrid-computing/Problem.h"
 #include "queries/GpuConvexQuery.h"
@@ -26,7 +26,7 @@
 #include "convex-functions/EuclideanDistance.h"
 #include "optimizers/FrankWolfe.h"
 #include "optimizers/ProjectedGradientDescent.h"
-#include "StormModelCheckingWrapper.h"
+#include "mopmc-src/storm-wrappers/StormModelCheckingWrapper.h"
 #include <Eigen/Dense>
 #include <cstdio>
 #include <ctime>

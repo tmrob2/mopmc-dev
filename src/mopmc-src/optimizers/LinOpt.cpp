@@ -7,6 +7,58 @@
 
 namespace mopmc::optimization::optimizers {
 
+    //todo
+    template<typename V>
+    int LinOpt<V>::optimalStepInSteepestDirection(const std::vector<Vector<V>> &Phi,
+                                       const Vector<V> &d,
+                                       Vector<V> point) {
+
+        lprec *lp;
+        int n_cols, *col_no = NULL, ret = 0;
+        V *row = NULL;
+
+        assert(!Phi.empty());
+        n_cols = Phi.size() + 1; // number of variables in the model
+        lp = make_lp(0, n_cols);
+        if (lp == NULL)
+            ret = 1; // couldn't construct a new model
+        if (ret == 0) {
+            // create space large enough for one row
+            col_no = (int *) malloc(n_cols * sizeof(*col_no));
+            row = (V *) malloc(n_cols * sizeof(*row));
+            if ((col_no == NULL) || (row == NULL))
+                ret = 2;
+        }
+
+        if (ret == 0) {
+            set_add_rowmode(lp, TRUE);
+            // constraints
+            for (int j = 0; j < n_cols - 1; ++j) {
+                col_no[j] = j + 1;
+                row[j] = static_cast<V>(1.);
+            }
+            if (!add_constraintex(lp, n_cols, row, col_no, EQ, static_cast<V>(1.)))
+                ret = 3;
+            for (int j = 0; j < n_cols - 1; ++j) {
+                col_no[0] = j + 1;
+                row[0] = static_cast<V>(1.);
+                if (!add_constraintex(lp, 1, row, col_no, GE, static_cast<V>(0.)))
+                    ret = 3;
+            }
+        }
+
+        // free allocated memory
+        if (row != NULL)
+            free(row);
+        if (col_no != NULL)
+            free(col_no);
+        if (lp != NULL) {
+            // clean up such that all used memory by lpsolve is freed
+            delete_lp(lp);
+        }
+        return ret;
+    };
+
     template<typename V>
     int LinOpt<V>::optimizeHlsp(const std::vector<Vector<V>> &Phi, const std::vector<Vector<V>> &W, PolytopeType &rep, Vector<V> &d,
                                 Vector<V> &optimalPoint) {

@@ -14,7 +14,7 @@
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include "Data.h"
-#include "ModelBuilding.h"
+#include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
 
 namespace mopmc {
     template<typename M, typename V, typename I>

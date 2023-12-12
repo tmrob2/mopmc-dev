@@ -2,8 +2,8 @@
 // Created by guoxin on 17/11/23.
 //
 
-#ifndef MOPMC_MODELBUILDING_H
-#define MOPMC_MODELBUILDING_H
+#ifndef MOPMC_STORMMODELBUILDINGWRAPPER_H
+#define MOPMC_STORMMODELBUILDINGWRAPPER_H
 
 #include <string>
 #include <storm/storage/SparseMatrix.h>
@@ -45,4 +45,4 @@ namespace  mopmc {
 
 }
 
-#endif //MOPMC_MODELBUILDING_H
+#endif //MOPMC_STORMMODELBUILDINGWRAPPER_H
