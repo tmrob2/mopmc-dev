@@ -244,15 +244,15 @@ namespace mopmc::optimization::optimizers {
     }
 
     template<typename V>
-    int LinOpt<V>::checkFeasibility(std::vector<Vector<V>> &Phi,
-                                    Vector<V> &newPoint,
-                                    bool &feasible){
+    int LinOpt<V>::checkPointInConvexHull(const std::vector<Vector<V>> &Vertices,
+                                          const Vector<V> &point,
+                                          bool &feasible){
         lprec *lp;
         int n_cols, *col_no = NULL, ret = 0;
         V *row = NULL;
 
-        assert(!Phi.empty());
-        n_cols = Phi.size(); // number of variables in the model
+        assert(!Vertices.empty());
+        n_cols = Vertices.size(); // number of variables in the model
         lp = make_lp(0, n_cols);
         if (lp == NULL)
             ret = 1; // couldn't construct a new model
@@ -279,12 +279,12 @@ namespace mopmc::optimization::optimizers {
                 if (!add_constraintex(lp, 1, row, col_no, GE, static_cast<V>(0.)))
                     ret = 3;
             }
-            for (int i = 0; i < Phi[0].size(); ++ i) {
+            for (int i = 0; i < Vertices[0].size(); ++ i) {
                 for (int j = 0; j < n_cols; ++j) {
                     col_no[j] = j + 1;
-                    row[j] = Phi[j][i];
+                    row[j] = Vertices[j][i];
                 }
-                if (!add_constraintex(lp, n_cols, row, col_no, EQ, newPoint[i]))
+                if (!add_constraintex(lp, n_cols, row, col_no, EQ, point[i]))
                     ret = 3;
             }
         }

@@ -23,7 +23,7 @@ namespace mopmc::optimization::optimizers {
     using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
     enum FWOptMethod {
-        LINOPT, AWAY_STEP
+        LINOPT, AWAY_STEP, BLENDED
     };
 
     template<typename V>
@@ -36,11 +36,13 @@ namespace mopmc::optimization::optimizers {
 
         int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) override;
 
-
-
         Vector<V> argminByAwayStep(const std::vector<Vector<V>> &Phi,
                                    Vector<V> &xIn,
                                    bool doLineSearch=true);
+
+        Vector<V> argminByBlendedGD(const std::vector<Vector<V>> &Vertices,
+                                    Vector<V> &xIn,
+                                    bool doLineSearch=true);
 
         FWOptMethod fwOptMethod{};
         Vector<V> alpha;

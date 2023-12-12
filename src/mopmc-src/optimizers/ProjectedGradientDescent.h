@@ -38,6 +38,8 @@ namespace mopmc::optimization::optimizers{
 
         ProjectionType projectionType{};
 
+        Vector<V> point_;
+
     private:
         Vector<V> argminUnitSimplexProjection(Vector<V> &weightVector,
                                               const std::vector<Vector<V>> &Points);
@@ -48,6 +50,9 @@ namespace mopmc::optimization::optimizers{
 
         Vector<V> projectToNearestHyperplane(Vector<V> &x,
                                              const std::vector<Vector<V>> &Phi,
+                                             const std::vector<Vector<V>> &W);
+
+        Vector<V> projectToNearestHyperplane(const std::vector<Vector<V>> &Phi,
                                              const std::vector<Vector<V>> &W);
 
         Vector<V> projectToUnitSimplex(Vector<V> &x);

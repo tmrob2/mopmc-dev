@@ -35,9 +35,9 @@ namespace mopmc::optimization::optimizers {
                                            Vector<V> &sgn,
                                            Vector<V> &optimalDirection);
 
-        int checkFeasibility(std::vector<Vector<V>> &Phi,
-                             Vector<V> &newPoint,
-                             bool &feasible);
+        int checkPointInConvexHull(const std::vector<Vector<V>> &Vertices,
+                                   const Vector<V> &point,
+                                   bool &feasible);
 
         int optimizeVtx(const std::vector<Vector<V>> &Phi,
                         PolytopeType &rep,

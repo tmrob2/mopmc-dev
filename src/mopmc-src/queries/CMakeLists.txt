@@ -7,8 +7,6 @@ list(
         "${dir}/BaseQuery.h"
         "${dir}/ConvexQuery.cpp"
         "${dir}/ConvexQuery.h"
-        "${dir}/TestingQuery.cpp"
-        "${dir}/TestingQuery.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

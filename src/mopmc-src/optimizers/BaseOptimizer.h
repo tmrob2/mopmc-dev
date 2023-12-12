@@ -20,10 +20,12 @@ namespace mopmc::optimization::optimizers {
         explicit BaseOptimizer<V>() = default;
         explicit BaseOptimizer<V>(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f) : fn(f){};
 
-        virtual int minimize (Vector<V> &point, const std::vector<Vector<V>> &Vertices) { return 0; }
+        virtual int minimize (Vector<V> &point, const std::vector<Vector<V>> &Vertices) { return 1; }
+
         virtual int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices,
-                     const std::vector<Vector<V>> &Weights) {return 0; }
-        virtual int minimize () { return 0; }
+                     const std::vector<Vector<V>> &Weights) { return 1; }
+
+        virtual int minimize () { return 1; }
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
     };

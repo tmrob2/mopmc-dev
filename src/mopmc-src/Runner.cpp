@@ -14,7 +14,6 @@
 #include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
 #include <Eigen/Sparse>
 #include "Runner.h"
-//#include "ExplicitModelBuilder.h"
 #include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
 #include "Transformation.h"
 #include "mopmc-src/hybrid-computing/Problem.h"
@@ -22,7 +21,6 @@
 #include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
-#include "queries/TestingQuery.h"
 #include "convex-functions/EuclideanDistance.h"
 #include "optimizers/FrankWolfe.h"
 #include "optimizers/ProjectedGradientDescent.h"
@@ -65,6 +63,7 @@ namespace mopmc {
         mopmc::optimization::convex_functions::EuclideanDistance<ValueType> fn(h);
         //optimizers
         mopmc::optimization::optimizers::FrankWolfe<ValueType> frankWolfe(mopmc::optimization::optimizers::FWOptMethod::LINOPT, &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOptMethod::BLENDED, &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
@@ -72,10 +71,10 @@ namespace mopmc {
         //value-iteration solver
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::TestingQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGradientDescent);
-        mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
+        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
         q.query();
         //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();
