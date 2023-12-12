@@ -52,9 +52,6 @@ namespace mopmc::optimization::optimizers{
                                              const std::vector<Vector<V>> &Phi,
                                              const std::vector<Vector<V>> &W);
 
-        Vector<V> projectToNearestHyperplane(const std::vector<Vector<V>> &Phi,
-                                             const std::vector<Vector<V>> &W);
-
         Vector<V> projectToUnitSimplex(Vector<V> &x);
 
         Vector<V> alpha;

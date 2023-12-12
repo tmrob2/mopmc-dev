@@ -37,7 +37,7 @@ namespace mopmc::optimization::optimizers {
 
         int checkPointInConvexHull(const std::vector<Vector<V>> &Vertices,
                                    const Vector<V> &point,
-                                   bool &feasible);
+                                   int &feasible);
 
         int optimizeVtx(const std::vector<Vector<V>> &Phi,
                         PolytopeType &rep,
@@ -50,9 +50,9 @@ namespace mopmc::optimization::optimizers {
                          Vector<V> &d,
                          Vector<V> &optimalPoint);
 
-        int optimalStepInSteepestDirection(const std::vector<Vector<V>> &Vertices,
-                                           const Vector<V> &gradient,
-                                           Vector<V> point);
+        int findMaximumFeasibleStep(const std::vector<Vector<V>> &Vertices,
+                                    const Vector<V> &gradient,
+                                    Vector<V> point, V step);
 
     };
 }

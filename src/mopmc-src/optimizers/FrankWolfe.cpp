@@ -48,13 +48,14 @@ namespace mopmc::optimization::optimizers {
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
         auto m = Phi[0].size();
         Vector<V> xCurrent(m), xNew(m), vStar(m);
-
         const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)};
-        const uint64_t maxIter = 1e4;
-        V gamma, gammaMax, tol0, tol1;
+        const uint64_t maxIter = 1e3;
+        V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
         bool isFw;
         uint64_t t;
         uint64_t k = Phi.size();
+
+        this->alpha.conservativeResize(k);
         this->alpha(k-1) = static_cast<V>(0.);
 
         if (Phi.size() == 1) {
@@ -63,54 +64,56 @@ namespace mopmc::optimization::optimizers {
         }
 
         //estimate initial gap
-
-
         xNew.setZero();
         for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
             assert(xNew.size() == Phi[i].size());
             xNew += this->alpha(i) * Phi[i];
         }
 
-        V delta = std::numeric_limits<V>::min();
+        delta = std::numeric_limits<V>::min();
         for (uint_fast64_t i = 0; i < k; ++i) {
-            V c = (this->fn->gradient(xNew)).dot(xNew - Phi[i]) / 2;
-            if (delta < c) {
+            const V c = (this->fn->gradient(xNew)).dot(xNew - Phi[i]);
+            if (c > delta) {
                 delta = c;
             }
         }
+\
+        for (t = 0; t < maxIter; ++t) {
 
-        for (t = 1; t < maxIter; ++t) {
             xCurrent = xNew;
-            Vector<V> d = this->fn->subgradient(xCurrent);
-
+            Vector<V> dXCurrent = this->fn->subgradient(xCurrent);
             uint64_t fwId = 0;
-            V inc = std::numeric_limits<V>::max();
+            V dec = std::numeric_limits<V>::max();
             for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
-                if (Phi[i].dot(this->fn->subgradient(xCurrent)) < inc){
+                if (Phi[i].dot(dXCurrent) < dec){
+                    dec = Phi[i].dot(dXCurrent);
                     fwId = i;
                 }
             }
             Vector<V> fwVec = (Phi[fwId] - xCurrent);
 
             uint64_t awId = 0;
-            V dec = std::numeric_limits<V>::min();
+            V inc = std::numeric_limits<V>::min();
             for (auto j : this->activeSet) {
-                assert(Phi[j].size() == this->fn->subgradient(xCurrent).size());
-                if (Phi[j].dot(this->fn->subgradient(xCurrent)) > dec){
+                assert(Phi[j].size() == dXCurrent.size());
+                if (Phi[j].dot(dXCurrent) > inc){
+                    inc = Phi[j].dot(dXCurrent);
                     awId = j;
                 }
             }
             Vector<V> awVec = xCurrent - Phi[awId];
 
-            tol0 = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(Phi[fwId] - xCurrent);
-            tol1 = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(xCurrent - Phi[awId]);
+            tolFw = static_cast<V>(-1.) * dXCurrent.dot(Phi[fwId] - xCurrent);
+            tolAw = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Phi[awId]);
+            //std::cout << "static_cast<V>(-1.) * dXCurrent.dot(Phi[fwId] - xCurrent): " << tol0 <<"\n";
 
-            if (tol0 <= epsilon) {
+            if (tolFw <= epsilon) {
+                std::cout << "FW loop breaks due to small tol: " << tolFw << "\n";
                 break;
             }
 
-            if (tol0 + tol1 >= delta) {
-                if (static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(fwVec - awVec) >= 0.){
+            if (tolFw + tolAw >= delta) {
+                if (static_cast<V>(-1.) * dXCurrent.dot(fwVec - awVec) >= 0.){
                     isFw = true;
                     vStar = xCurrent + fwVec;
                     gammaMax = static_cast<V>(1.);
@@ -154,19 +157,34 @@ namespace mopmc::optimization::optimizers {
                 xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
             }
             else {
-                vStar = xCurrent - this->fn->subgradient(xCurrent) * delta * static_cast<V>(0.8);
-                bool feasible;
-                linOpt.checkPointInConvexHull(Phi, vStar, feasible);
-                if (feasible) {
+                //std::cout << "alpha: " << this->alpha << "\n" << "xCurrent: " << xCurrent <<"\n";
+                linOpt.findMaximumFeasibleStep(Phi, dXCurrent, xCurrent, stepSize);
+                if (stepSize > delta * static_cast<V>(0.8)) {
+                    vStar = xCurrent - this->fn->subgradient(xCurrent) * stepSize;
                     gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
                     xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
                 } else {
                     delta *= static_cast<V>(0.5);
                 }
+                //std::cout << "delta after findMaximumFeasibleStep: " << delta << "\n";
+                /*
+                int feasible = -1;
+                linOpt.checkPointInConvexHull(Phi, vStar, feasible);
+                if (feasible == 0) {
+                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
+                    xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
+                } else {
+                    delta *= static_cast<V>(0.5);
+                }
+                 */
+                /*else {
+                    printf("ret = %i\n", feasible);
+                    throw std::runtime_error("linopt error");
+                }*/
             }
         }
 
-        //std::cout << "*Frank-Wolfe* stops at iteration " << t << ", tolerance: " << std::max(tol0,tol1) << " \n";
+        std::cout << "*Blended GD* stops at iteration: " << t << ", delta: " << delta << " \n";
 
         return xNew;
     };
