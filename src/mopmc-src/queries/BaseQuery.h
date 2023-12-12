@@ -6,7 +6,7 @@
 #define MOPMC_BASEQUERY_H
 
 #include <storm/api/storm.h>
-#include "../Data.h"
+#include "../QueryData.h"
 #include "../convex-functions/BaseConvexFunction.h"
 #include "../optimizers/BaseOptimizer.h"
 #include "../solvers/BaseValueIteration.h"
@@ -18,13 +18,13 @@ namespace mopmc::queries {
     public:
 
         explicit BaseQuery() = default;
-        explicit BaseQuery(const mopmc::Data<V,I> &data): data_(data){};
-        explicit BaseQuery(const mopmc::Data<V,I> &data,
+        explicit BaseQuery(const mopmc::QueryData<V,I> &data): data_(data){};
+        explicit BaseQuery(const mopmc::QueryData<V,I> &data,
                            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt):
                            data_(data), fn(f), primaryOptimizer(priOpt), secondaryOptimizer(secOpt){};
-        explicit BaseQuery(const mopmc::Data<V,I> &data,
+        explicit BaseQuery(const mopmc::QueryData<V,I> &data,
                            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt,
@@ -37,7 +37,7 @@ namespace mopmc::queries {
         mopmc::optimization::optimizers::BaseOptimizer<V> *primaryOptimizer;
         mopmc::optimization::optimizers::BaseOptimizer<V> *secondaryOptimizer;
         mopmc::value_iteration::BaseVIHandler<V> *VIhandler;
-        mopmc::Data<V, I> data_;
+        mopmc::QueryData<V, I> data_;
     };
 
 

@@ -7,7 +7,7 @@
 #include <Eigen/Sparse>
 #include <storm/api/storm.h>
 #include "BaseQuery.h"
-#include "../Data.h"
+#include "../QueryData.h"
 
 namespace mopmc::queries {
 
@@ -19,13 +19,13 @@ namespace mopmc::queries {
     template<typename V, typename I>
     class ConvexQuery : public BaseQuery<V, I>{
     public:
-        explicit ConvexQuery(const mopmc::Data<V, I> &data) : BaseQuery<V, I>(data) {};
-        ConvexQuery(const mopmc::Data<V,I> &data,
+        explicit ConvexQuery(const mopmc::QueryData<V, I> &data) : BaseQuery<V, I>(data) {};
+        ConvexQuery(const mopmc::QueryData<V,I> &data,
                        mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                        mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                        mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt)
                        : BaseQuery<V, I>(data, f, priOpt, secOpt) {};
-        ConvexQuery(const mopmc::Data<V,I> &data,
+        ConvexQuery(const mopmc::QueryData<V,I> &data,
                     mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                     mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                     mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt,

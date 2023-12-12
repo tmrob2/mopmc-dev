@@ -6,8 +6,7 @@
 #define MOPMC_BASEVALUEITERATION_H
 
 #include <vector>
-#include <storm/storage/SparseMatrix.h>
-#include <Eigen/Sparse>
+#include "../QueryData.h"
 
 namespace mopmc::value_iteration {
 

@@ -2,19 +2,16 @@
 // Created by guoxin on 20/11/23.
 //
 
-#ifndef MOPMC_DATA_H
-#define MOPMC_DATA_H
+#ifndef MOPMC_QUERYDATA_H
+#define MOPMC_QUERYDATA_H
 
-#include <string>
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
-#include <storm/adapters/EigenAdapter.h>
-#include <storm/environment/Environment.h>
 
 namespace mopmc {
     // V value type, I index type
     template<typename V, typename I>
-    struct Data {
+    struct QueryData {
 
         Eigen::SparseMatrix<V> transitionMatrix;
         std::vector<std::vector<V>> rewardVectors;
@@ -35,8 +32,8 @@ namespace mopmc {
 
     };
 
-    template struct Data<double, uint64_t>;
+    template struct QueryData<double, uint64_t>;
 }
 
 
-#endif //MOPMC_DATA_H
+#endif //MOPMC_QUERYDATA_H

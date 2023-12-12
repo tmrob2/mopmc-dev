@@ -2,7 +2,7 @@
 // Created by thomas on 22/10/23.
 //
 #include "Looper.h"
-#include "mopmc-src/Data.h"
+#include "mopmc-src/QueryData.h"
 #include "mopmc-src/hybrid-computing/Problem.h"
 #include "mopmc-src/solvers/CudaValueIteration.cuh"
 #include <iostream>
@@ -13,12 +13,12 @@ namespace hybrid {
 
     template<typename V>
     CLooper<V>::CLooper(
-            uint id_, hybrid::ThreadSpecialisation spec, Data<V, int>& model)
+            uint id_, hybrid::ThreadSpecialisation spec, QueryData<V, int>& model)
             : id(id_), mRunning(false), mAbortRequested(false), mRunnables(), mRunnablesMutex(),
               mDispatcher(std::shared_ptr<CDispatcher>(new CDispatcher(*this))),
               mBusy(false), expectedSolutions(0), threadType(spec) {
         if(spec==ThreadSpecialisation::CPU){
-            data = std::make_shared<Data<V, int>>(model);
+            data = std::make_shared<QueryData<V, int>>(model);
         } else {
             // send the data to the GPU
             sendDataGPU(model);
@@ -77,7 +77,7 @@ namespace hybrid {
 
     // explicit instantiations of send data overloaded
     template <typename V>
-    void CLooper<V>::sendDataGPU(mopmc::Data<V, int>& data) {
+    void CLooper<V>::sendDataGPU(mopmc::QueryData<V, int>& data) {
         // allocate a matrix
         //std::vector<int> scheduler(data.defaultScheduler.begin(), data.defaultScheduler.end());
         mopmc::value_iteration::gpu::CudaValueIterationHandler<V> cudaVIHandler(

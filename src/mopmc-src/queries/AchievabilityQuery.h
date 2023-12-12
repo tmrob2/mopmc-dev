@@ -10,7 +10,7 @@
 #include <memory>
 #include <thread>
 #include "BaseQuery.h"
-#include "../Data.h"
+#include "../QueryData.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../optimizers/LinOpt.h"
 #include "../optimizers/PolytopeTypeEnum.h"
@@ -27,7 +27,7 @@ namespace mopmc::queries {
     template<typename T, typename I>
     class AchievabilityQuery : public BaseQuery<T, I> {
     public:
-        explicit AchievabilityQuery(const mopmc::Data<T, I> &data) : BaseQuery<T, I>(data) {};
+        explicit AchievabilityQuery(const mopmc::QueryData<T, I> &data) : BaseQuery<T, I>(data) {};
 
         void query() override;
         void hybridQuery(hybrid::ThreadSpecialisation archPref);

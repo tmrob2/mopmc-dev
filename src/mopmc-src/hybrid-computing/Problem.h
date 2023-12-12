@@ -11,7 +11,7 @@
 #include <storm/utility/constants.h>
 #include <Eigen/Sparse>
 #include <vector>
-#include "mopmc-src/Data.h"
+#include "mopmc-src/QueryData.h"
 #include "mopmc-src/solvers/CudaValueIteration.cuh"
 
 namespace hybrid {
@@ -48,7 +48,7 @@ public:
         return index;
     }
 
-    void setProblemData(std::shared_ptr<mopmc::Data<double, int>> cpuData){
+    void setProblemData(std::shared_ptr<mopmc::QueryData<double, int>> cpuData){
         data = cpuData;
     }
 
@@ -88,7 +88,7 @@ private:
     bool empty;
     uint index;
     ThreadSpecialisation spec;
-    std::shared_ptr<mopmc::Data<double, int>> data;
+    std::shared_ptr<mopmc::QueryData<double, int>> data;
     std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<double>> gpuData;
     std::vector<ValueType> w;
     std::shared_ptr<std::vector<uint64_t>> scheduler;

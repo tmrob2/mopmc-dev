@@ -21,11 +21,11 @@
 namespace mopmc {
 
     template<typename M, typename V, typename I>
-    Data<V, int> Transformation<M, V, I>::transform_i32_v2(
+    QueryData<V, int> Transformation<M, V, I>::transform_i32_v2(
             typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn,
             mopmc::ModelBuilder<M> &model) {
 
-        mopmc::Data<V, int> data;
+        mopmc::QueryData<V, int> data;
         data.transitionMatrix = *storm::adapters::EigenAdapter::toEigenSparseMatrix(model.getTransitionMatrix());
         assert(data.transitionMatrix.nonZeros() < INT_MAX);
         data.transitionMatrix.makeCompressed();
@@ -71,10 +71,10 @@ namespace mopmc {
 
 
     template<typename M, typename V, typename I>
-    mopmc::Data<V, I> Transformation<M, V, I>::transform_dpc(
+    mopmc::QueryData<V, I> Transformation<M, V, I>::transform_dpc(
             typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn) {
 
-        mopmc::Data<V, I> data;
+        mopmc::QueryData<V, I> data;
         mopmc::multiobjective::MOPMCModelChecking<M> model(prepReturn);
 
         data.transitionMatrix = *storm::adapters::EigenAdapter::toEigenSparseMatrix(model.getTransitionMatrix());
@@ -114,10 +114,10 @@ namespace mopmc {
     }
 
     template<typename M, typename V, typename I>
-    Data<V, int> Transformation<M, V, I>::transform_i32_dpc(
+    QueryData<V, int> Transformation<M, V, I>::transform_i32_dpc(
             typename storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<M>::ReturnType &prepReturn) {
 
-        mopmc::Data<V, int> data;
+        mopmc::QueryData<V, int> data;
         mopmc::multiobjective::MOPMCModelChecking<M> model(prepReturn);
 
         data.transitionMatrix = *storm::adapters::EigenAdapter::toEigenSparseMatrix(model.getTransitionMatrix());

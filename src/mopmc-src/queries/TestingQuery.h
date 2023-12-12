@@ -22,8 +22,8 @@ namespace mopmc::queries {
     class TestingQuery : public BaseQuery<V, I>{
     public:
 
-        explicit TestingQuery(const mopmc::Data<V,I> &data) : BaseQuery<V, I>(data) {};
-        TestingQuery(const mopmc::Data<V,I> &data,
+        explicit TestingQuery(const mopmc::QueryData<V,I> &data) : BaseQuery<V, I>(data) {};
+        TestingQuery(const mopmc::QueryData<V,I> &data,
                      mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                      mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                      mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt)

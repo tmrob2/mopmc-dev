@@ -47,7 +47,7 @@ namespace mopmc {
 
         assert (typeid(ValueType)==typeid(double));
         assert (typeid(IndexType)==typeid(uint64_t));
-        
+
         storm::Environment env;
         clock_t time0 = clock();
         auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);

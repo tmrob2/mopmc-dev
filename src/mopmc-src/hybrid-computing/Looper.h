@@ -17,7 +17,7 @@
 #include <Eigen/Sparse>
 #include "Problem.h"
 #include "Utilities.h"
-#include "../Data.h"
+#include "../QueryData.h"
 #include "mopmc-src/solvers/CudaValueIteration.cuh"
 namespace hybrid {
 using namespace mopmc;
@@ -80,7 +80,7 @@ public:
 
     };
 
-    CLooper(uint id_, ThreadSpecialisation spec, Data<ValueType, int>& model);
+    CLooper(uint id_, ThreadSpecialisation spec, QueryData<ValueType, int>& model);
 
 
     // Copy denied, move to be implemented
@@ -106,7 +106,7 @@ public:
     bool getAbortRequested() const;
 
     // Send data
-    void sendDataGPU(mopmc::Data<ValueType, int>& data);
+    void sendDataGPU(mopmc::QueryData<ValueType, int>& data);
 
     // Return solutions from the thread
     std::vector<int> getSolution();
@@ -163,7 +163,7 @@ private:
     std::vector<int> solutions;
     uint expectedSolutions;
     uint id;
-    std::shared_ptr<Data<ValueType, int>> data;
+    std::shared_ptr<QueryData<ValueType, int>> data;
     std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<ValueType>> gpuData;
     hybrid::ThreadSpecialisation threadType;
 };
@@ -184,7 +184,7 @@ public:
     void stop();
 
     template <typename D>
-    void assignGlobalData(mopmc::Data<ValueType, int> const& data);
+    void assignGlobalData(mopmc::QueryData<ValueType, int> const& data);
 
     // TODO The CLooperPool is currently not fit for purpose because we really only need two threads
     //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU

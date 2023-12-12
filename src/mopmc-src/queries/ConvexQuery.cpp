@@ -8,7 +8,7 @@
 #include "../solvers/WarmUp.h"
 #include "ConvexQuery.h"
 #include "../solvers/CudaValueIteration.cuh"
-#include "../Data.h"
+#include "../QueryData.h"
 #include "../convex-functions/TotalReLU.h"
 #include "../optimizers/FrankWolfe.h"
 #include "../optimizers/ProjectedGradientDescent.h"
