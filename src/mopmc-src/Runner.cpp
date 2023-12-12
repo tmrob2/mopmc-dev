@@ -18,7 +18,7 @@
 #include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
 #include "Transformation.h"
 #include "mopmc-src/hybrid-computing/Problem.h"
-#include "queries/GpuConvexQuery.h"
+#include "queries/ConvexQuery.h"
 #include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
@@ -71,8 +71,8 @@ namespace mopmc {
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGradientDescent1(
                 mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
 
-        mopmc::queries::GpuConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGradientDescent);
-        //mopmc::queries::GpuConvexQuery<ValueType, int> q(data, &fn, &projectedGradientDescent1, &projectedGradientDescent);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGradientDescent);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGradientDescent1, &projectedGradientDescent);
         //mopmc::queries::TestingQuery<ValueType, int> q(data, &fn, &projectedGradientDescent1, &projectedGradientDescent);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
         q.query();

@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <Eigen/Dense>
-#include "GpuConvexQuery.h"
+#include "ConvexQuery.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
 #include "../convex-functions/TotalReLU.h"
@@ -17,7 +17,7 @@
 namespace mopmc::queries {
 
     template<typename T, typename I>
-    void GpuConvexQuery<T, I>::query() {
+    void ConvexQuery<T, I>::query() {
 
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
                 this->data_.transitionMatrix,
@@ -123,5 +123,5 @@ namespace mopmc::queries {
     }
 
     template
-    class GpuConvexQuery<double, int>;
+    class ConvexQuery<double, int>;
 }

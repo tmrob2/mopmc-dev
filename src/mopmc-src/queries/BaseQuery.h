@@ -9,6 +9,7 @@
 #include "../Data.h"
 #include "../convex-functions/BaseConvexFunction.h"
 #include "../optimizers/BaseOptimizer.h"
+#include "../solvers/BaseValueIteration.h"
 
 namespace mopmc::queries {
 
@@ -23,15 +24,20 @@ namespace mopmc::queries {
                            mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt):
                            data_(data), fn(f), primaryOptimizer(priOpt), secondaryOptimizer(secOpt){};
+        explicit BaseQuery(const mopmc::Data<V,I> &data,
+                           mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
+                           mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
+                           mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt,
+                           mopmc::value_iteration::BaseValueIteration<V> *valueIterSolver):
+                data_(data), fn(f), primaryOptimizer(priOpt), secondaryOptimizer(secOpt), vISolver(valueIterSolver){};
 
         virtual void query() = 0 ;
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
         mopmc::optimization::optimizers::BaseOptimizer<V> *primaryOptimizer;
         mopmc::optimization::optimizers::BaseOptimizer<V> *secondaryOptimizer;
-
+        mopmc::value_iteration::BaseValueIteration<V> *vISolver;
         mopmc::Data<V, I> data_;
-        storm::Environment env_;
     };
 
 

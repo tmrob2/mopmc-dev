@@ -17,10 +17,10 @@ namespace mopmc::queries {
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename V, typename I>
-    class GpuConvexQuery : public BaseQuery<V, I>{
+    class ConvexQuery : public BaseQuery<V, I>{
     public:
-        explicit GpuConvexQuery(const mopmc::Data<V, I> &data) : BaseQuery<V, I>(data) {};
-        GpuConvexQuery(const mopmc::Data<V,I> &data,
+        explicit ConvexQuery(const mopmc::Data<V, I> &data) : BaseQuery<V, I>(data) {};
+        ConvexQuery(const mopmc::Data<V,I> &data,
                        mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                        mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                        mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt)
