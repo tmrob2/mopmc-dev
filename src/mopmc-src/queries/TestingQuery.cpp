@@ -24,7 +24,7 @@ namespace mopmc::queries {
                 this->data_.initialRow,
                 this->data_.objectiveCount
         );
-        cudaVIHandler.initialise();
+        cudaVIHandler.initialize();
 
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives
         assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);

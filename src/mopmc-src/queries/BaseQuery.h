@@ -28,15 +28,15 @@ namespace mopmc::queries {
                            mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                            mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt,
-                           mopmc::value_iteration::BaseValueIteration<V> *valueIterSolver):
-                data_(data), fn(f), primaryOptimizer(priOpt), secondaryOptimizer(secOpt), vISolver(valueIterSolver){};
+                           mopmc::value_iteration::BaseVIHandler<V> *valueIterSolver):
+                data_(data), fn(f), primaryOptimizer(priOpt), secondaryOptimizer(secOpt), VIhandler(valueIterSolver){};
 
         virtual void query() = 0 ;
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *fn;
         mopmc::optimization::optimizers::BaseOptimizer<V> *primaryOptimizer;
         mopmc::optimization::optimizers::BaseOptimizer<V> *secondaryOptimizer;
-        mopmc::value_iteration::BaseValueIteration<V> *vISolver;
+        mopmc::value_iteration::BaseVIHandler<V> *VIhandler;
         mopmc::Data<V, I> data_;
     };
 

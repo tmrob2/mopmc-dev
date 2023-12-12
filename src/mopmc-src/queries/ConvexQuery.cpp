@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <Eigen/Dense>
+#include "../solvers/WarmUp.h"
 #include "ConvexQuery.h"
 #include "../solvers/CudaValueIteration.cuh"
 #include "../Data.h"
@@ -19,21 +20,12 @@ namespace mopmc::queries {
     template<typename T, typename I>
     void ConvexQuery<T, I>::query() {
 
-        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
-                this->data_.transitionMatrix,
-                this->data_.rowGroupIndices,
-                this->data_.row2RowGroupMapping,
-                this->data_.flattenRewardVector,
-                this->data_.defaultScheduler,
-                this->data_.initialRow,
-                this->data_.objectiveCount
-        );
-        cudaVIHandler.initialise();
-
+        //where is the best place to warm up gpu?
+        mopmc::kernels::launchWarmupKernel();
+        this->VIhandler->initialize();
         const uint64_t m = this->data_.objectiveCount; // m: number of objectives
         assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);
         Vector<T> h = Eigen::Map<Vector<T>> (this->data_.thresholds.data(), this->data_.thresholds.size());
-
 
         std::vector<Vector<T>> Phi, W;
         Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
@@ -75,9 +67,9 @@ namespace mopmc::queries {
 
             // compute a new supporting hyperplane
             std::vector<T> w1(w.data(), w.data() + w.size());
-            cudaVIHandler.valueIteration(w1);
+            this->VIhandler->valueIteration(w1);
 
-            std::vector<T> r1 = cudaVIHandler.getResults();
+            std::vector<T> r1 = this->VIhandler->getResults();
             // only need the first m elements
             r1.resize(m);
             r = VectorMap<T>(r1.data(), r1.size());
@@ -105,7 +97,7 @@ namespace mopmc::queries {
             ++iter;
         }
 
-        cudaVIHandler.exit();
+        this->VIhandler->exit();
 
         {
             Vector<T> vOut = (vb + vt) * static_cast<T>(0.5);

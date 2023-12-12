@@ -20,7 +20,7 @@ namespace mopmc::queries {
                 this->data_.initialRow,
                 this->data_.objectiveCount
         );
-        cudaVIHandler.initialise();
+        cudaVIHandler.initialize();
 
         mopmc::optimization::optimizers::LinOpt<T> linOpt;
         PolytopeType rep = Closure;

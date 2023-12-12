@@ -89,7 +89,7 @@ namespace hybrid {
                 data.initialRow,
                 data.objectiveCount
         );
-        cudaVIHandler.initialise();
+        cudaVIHandler.initialize();
         gpuData = std::make_shared<mopmc::value_iteration::gpu::CudaValueIterationHandler<V>>(cudaVIHandler);
     }
 

@@ -11,13 +11,14 @@
 #include <cuda_runtime.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
+#include "BaseValueIteration.h"
 
 namespace mopmc {
     namespace value_iteration {
         namespace gpu {
 
             template<typename ValueType>
-            class CudaValueIterationHandler {
+            class CudaValueIterationHandler : public mopmc::value_iteration::BaseVIHandler<ValueType>{
             public:
 
                 CudaValueIterationHandler(
@@ -31,11 +32,11 @@ namespace mopmc {
                     int objCount);
 
 
-                int initialise();
+                int initialize() override;
 
-                int exit();
+                int exit() override;
 
-                int valueIteration(const std::vector<double> &w);
+                int valueIteration(const std::vector<double> &w) override;
 
                 int valueIterationPhaseOne(const std::vector<double> &w, bool toHost=false);
 
@@ -56,7 +57,7 @@ namespace mopmc {
                 int iniRow_{};
                 int nobjs{};
 
-                const std::vector<double> &getResults() const {
+                const std::vector<double> &getResults() const override {
                     return results_;
                 }
 

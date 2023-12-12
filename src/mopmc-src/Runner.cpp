@@ -47,8 +47,7 @@ namespace mopmc {
 
         assert (typeid(ValueType)==typeid(double));
         assert (typeid(IndexType)==typeid(uint64_t));
-
-
+        
         storm::Environment env;
         clock_t time0 = clock();
         auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);
@@ -66,14 +65,24 @@ namespace mopmc {
         mopmc::optimization::convex_functions::EuclideanDistance<ValueType> fn(h);
         //optimizers
         mopmc::optimization::optimizers::FrankWolfe<ValueType> frankWolfe(mopmc::optimization::optimizers::FWOptMethod::LINOPT, &fn);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGradientDescent(
+        mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
-        mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGradientDescent1(
+        mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
                 mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
+        //value-iteration solver
+        mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(
+                data.transitionMatrix,
+                data.rowGroupIndices,
+                data.row2RowGroupMapping,
+                data.flattenRewardVector,
+                data.defaultScheduler,
+                data.initialRow,
+                data.objectiveCount
+        );
 
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGradientDescent);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGradientDescent1, &projectedGradientDescent);
-        //mopmc::queries::TestingQuery<ValueType, int> q(data, &fn, &projectedGradientDescent1, &projectedGradientDescent);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::TestingQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGradientDescent);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
         q.query();
         //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);

@@ -80,7 +80,7 @@ namespace mopmc {
             }
 
             template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::initialise() {
+            int CudaValueIterationHandler<ValueType>::initialize() {
                 std::cout << ("____ CUDA INITIALIZING ____\n");
                 // cudaMalloc CONSTANTS -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dA_csrOffsets, (A_nrows + 1) * sizeof(int)))

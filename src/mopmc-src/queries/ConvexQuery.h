@@ -25,6 +25,12 @@ namespace mopmc::queries {
                        mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
                        mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt)
                        : BaseQuery<V, I>(data, f, priOpt, secOpt) {};
+        ConvexQuery(const mopmc::Data<V,I> &data,
+                    mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
+                    mopmc::optimization::optimizers::BaseOptimizer<V> *priOpt,
+                    mopmc::optimization::optimizers::BaseOptimizer<V> *secOpt,
+                    mopmc::value_iteration::BaseVIHandler<V> *valueIteration)
+                : BaseQuery<V, I>(data, f, priOpt, secOpt, valueIteration) {};
 
         void query() override;
 
