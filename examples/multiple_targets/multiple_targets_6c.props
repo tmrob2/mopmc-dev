@@ -1,0 +1,8 @@
+multi(
+    R{"target_00"}>=0.05 [ C ],
+    R{"target_09"}>=0.05 [ C ],
+    R{"target_19"}>=0.05 [ C ],
+    R{"target_29"}>=0.05 [ C ],
+    R{"target_39"}>=0.05 [ C ],
+    R{"target_49"}>=0.05 [ C ]
+    )

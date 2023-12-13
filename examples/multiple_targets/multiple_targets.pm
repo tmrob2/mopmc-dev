@@ -26,35 +26,65 @@ z : [0..1] init 0; //game on or not
 endmodule
 
 rewards "target_00"
-	(y=0)&(x=x_max): 1;
+	(x=x_max)&(y=0)&(z=0): 1 ;
+endrewards
+rewards "target_04"
+	(x=x_max)&(y=4)&(z=0): 1 ;
 endrewards
 rewards "target_09"
-	(y=9)&(x=x_max): 1;
+	(x=x_max)&(y=9)&(z=0): 1 ;
+endrewards
+rewards "target_14"
+	(x=x_max)&(y=14)&(z=0): 1 ;
 endrewards
 rewards "target_19"
-	(y=19)&(x=x_max): 1;
+	(x=x_max)&(y=19)&(z=0): 1 ;
+endrewards
+rewards "target_24"
+	(x=x_max)&(y=24)&(z=0): 1 ;
 endrewards
 rewards "target_29"
-	(y=29)&(x=x_max): 1;
+	(x=x_max)&(y=29)&(z=0): 1 ;
+endrewards
+rewards "target_34"
+	(x=x_max)&(y=34)&(z=0): 1 ;
 endrewards
 rewards "target_39"
-	(y=39)&(x=x_max): 1;
+	(x=x_max)&(y=39)&(z=0): 1 ;
+endrewards
+rewards "target_44"
+	(x=x_max)&(y=44)&(z=0): 1 ;
 endrewards
 rewards "target_49"
-	(y=49)&(x=x_max): 1;
+	(x=x_max)&(y=49)&(z=0): 1 ;
+endrewards
+rewards "target_54"
+	(x=x_max)&(y=54)&(z=0): 1 ;
 endrewards
 rewards "target_59"
-	(y=59)&(x=x_max): 1;
+	(x=x_max)&(y=59)&(z=0): 1 ;
+endrewards
+rewards "target_64"
+	(x=x_max)&(y=64)&(z=0): 1 ;
 endrewards
 rewards "target_69"
-	(y=69)&(x=x_max): 1;
+	(x=x_max)&(y=69)&(z=0): 1 ;
+endrewards
+rewards "target_74"
+	(x=x_max)&(y=74)&(z=0): 1 ;
 endrewards
 rewards "target_79"
-	(y=79)&(x=x_max): 1;
+	(x=x_max)&(y=79)&(z=0): 1 ;
+endrewards
+rewards "target_84"
+	(x=x_max)&(y=84)&(z=0): 1 ;
 endrewards
 rewards "target_89"
-	(y=89)&(x=x_max): 1;
+	(x=x_max)&(y=89)&(z=0): 1 ;
+endrewards
+rewards "target_94"
+	(x=x_max)&(y=94)&(z=0): 1 ;
 endrewards
 rewards "target_99"
-	(y=99)&(x=x_max): 1;
+	(x=x_max)&(y=99)&(z=0): 1 ;
 endrewards

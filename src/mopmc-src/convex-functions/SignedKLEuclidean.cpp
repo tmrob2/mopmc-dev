@@ -40,7 +40,7 @@ namespace mopmc::optimization::convex_functions {
     V SignedKLEuclidean<V>::value(const Vector<V> &x) {
 
         if (this->params_.size() != x.size()) {
-            throw std::runtime_error("<to be inserted>");
+            throw std::runtime_error("input dimension mismatch");
         }
         V out = static_cast<V>(0.);
         for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
@@ -56,7 +56,7 @@ namespace mopmc::optimization::convex_functions {
     template<typename V>
     Vector<V> SignedKLEuclidean<V>::subgradient(const Vector<V> &x) {
         if (this->params_.size() != x.size()) {
-            throw std::runtime_error("<to be inserted>");
+            throw std::runtime_error("input dimension mismatch");
         }
         Vector<V> out(x.size());
         for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {

@@ -1,0 +1,23 @@
+multi(
+    R{"target_00"}>=0.005 [ C ],
+    R{"target_04"}>=0.010 [ C ],
+    R{"target_09"}>=0.015 [ C ],
+    R{"target_14"}>=0.015 [ C ],
+    R{"target_19"}>=0.025 [ C ],
+    R{"target_24"}>=0.030 [ C ],
+    R{"target_29"}>=0.035 [ C ],
+    R{"target_34"}>=0.045 [ C ],
+    R{"target_39"}>=0.050 [ C ],
+    R{"target_44"}>=0.055 [ C ],
+    R{"target_49"}>=0.060 [ C ],
+    R{"target_54"}>=0.065 [ C ],
+    R{"target_59"}>=0.070 [ C ],
+    R{"target_64"}>=0.075 [ C ],
+    R{"target_69"}>=0.080 [ C ],
+    R{"target_74"}>=0.085 [ C ],
+    R{"target_79"}>=0.090 [ C ],
+    R{"target_84"}>=0.095 [ C ],
+    R{"target_89"}>=0.100 [ C ],
+    R{"target_94"}>=0.105 [ C ],
+    R{"target_99"}>=0.110 [ C ]
+    )

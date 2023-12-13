@@ -59,6 +59,7 @@ namespace mopmc::queries {
             Vector<T> wTemp = (sgn.array() * w.array()).matrix();
             if (wTemp.dot(h - r) > 0) {
                 achievable = false;
+                ++iter;
                 break;
             }
             //std::cout << "weighted value: " << cudaVIHandler.getResults()[m]<<"\n";

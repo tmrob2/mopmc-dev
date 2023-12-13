@@ -22,6 +22,7 @@
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
 #include "convex-functions/EuclideanDistance.h"
+#include "convex-functions/KLDistance.h"
 #include "optimizers/FrankWolfe.h"
 #include "optimizers/ProjectedGradientDescent.h"
 #include "mopmc-src/storm-wrappers/StormModelCheckingWrapper.h"
@@ -43,8 +44,8 @@ namespace mopmc {
 
     bool run(std::string const &path_to_model, std::string const &property_string) {
 
-        assert (typeid(ValueType)==typeid(double));
-        assert (typeid(IndexType)==typeid(uint64_t));
+        assert (typeid(ValueType) == typeid(double));
+        assert (typeid(IndexType) == typeid(uint64_t));
 
         storm::Environment env;
         clock_t time0 = clock();
@@ -54,13 +55,27 @@ namespace mopmc {
         //stormModelCheckingWrapper.performMultiObjectiveModelChecking(env);
         auto preparedModel = mopmc::ModelBuilder<ModelType>::build(preprocessedResult);
         clock_t time1 = clock();
-        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);
+        auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult,
+                                                                                             preparedModel);
         clock_t time2 = clock();
 
+
         //threshold
-        auto h = Eigen::Map<Vector<ValueType >> (data.thresholds.data(), data.thresholds.size());
+        auto h = Eigen::Map<Vector<ValueType >>(data.thresholds.data(), data.thresholds.size());
         //convex functon
         mopmc::optimization::convex_functions::EuclideanDistance<ValueType> fn(h);
+        //mopmc::optimization::convex_functions::KLDistance<ValueType> kld(h);
+
+        /*{
+        Eigen::VectorXd v(h.size());
+        v.setConstant(0.15);
+        std::cout << "kld.params: " << kld.params_ << "\n";
+        std::cout << "v: " << v << "\n";
+        std::cout << "ed.value(v): " << ed.value(v) << "\n";
+        std::cout << "kld.value(v): " << kld.value(v) << "\n";
+        return true;
+        }*/
+
         //optimizers
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::LINOPT, &fn);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOption::BLENDED, &fn);
@@ -74,8 +89,8 @@ namespace mopmc {
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw, &projectedGD, &cudaVIHandler);
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw2, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw2, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw3, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);

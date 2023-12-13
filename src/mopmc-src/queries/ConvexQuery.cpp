@@ -28,7 +28,7 @@ namespace mopmc::queries {
         Vector<T> h = Eigen::Map<Vector<T>> (this->data_.thresholds.data(), this->data_.thresholds.size());
 
         std::vector<Vector<T>> Phi, W;
-        Vector<T> vt = Vector<T>::Zero(m, 1), vb = Vector<T>::Zero(m, 1);
+        Vector<T> vt(h), vb(h);
         Vector<T> vPrv;
         Vector<T> r(m), w(m);
         w.setConstant(static_cast<T>(1.0) / m);
@@ -87,9 +87,8 @@ namespace mopmc::queries {
                 vb = vt;
                 this->secondaryOptimizer->minimize(vb, Phi, W);
             }
-
             tol = std::abs(this->fn->value(vt) - this->fn->value(vb));
-            if (tol < eps) {
+            if (Phi.size() >= 2 && tol < eps) {
                 std::cout << "loop exit due to small distance on threshold (tolerance: " << tol << ")\n";
                 ++iter;
                 break;

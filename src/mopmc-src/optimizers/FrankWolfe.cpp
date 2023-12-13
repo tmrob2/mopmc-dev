@@ -52,8 +52,8 @@ namespace mopmc::optimization::optimizers {
         const uint64_t k = Vertices.size();
         const uint64_t m = Vertices[0].size();
         Vector<V> xCurrent(m), xNew(m), xTemp(m);
-        const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, impr{static_cast<V>(0.5)};
-        const uint64_t maxIter = 1e3;
+        const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, scale1{0.5}, scale2{0.5}, scale3{0.99};
+        const uint64_t maxIter = 2e3;
         V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
         bool isFw;
 
@@ -74,7 +74,7 @@ namespace mopmc::optimization::optimizers {
 
         delta = std::numeric_limits<V>::min();
         for (uint_fast64_t i = 0; i < k; ++i) {
-            const V c = (this->fn->gradient(xNew)).dot(xNew - Vertices[i]) * 2.;
+            const V c = (this->fn->gradient(xNew)).dot(xNew - Vertices[i]) / scale1;
             if (c > delta) {
                 delta = c;
             }
@@ -174,7 +174,7 @@ namespace mopmc::optimization::optimizers {
                         }
                 } else {
                     linOpt.findMaximumFeasibleStep(Vertices, dXCurrent, xCurrent, stepSize);
-                    if (stepSize > delta * impr) {
+                    if (stepSize > delta * scale2) {
                         xTemp = xCurrent - dXCurrent * stepSize;
                         gamma = lineSearch.findOptimalDecentDistance(xCurrent, xTemp, static_cast<V>(1.));
                         xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
@@ -183,6 +183,8 @@ namespace mopmc::optimization::optimizers {
                     }
                 }
             }
+
+            delta *= scale3;
         }
         std::cout << "*Blended GD* stops at iteration: " << t << ", delta: " << delta << " \n";
         return xNew;
