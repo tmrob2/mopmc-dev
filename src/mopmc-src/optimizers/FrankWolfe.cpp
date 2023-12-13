@@ -48,7 +48,7 @@ namespace mopmc::optimization::optimizers {
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
         auto m = Phi[0].size();
         Vector<V> xCurrent(m), xNew(m), vStar(m);
-        const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)};
+        const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, impr{static_cast<V>(0.5)};
         const uint64_t maxIter = 1e3;
         V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
         bool isFw;
@@ -72,7 +72,7 @@ namespace mopmc::optimization::optimizers {
 
         delta = std::numeric_limits<V>::min();
         for (uint_fast64_t i = 0; i < k; ++i) {
-            const V c = (this->fn->gradient(xNew)).dot(xNew - Phi[i]);
+            const V c = (this->fn->gradient(xNew)).dot(xNew - Phi[i]) * 2.;
             if (c > delta) {
                 delta = c;
             }
@@ -158,29 +158,29 @@ namespace mopmc::optimization::optimizers {
             }
             else {
                 //std::cout << "alpha: " << this->alpha << "\n" << "xCurrent: " << xCurrent <<"\n";
-                linOpt.findMaximumFeasibleStep(Phi, dXCurrent, xCurrent, stepSize);
-                if (stepSize > delta * static_cast<V>(0.8)) {
-                    vStar = xCurrent - this->fn->subgradient(xCurrent) * stepSize;
-                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
-                    xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
-                } else {
-                    delta *= static_cast<V>(0.5);
-                }
-                //std::cout << "delta after findMaximumFeasibleStep: " << delta << "\n";
                 /*
-                int feasible = -1;
-                linOpt.checkPointInConvexHull(Phi, vStar, feasible);
-                if (feasible == 0) {
+                linOpt.findMaximumFeasibleStep(Phi, dXCurrent, xCurrent, stepSize);
+                if (stepSize > delta * impr) {
+                    vStar = xCurrent - dXCurrent * stepSize;
                     gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
                     xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
                 } else {
                     delta *= static_cast<V>(0.5);
                 }
                  */
-                /*else {
-                    printf("ret = %i\n", feasible);
-                    throw std::runtime_error("linopt error");
-                }*/
+                int feasible = -1;
+                linOpt.checkPointInConvexHull(Phi, (xCurrent - dXCurrent * delta), feasible);
+                if (feasible == 0) {
+                    vStar = xCurrent - dXCurrent * delta;
+                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
+                    xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
+                } else if (feasible == 2) {
+                    delta *= static_cast<V>(0.5);
+                } else {
+                    printf("[Warning] ret = %i\n", feasible);
+                    break;
+                    //throw std::runtime_error("linopt error");
+                }
             }
         }
 

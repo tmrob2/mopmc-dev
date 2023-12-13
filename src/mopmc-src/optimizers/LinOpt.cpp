@@ -59,7 +59,7 @@ namespace mopmc::optimization::optimizers {
             set_minim(lp);
             //write_LP(lp, stdout);
             // write_lp(lp, "model.lp");
-            set_verbose(lp, 3);
+            set_verbose(lp, IMPORTANT);
             ret = solve(lp);
             if (ret == OPTIMAL)
                 ret = 0;
@@ -150,7 +150,7 @@ namespace mopmc::optimization::optimizers {
             set_minim(lp);
             //write_LP(lp, stdout);
             // write_lp(lp, "model.lp");
-            set_verbose(lp, 3);
+            set_verbose(lp, IMPORTANT);
             ret = solve(lp);
             if (ret == OPTIMAL)
                 ret = 0;
@@ -253,7 +253,7 @@ namespace mopmc::optimization::optimizers {
             set_minim(lp);
             //write_LP(lp, stdout);
             // write_lp(lp, "model.lp");
-            set_verbose(lp, 3);
+            set_verbose(lp, IMPORTANT);
             ret = solve(lp);
             //printf("ret = %i\n", ret);
             if (ret == OPTIMAL)
@@ -303,6 +303,8 @@ namespace mopmc::optimization::optimizers {
         lp = make_lp(0, n_cols);
         if (lp == NULL)
             ret = 1; // couldn't construct a new model
+
+        set_break_numeric_accuracy(lp, 1e-6);
         if (ret == 0) {
             // create space large enough for one row
             col_no = (int *) malloc(n_cols * sizeof(*col_no));
@@ -348,10 +350,11 @@ namespace mopmc::optimization::optimizers {
             set_minim(lp);
             //write_LP(lp, stdout);
             // write_lp(lp, "model.lp");
-            set_verbose(lp, 3);
+            set_verbose(lp, IMPORTANT);
             ret = solve(lp);
-            feasible = ret;
             //printf("ret = %i\n", ret);
+            // ----copy result here----
+            feasible = ret;
             if (ret == OPTIMAL)
                 ret = 0;
             else
@@ -368,7 +371,10 @@ namespace mopmc::optimization::optimizers {
              */
             //std::cout << "get optimal solution~\n";
             // we are done now
+        } else {
+            //std::cout<< "error in optimization (Ret = " << ret << ")\n";
         }
+
 
         // free allocated memory
         if (row != NULL)
@@ -454,7 +460,7 @@ namespace mopmc::optimization::optimizers {
             set_maxim(lp);
             //write_LP(lp, stdout);
             // write_lp(lp, "model.lp");
-            set_verbose(lp, 3);
+            set_verbose(lp, IMPORTANT);
             ret = solve(lp);
             //std::cout<< "** Optimal solution? Ret: " << ret << "\n";
             if (ret == OPTIMAL)
