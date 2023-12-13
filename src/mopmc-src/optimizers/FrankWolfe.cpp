@@ -24,89 +24,89 @@ namespace mopmc::optimization::optimizers {
     int FrankWolfe<V>::minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) {
         Vector<V> initialPoint = point;
 
-        if (this->fwOptMethod == LINOPT) {
+        if (this->fwOption == LINOPT) {
             point = argminByLinOpt(Vertices, initialPoint, PolytopeType::Vertex, this->lineSearch);
         }
-        if (this->fwOptMethod == AWAY_STEP) {
-            point = argminByAwayStep(Vertices, initialPoint, this->lineSearch);
+        if (this->fwOption == AWAY_STEP) {
+            point = argminByAwayStep(Vertices, this->lineSearch);
         }
-        if (this->fwOptMethod == BLENDED) {
-            point = argminByBlendedGD(Vertices, initialPoint, this->lineSearch);
+        if (this->fwOption == BLENDED) {
+            bool feasibilityCheckOnly = true;
+            point = argminByBlendedGD(Vertices, this->lineSearch, feasibilityCheckOnly);
         }
-
+        if (this->fwOption == BLENDED_STEP_OPT) {
+            bool feasibilityCheckOnly = false;
+            point = argminByBlendedGD(Vertices, this->lineSearch, feasibilityCheckOnly);
+        }
         return 0;
     }
 
     template<typename V>
-    Vector<V> FrankWolfe<V>::argminByBlendedGD(const std::vector<Vector<V>> &Phi,
-                                               Vector<V> &xIn,
-                                               bool doLineSearch) {
-        if (Phi.empty())
+    Vector<V> FrankWolfe<V>::argminByBlendedGD(const std::vector<Vector<V>> &Vertices,
+                                               bool doLineSearch, bool feasibilityCheckOnly) {
+        if (Vertices.empty())
             throw std::runtime_error("The set of vertices cannot be empty");
 
         mopmc::optimization::optimizers::LinOpt<V> linOpt;
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
-        auto m = Phi[0].size();
-        Vector<V> xCurrent(m), xNew(m), vStar(m);
+        const uint64_t k = Vertices.size();
+        const uint64_t m = Vertices[0].size();
+        Vector<V> xCurrent(m), xNew(m), xTemp(m);
         const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, impr{static_cast<V>(0.5)};
         const uint64_t maxIter = 1e3;
         V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
         bool isFw;
-        uint64_t t;
-        uint64_t k = Phi.size();
 
         this->alpha.conservativeResize(k);
         this->alpha(k-1) = static_cast<V>(0.);
 
-        if (Phi.size() == 1) {
+        if (k == 1) {
             this->alpha(0) = static_cast<V>(1.);
             this->activeSet.insert(0);
         }
 
         //estimate initial gap
         xNew.setZero();
-        for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
-            assert(xNew.size() == Phi[i].size());
-            xNew += this->alpha(i) * Phi[i];
+        for (uint_fast64_t i = 0; i < k; ++i) {
+            assert(xNew.size() == Vertices[i].size());
+            xNew += this->alpha(i) * Vertices[i];
         }
 
         delta = std::numeric_limits<V>::min();
         for (uint_fast64_t i = 0; i < k; ++i) {
-            const V c = (this->fn->gradient(xNew)).dot(xNew - Phi[i]) * 2.;
+            const V c = (this->fn->gradient(xNew)).dot(xNew - Vertices[i]) * 2.;
             if (c > delta) {
                 delta = c;
             }
         }
-\
-        for (t = 0; t < maxIter; ++t) {
 
+        uint64_t t;
+        for (t = 0; t < maxIter; ++t) {
             xCurrent = xNew;
             Vector<V> dXCurrent = this->fn->subgradient(xCurrent);
             uint64_t fwId = 0;
             V dec = std::numeric_limits<V>::max();
-            for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
-                if (Phi[i].dot(dXCurrent) < dec){
-                    dec = Phi[i].dot(dXCurrent);
+            for (uint_fast64_t i = 0; i < k; ++i) {
+                if (Vertices[i].dot(dXCurrent) < dec){
+                    dec = Vertices[i].dot(dXCurrent);
                     fwId = i;
                 }
             }
-            Vector<V> fwVec = (Phi[fwId] - xCurrent);
+            Vector<V> fwVec = (Vertices[fwId] - xCurrent);
 
             uint64_t awId = 0;
             V inc = std::numeric_limits<V>::min();
             for (auto j : this->activeSet) {
-                assert(Phi[j].size() == dXCurrent.size());
-                if (Phi[j].dot(dXCurrent) > inc){
-                    inc = Phi[j].dot(dXCurrent);
+                assert(Vertices[j].size() == dXCurrent.size());
+                if (Vertices[j].dot(dXCurrent) > inc){
+                    inc = Vertices[j].dot(dXCurrent);
                     awId = j;
                 }
             }
-            Vector<V> awVec = xCurrent - Phi[awId];
+            Vector<V> awVec = xCurrent - Vertices[awId];
 
-            tolFw = static_cast<V>(-1.) * dXCurrent.dot(Phi[fwId] - xCurrent);
-            tolAw = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Phi[awId]);
-            //std::cout << "static_cast<V>(-1.) * dXCurrent.dot(Phi[fwId] - xCurrent): " << tol0 <<"\n";
-
+            tolFw = static_cast<V>(-1.) * dXCurrent.dot(Vertices[fwId] - xCurrent);
+            tolAw = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Vertices[awId]);
             if (tolFw <= epsilon) {
                 std::cout << "FW loop breaks due to small tol: " << tolFw << "\n";
                 break;
@@ -115,16 +115,16 @@ namespace mopmc::optimization::optimizers {
             if (tolFw + tolAw >= delta) {
                 if (static_cast<V>(-1.) * dXCurrent.dot(fwVec - awVec) >= 0.){
                     isFw = true;
-                    vStar = xCurrent + fwVec;
+                    xTemp = xCurrent + fwVec;
                     gammaMax = static_cast<V>(1.);
                 } else {
                     isFw = false;
-                    vStar = xCurrent + awVec;
+                    xTemp = xCurrent + awVec;
                     gammaMax = this->alpha(awId) / (static_cast<V>(1.) - this->alpha(awId));
                 }
 
                 if (doLineSearch) {
-                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, gammaMax);
+                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, xTemp, gammaMax);
                 } else {
                     gamma = gamma0 * static_cast<V>(2) / static_cast<V>(t + 2);
                 }
@@ -137,7 +137,7 @@ namespace mopmc::optimization::optimizers {
                         this->activeSet.insert(fwId);
                     }
 
-                    for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
+                    for (uint_fast64_t l = 0; l < k; ++l) {
                         if (l != fwId) {
                             this->alpha(l) = (static_cast<V>(1.) - gamma) * this->alpha(l);
                         }
@@ -147,52 +147,50 @@ namespace mopmc::optimization::optimizers {
                     if (gamma == gammaMax) {
                         this->activeSet.erase(awId);
                     }
-                    for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
+                    for (uint_fast64_t l = 0; l < k; ++l) {
                         if (l != awId) {
                             this->alpha(l) = (static_cast<V>(1.) + gamma) * this->alpha(l);
                         }
                     }
                     this->alpha(awId) = (static_cast<V>(1.) + gamma) * this->alpha(awId) - gamma;
                 }
-                xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
+                xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
             }
             else {
                 //std::cout << "alpha: " << this->alpha << "\n" << "xCurrent: " << xCurrent <<"\n";
-                /*
-                linOpt.findMaximumFeasibleStep(Phi, dXCurrent, xCurrent, stepSize);
-                if (stepSize > delta * impr) {
-                    vStar = xCurrent - dXCurrent * stepSize;
-                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
-                    xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
+                if (feasibilityCheckOnly) {
+                    int feasible = -1;
+                    linOpt.checkPointInConvexHull(Vertices, (xCurrent - dXCurrent * delta), feasible);
+                    if (feasible == 0) {
+                        xTemp = xCurrent - dXCurrent * delta;
+                        gamma = lineSearch.findOptimalDecentDistance(xCurrent, xTemp, static_cast<V>(1.));
+                        xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
+                    } else if (feasible == 2) {
+                        delta *= static_cast<V>(0.5);
+                    } else {
+                        printf("[Warning] ret = %i\n", feasible);
+                        break;
+                        //throw std::runtime_error("linopt error");
+                        }
                 } else {
-                    delta *= static_cast<V>(0.5);
-                }
-                 */
-                int feasible = -1;
-                linOpt.checkPointInConvexHull(Phi, (xCurrent - dXCurrent * delta), feasible);
-                if (feasible == 0) {
-                    vStar = xCurrent - dXCurrent * delta;
-                    gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, static_cast<V>(1.));
-                    xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
-                } else if (feasible == 2) {
-                    delta *= static_cast<V>(0.5);
-                } else {
-                    printf("[Warning] ret = %i\n", feasible);
-                    break;
-                    //throw std::runtime_error("linopt error");
+                    linOpt.findMaximumFeasibleStep(Vertices, dXCurrent, xCurrent, stepSize);
+                    if (stepSize > delta * impr) {
+                        xTemp = xCurrent - dXCurrent * stepSize;
+                        gamma = lineSearch.findOptimalDecentDistance(xCurrent, xTemp, static_cast<V>(1.));
+                        xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
+                    } else {
+                        delta *= static_cast<V>(0.5);
+                    }
                 }
             }
         }
-
         std::cout << "*Blended GD* stops at iteration: " << t << ", delta: " << delta << " \n";
-
         return xNew;
     };
 
     //Frank-Wolfe with away steps
     template<typename V>
     Vector<V> FrankWolfe<V>::argminByAwayStep(const std::vector<Vector<V>> &Phi,
-                                              Vector<V> &xIn,
                                               bool doLineSearch){
         if (Phi.empty())
             throw std::runtime_error("The set of vertices cannot be empty");
@@ -318,7 +316,7 @@ namespace mopmc::optimization::optimizers {
         mopmc::optimization::optimizers::LinOpt<V> linOpt;
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
 
-        auto m = xIn.size();
+        auto m = Phi[0].size();
         Vector<V> xCurrent(m), xNew = xIn, vStar(m);
         const V epsilon{1.e-5}, gamma0{static_cast<V>(0.1)};
         const uint64_t maxIter = 10000;
@@ -361,8 +359,8 @@ namespace mopmc::optimization::optimizers {
 
 
     template<typename V>
-    FrankWolfe<V>::FrankWolfe(FWOptMethod optMethod, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
-            : fwOptMethod(optMethod), BaseOptimizer<V>(f) {}
+    FrankWolfe<V>::FrankWolfe(FWOption option, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
+            : fwOption(option), BaseOptimizer<V>(f) {}
 
 
     template<typename V>

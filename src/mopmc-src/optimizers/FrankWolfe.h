@@ -22,29 +22,21 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
-    enum FWOptMethod {
-        LINOPT, AWAY_STEP, BLENDED
+    enum FWOption {
+        LINOPT, AWAY_STEP, BLENDED, BLENDED_STEP_OPT
     };
 
     template<typename V>
     class FrankWolfe : public BaseOptimizer<V>{
     public:
-        explicit FrankWolfe(FWOptMethod optMethod, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
+        explicit FrankWolfe(FWOption optMethod, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f);
 
         FrankWolfe(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f,
                    uint64_t maxSize);
 
         int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) override;
 
-        Vector<V> argminByAwayStep(const std::vector<Vector<V>> &Phi,
-                                   Vector<V> &xIn,
-                                   bool doLineSearch=true);
-
-        Vector<V> argminByBlendedGD(const std::vector<Vector<V>> &Vertices,
-                                    Vector<V> &xIn,
-                                    bool doLineSearch=true);
-
-        FWOptMethod fwOptMethod{};
+        FWOption fwOption{};
         Vector<V> alpha;
         std::set<V> activeSet;
         bool lineSearch{true};
@@ -60,6 +52,13 @@ namespace mopmc::optimization::optimizers {
                                  Vector<V> &xIn,
                                  PolytopeType polytopeType,
                                  bool doLineSearch= true);
+
+        Vector<V> argminByAwayStep(const std::vector<Vector<V>> &Phi,
+                                   bool doLineSearch=true);
+
+        Vector<V> argminByBlendedGD(const std::vector<Vector<V>> &Vertices,
+                                    bool doLineSearch=true,
+                                    bool feasibilityCheckOnly=true);
     };
 
 
