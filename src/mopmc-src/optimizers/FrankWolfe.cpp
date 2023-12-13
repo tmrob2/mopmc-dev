@@ -28,7 +28,7 @@ namespace mopmc::optimization::optimizers {
             point = argminByLinOpt(Vertices, initialPoint, PolytopeType::Vertex, this->lineSearch);
         }
         if (this->fwOption == AWAY_STEP) {
-            point = argminByAwayStep(Vertices, this->lineSearch);
+            point = argminWithAwayStep(Vertices, this->lineSearch);
         }
         if (this->fwOption == BLENDED) {
             bool feasibilityCheckOnly = true;
@@ -190,75 +190,77 @@ namespace mopmc::optimization::optimizers {
 
     //Frank-Wolfe with away steps
     template<typename V>
-    Vector<V> FrankWolfe<V>::argminByAwayStep(const std::vector<Vector<V>> &Phi,
-                                              bool doLineSearch){
-        if (Phi.empty())
+    Vector<V> FrankWolfe<V>::argminWithAwayStep(const std::vector<Vector<V>> &Vertices,
+                                                bool doLineSearch){
+        if (Vertices.empty())
             throw std::runtime_error("The set of vertices cannot be empty");
 
         mopmc::optimization::optimizers::LineSearch<V> lineSearch(this->fn);
-        auto m = Phi[0].size();
-        Vector<V> xCurrent(m), xNew(m), vStar(m);
-
+        const uint64_t m = Vertices[0].size();
+        const uint64_t k = Vertices.size();
+        Vector<V> xCurrent(m), xNew(m), xTemp(m);
         const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)};
-        const uint64_t maxIter = 1e4;
-        V gamma, gammaMax, tol0, tol1;
+        const uint64_t maxIter = 2e4;
+        V gamma, gammaMax, tolFw, tolAw;
         bool isFw;
-        uint64_t t;
-        uint64_t k = Phi.size();
+        this->alpha.conservativeResize(k);
         this->alpha(k-1) = static_cast<V>(0.);
 
-        if (Phi.size() == 1) {
+        if (Vertices.size() == 1) {
             this->alpha(0) = static_cast<V>(1.);
             this->activeSet.insert(0);
         }
 
         xNew.setZero();
-        for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
-            assert(xNew.size() == Phi[i].size());
-            xNew += this->alpha(i) * Phi[i];
+        for (uint_fast64_t i = 0; i < k; ++i) {
+            assert(xNew.size() == Vertices[i].size());
+            xNew += this->alpha(i) * Vertices[i];
         }
 
+        uint64_t t;
         for (t = 1; t < maxIter; ++t) {
             xCurrent = xNew;
-            Vector<V> d = this->fn->subgradient(xCurrent);
+            Vector<V> dXCurrent = this->fn->subgradient(xCurrent);
 
             uint64_t fwId = 0;
-            V inc = std::numeric_limits<V>::max();
-            for (uint_fast64_t i = 0; i < Phi.size(); ++i) {
-                if (Phi[i].dot(this->fn->subgradient(xCurrent)) < inc){
+            V dec = std::numeric_limits<V>::max();
+            for (uint_fast64_t i = 0; i < k; ++i) {
+                if (Vertices[i].dot(dXCurrent) < dec){
+                    dec = Vertices[i].dot(xCurrent);
                     fwId = i;
                 }
             }
-            Vector<V> fwVec = (Phi[fwId] - xCurrent);
+            Vector<V> fwVec = (Vertices[fwId] - xCurrent);
 
             uint64_t awId = 0;
-            V dec = std::numeric_limits<V>::min();
+            V inc = std::numeric_limits<V>::min();
             for (auto j : this->activeSet) {
-                assert(Phi[j].size() == this->fn->subgradient(xCurrent).size());
-                if (Phi[j].dot(this->fn->subgradient(xCurrent)) > dec){
+                assert(Vertices[j].size() == dXCurrent.size());
+                if (Vertices[j].dot(dXCurrent) > inc){
+                    inc = Vertices[j].dot(xCurrent);
                     awId = j;
                 }
             }
-            Vector<V> awVec = xCurrent - Phi[awId];
+            Vector<V> awVec = xCurrent - Vertices[awId];
 
-            tol0 = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(Phi[fwId] - xCurrent);
-            tol1 = static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(xCurrent - Phi[awId]);
-            if (tol0 <= epsilon) {
+            tolFw = static_cast<V>(-1.) * dXCurrent.dot(Vertices[fwId] - xCurrent);
+            tolAw = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Vertices[awId]);
+            if (tolFw <= epsilon) {
                 break;
             }
 
-            if (static_cast<V>(-1.) * this->fn->subgradient(xCurrent).dot(fwVec - awVec) >= 0.){
+            if (static_cast<V>(-1.) * dXCurrent.dot(fwVec - awVec) >= 0.){
                 isFw = true;
-                vStar = xCurrent + fwVec;
+                xTemp = xCurrent + fwVec;
                 gammaMax = static_cast<V>(1.);
             } else {
                 isFw = false;
-                vStar = xCurrent + awVec;
+                xTemp = xCurrent + awVec;
                 gammaMax = this->alpha(awId) / (static_cast<V>(1.) - this->alpha(awId));
             }
 
             if (doLineSearch) {
-                gamma = lineSearch.findOptimalDecentDistance(xCurrent, vStar, gammaMax);
+                gamma = lineSearch.findOptimalDecentDistance(xCurrent, xTemp, gammaMax);
             } else {
                 gamma = gamma0 * static_cast<V>(2) / static_cast<V>(t + 2);
             }
@@ -271,7 +273,7 @@ namespace mopmc::optimization::optimizers {
                     this->activeSet.insert(fwId);
                 }
 
-                for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
+                for (uint_fast64_t l = 0; l < k; ++l) {
                     if (l != fwId) {
                         this->alpha(l) = (static_cast<V>(1.) - gamma) * this->alpha(l);
                     }
@@ -281,18 +283,16 @@ namespace mopmc::optimization::optimizers {
                 if (gamma == gammaMax) {
                     this->activeSet.erase(awId);
                 }
-                for (uint_fast64_t l = 0; l < Phi.size(); ++l) {
+                for (uint_fast64_t l = 0; l < k; ++l) {
                     if (l != awId) {
                         this->alpha(l) = (static_cast<V>(1.) + gamma) * this->alpha(l);
                     }
                 }
                 this->alpha(awId) = (static_cast<V>(1.) + gamma) * this->alpha(awId) - gamma;
             }
-
-            xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * vStar;
+            xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
         }
-
-        std::cout << "*Frank-Wolfe* stops at iteration " << t << ", tolerance: " << std::max(tol0,tol1) << " \n";
+        std::cout << "*Frank-Wolfe* stops at iteration " << t << ", tolerance: " << std::max(tolFw, tolAw) << " \n";
 
         return xNew;
     }

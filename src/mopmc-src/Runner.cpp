@@ -62,9 +62,10 @@ namespace mopmc {
         //convex functon
         mopmc::optimization::convex_functions::EuclideanDistance<ValueType> fn(h);
         //optimizers
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> frankWolfe(mopmc::optimization::optimizers::FWOption::LINOPT, &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::LINOPT, &fn);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOption::BLENDED, &fn);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw2(mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw3(mopmc::optimization::optimizers::FWOption::AWAY_STEP, &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
@@ -72,9 +73,10 @@ namespace mopmc {
         //value-iteration solver
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &frankWolfe, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw2, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw2, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw3, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
         q.query();

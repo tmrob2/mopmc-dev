@@ -53,8 +53,8 @@ namespace mopmc::optimization::optimizers {
                                  PolytopeType polytopeType,
                                  bool doLineSearch= true);
 
-        Vector<V> argminByAwayStep(const std::vector<Vector<V>> &Phi,
-                                   bool doLineSearch=true);
+        Vector<V> argminWithAwayStep(const std::vector<Vector<V>> &Vertices,
+                                     bool doLineSearch=true);
 
         Vector<V> argminByBlendedGD(const std::vector<Vector<V>> &Vertices,
                                     bool doLineSearch=true,

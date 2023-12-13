@@ -29,26 +29,26 @@ namespace mopmc::optimization::optimizers {
     class LinOpt {
     public:
 
-        int findOptimalSeparatingDirection(std::vector<Vector<V>> &Phi,
-                                           PolytopeType &rep,
-                                           Vector<V> &d,
-                                           Vector<V> &sgn,
+        int findOptimalSeparatingDirection(std::vector<Vector<V>> &Vertices,
+                                           PolytopeType &polytopeType,
+                                           Vector<V> &gradient,
+                                           Vector<V> &sign,
                                            Vector<V> &optimalDirection);
 
         int checkPointInConvexHull(const std::vector<Vector<V>> &Vertices,
                                    const Vector<V> &point,
                                    int &feasible);
 
-        int optimizeVtx(const std::vector<Vector<V>> &Phi,
-                        PolytopeType &rep,
-                        Vector<V> &d,
-                        Vector<V> &optimalPoint);
+        int optimizeVtx(const std::vector<Vector<V>> &Vertices,
+                        PolytopeType &polytopeType,
+                        Vector<V> &gradient,
+                        Vector<V> &point);
 
-        int optimizeHlsp(const std::vector<Vector<V>> &Phi,
-                         const std::vector<Vector<V>> &W,
-                         PolytopeType &rep,
-                         Vector<V> &d,
-                         Vector<V> &optimalPoint);
+        int optimizeHlsp(const std::vector<Vector<V>> &Vertices,
+                         const std::vector<Vector<V>> &Weights,
+                         PolytopeType &polytopeType,
+                         Vector<V> &gradient,
+                         Vector<V> &point);
 
         int findMaximumFeasibleStep(const std::vector<Vector<V>> &Vertices,
                                     const Vector<V> &gradient,
