@@ -57,7 +57,6 @@ namespace mopmc::queries {
             // compute a new supporting hyperplane
             std::vector<T> weightVec1(weightVector.data(), weightVector.data() + weightVector.size());
             this->VIhandler->valueIteration(weightVec1);
-
             std::vector<T> vertex1 = this->VIhandler->getResults();
             vertex = VectorMap<T>(vertex1.data(), n_objs);
 

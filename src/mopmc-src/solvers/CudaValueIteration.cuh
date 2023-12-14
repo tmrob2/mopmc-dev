@@ -46,7 +46,14 @@ namespace mopmc {
 
                 int valueIterationPhaseTwo();
 
+                int valueIterationPhaseTwo_dev(int beginObj, int endObj);
+
+                int valueIterationPhaseTwo_dev() {
+                    return valueIterationPhaseTwo_dev(0, this->nobjs);
+                }
+
                 int valueIterationPhaseTwo_v2(int beginObj, int endObj);
+
 
                 mopmc::QueryData<ValueType, int> *data;
 
@@ -92,8 +99,8 @@ namespace mopmc {
                 cusparseSpMatDescr_t matA{}, matB{};
                 cusparseDnMatDescr_t matC{}, matD{};
                 cusparseDnVecDescr_t vecRw{}, vecX{}, vecXPrime{}, vecY{};
-                void *dBuffer = nullptr, *dBufferB = nullptr;
-                size_t bufferSize = 0, bufferSizeB = 0;
+                void *dBuffer = nullptr, *dBufferB = nullptr, *dBufferC;
+                size_t bufferSize = 0, bufferSizeB = 0,  bufferSizeC = 0;
 
             };
 
