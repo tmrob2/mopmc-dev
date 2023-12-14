@@ -19,12 +19,11 @@ namespace mopmc::optimization::convex_functions {
     class BaseConvexFunction {
     public:
 
-        explicit BaseConvexFunction()= default;
-        explicit BaseConvexFunction(const Vector<V> &params) : params_(params){}
+        explicit BaseConvexFunction() = default;
+        explicit BaseConvexFunction(const Vector<V> &params) : params_(params){
+            probs_ = std::vector<bool>(false, params_.size());
+        }
         explicit BaseConvexFunction(const Vector<V> &params, const std::vector<bool> &probs)
-            : params_(params), probs_(probs){}
-        explicit BaseConvexFunction(const VectorMap<V> &params) : params_(params){}
-        explicit BaseConvexFunction(const VectorMap<V> &params, const std::vector<bool> &probs)
             : params_(params), probs_(probs){}
 
         virtual V value(const Vector<V> &x) = 0;

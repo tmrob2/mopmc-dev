@@ -10,12 +10,18 @@ namespace mopmc::optimization::convex_functions {
     template<typename V>
     KLDistance<V>::KLDistance(const Vector<V> &c): BaseConvexFunction<V>(c) {
         this->smooth = true;
-        /*
-        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
-            if (this->probs_[i]) {
-                throw std::runtime_error("KL distance applies to probabilities only.");
-            }
-        }*/
+        /* Currently KL is not suitable as a distance metric because it's gradient is unbounded.
+         * TODO In future, we will add bounds for probabilities in order to use it.
+         */
+        V hardMargin = static_cast<V>(1.e-3);
+        V lb = c.minCoeff();
+        V ub = c.maxCoeff();
+        if (lb < hardMargin || ub > 1.0 - hardMargin) {
+            throw std::runtime_error("probability thresholds fall out of hard margin");
+        }
+        V margin = std::min((1.-ub) * 0.5, lb);
+        this->probabilityLowerBound = std::max(margin, hardMargin);
+        this->probabilityUpperBound = 1. - this -> probabilityUpperBound;
     }
 
     template<typename V>

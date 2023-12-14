@@ -17,6 +17,9 @@ namespace mopmc::optimization::convex_functions {
 
         Vector<V> subgradient(const Vector<V> &x) override;
 
+        V probabilityLowerBound, probabilityUpperBound;
+        V gradientLowerBound, gradientUpperBound;
+
     private:
         V klDivergence(V x, V c);
         V d_klDivergence(V x, V c);

@@ -5,33 +5,22 @@
 
 #include <iostream>
 #include <Eigen/Dense>
-#include "../solvers/WarmUp.h"
 #include "ConvexQuery.h"
-#include "../solvers/CudaValueIteration.cuh"
-#include "../QueryData.h"
-#include "../convex-functions/TotalReLU.h"
-#include "../optimizers/FrankWolfe.h"
-#include "../optimizers/ProjectedGradientDescent.h"
-#include "../convex-functions/EuclideanDistance.h"
-#include "../optimizers/PolytopeTypeEnum.h"
 
 namespace mopmc::queries {
 
     template<typename T, typename I>
     void ConvexQuery<T, I>::query() {
 
-        //todo: can write the warmup into initialize()
-        mopmc::kernels::launchWarmupKernel();
         this->VIhandler->initialize();
-        const uint64_t m = this->data_.objectiveCount; // m: number of objectives
+        const uint64_t n_objs = this->data_.objectiveCount;
         assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);
-        Vector<T> h = Eigen::Map<Vector<T>> (this->data_.thresholds.data(), this->data_.thresholds.size());
+        Vector<T> threshold = Eigen::Map<Vector<T>> (this->data_.thresholds.data(), n_objs);
 
-        std::vector<Vector<T>> Phi, W;
-        Vector<T> vt(h), vb(h);
-        Vector<T> vPrv;
-        Vector<T> r(m), w(m);
-        w.setConstant(static_cast<T>(1.0) / m);
+        std::vector<Vector<T>> Vertices, WeightVectors;
+        Vector<T> innerPointCurrent(n_objs), innerPointNew(n_objs), outerPoint(n_objs);
+        Vector<T> vertex(n_objs), weightVector(n_objs);
+        weightVector.setConstant(static_cast<T>(1.0) / n_objs);
 
         const double eps{1.e-6}, eps1{1.e-8}, eps2{1.e-6};
         const uint_fast64_t maxIter{100};
@@ -40,55 +29,53 @@ namespace mopmc::queries {
 
         while (iter < maxIter) {
             std::cout << "Main loop: Iteration " << iter << "\n";
-            //std::cout << "Tolerance: " << tol << ", Tolerance1: " << tol1 << ", Tolerance2: " << tol2 << "\n";
-            if (!Phi.empty()) {
-                vt = vPrv;
-                this->primaryOptimizer->minimize(vt, Phi);
+            if (!Vertices.empty()) {
+                innerPointNew = innerPointCurrent;
+                this->primaryOptimizer->minimize(innerPointNew, Vertices);
 
-                if (Phi.size() >= 2) {
+                if (Vertices.size() >= 2) {
                     //tol2 = (vPrv - vt).template lpNorm<1>();
-                    tol2 = (vPrv - vt).template lpNorm<Eigen::Infinity>();
+                    tol2 = (innerPointCurrent - innerPointNew).template lpNorm<Eigen::Infinity>();
                     if (tol2 < eps2) {
-                        std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: " << tol2 << ")\n";
+                        std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: "
+                            << tol2 << ")\n";
                         ++iter;
                         break;
                     }
                 }
 
-                Vector<T> grad = this->fn->subgradient(vt);
+                Vector<T> grad = this->fn->subgradient(innerPointNew);
                 tol1 = grad.template lpNorm<1>();
                 if (tol1 < eps1) {
                     std::cout << "loop exit due to small gradient (tolerance: " << tol1 << ")\n";
                     ++iter;
                     break;
                 }
-                w = static_cast<T>(-1.) * grad / grad.template lpNorm<1>();
+                weightVector = static_cast<T>(-1.) * grad / grad.template lpNorm<1>();
             }
 
             // compute a new supporting hyperplane
-            std::vector<T> w1(w.data(), w.data() + w.size());
-            this->VIhandler->valueIteration(w1);
+            std::vector<T> weightVec1(weightVector.data(), weightVector.data() + weightVector.size());
+            this->VIhandler->valueIteration(weightVec1);
 
-            std::vector<T> r1 = this->VIhandler->getResults();
-            // only need the first m elements
-            r1.resize(m);
-            r = VectorMap<T>(r1.data(), r1.size());
+            std::vector<T> vertex1 = this->VIhandler->getResults();
+            vertex = VectorMap<T>(vertex1.data(), n_objs);
 
-            Phi.push_back(r);
-            W.push_back(w);
+            Vertices.push_back(vertex);
+            WeightVectors.push_back(weightVector);
 
-            if (Phi.size() == 1) {
-                vPrv = r;
+            if (Vertices.size() == 1) {
+                innerPointCurrent = vertex;
             } else {
-                vPrv = vt;
+                innerPointCurrent = innerPointNew;
             }
 
-            if (W.size() == 1 || w.dot(r) < w.dot(vb)) {
-                vb = vt;
-                this->secondaryOptimizer->minimize(vb, Phi, W);
+            if (WeightVectors.size() == 1 || weightVector.dot(vertex) < weightVector.dot(outerPoint)) {
+                outerPoint = innerPointCurrent;
+                this->secondaryOptimizer->minimize(outerPoint, Vertices, WeightVectors);
             }
-            tol = std::abs(this->fn->value(vt) - this->fn->value(vb));
-            if (Phi.size() >= 2 && tol < eps) {
+            tol = std::abs(this->fn->value(innerPointCurrent) - this->fn->value(outerPoint));
+            if (tol < eps) {
                 std::cout << "loop exit due to small distance on threshold (tolerance: " << tol << ")\n";
                 ++iter;
                 break;
@@ -99,15 +86,15 @@ namespace mopmc::queries {
         this->VIhandler->exit();
 
         {
-            Vector<T> vOut = (vb + vt) * static_cast<T>(0.5);
+            Vector<T> vOut = (outerPoint + innerPointNew) * static_cast<T>(0.5);
             std::cout << "----------------------------------------------\n"
                       << "CUDA CONVEX QUERY terminates after " << iter << " iteration(s)\n"
                       << "Estimated nearest point to threshold : [";
-            for (int i = 0; i < m; ++i) {
-                std::cout << vt(i) << " ";
+            for (int i = 0; i < n_objs; ++i) {
+                std::cout << innerPointNew(i) << " ";
             }
             std::cout << "]\n"
-                    << "Approximate distance: " << this->fn->value(vt)
+                    << "Approximate distance: " << this->fn->value(innerPointNew)
                       //<< "Approximate distance between " << fn.value(vb) << " and " << fn.value(vt)
                       << "\n----------------------------------------------\n";
         }

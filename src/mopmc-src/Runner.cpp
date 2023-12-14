@@ -40,7 +40,7 @@ namespace mopmc {
     typedef Eigen::SparseMatrix<ValueType, Eigen::RowMajor> EigenSpMatrix;
 
     template<typename V>
-    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
     bool run(std::string const &path_to_model, std::string const &property_string) {
 
@@ -77,10 +77,14 @@ namespace mopmc {
         }*/
 
         //optimizers
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::LINOPT, &fn);
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOption::BLENDED, &fn);
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw2(mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &fn);
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw3(mopmc::optimization::optimizers::FWOption::AWAY_STEP, &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::LINOPT,
+                                                                  &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOption::BLENDED,
+                                                                   &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw2(
+                mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &fn);
+        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw3(mopmc::optimization::optimizers::FWOption::AWAY_STEP,
+                                                                   &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
@@ -98,11 +102,11 @@ namespace mopmc {
         //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();
 
-        std::cout<<"       TIME STATISTICS        \n";
-        printf("Model building stage 1: %.3f seconds.\n", double(time05 - time0)/CLOCKS_PER_SEC);
-        printf("Model building stage 2: %.3f seconds.\n", double(time1 - time05)/CLOCKS_PER_SEC);
-        printf("Input data transformation: %.3f seconds.\n", double(time2 - time1)/CLOCKS_PER_SEC);
-        printf("Model checking: %.3f seconds.\n", double(time3 - time2)/CLOCKS_PER_SEC);
+        std::cout << "       TIME STATISTICS        \n";
+        printf("Model building stage 1: %.3f seconds.\n", double(time05 - time0) / CLOCKS_PER_SEC);
+        printf("Model building stage 2: %.3f seconds.\n", double(time1 - time05) / CLOCKS_PER_SEC);
+        printf("Input data transformation: %.3f seconds.\n", double(time2 - time1) / CLOCKS_PER_SEC);
+        printf("Model checking: %.3f seconds.\n", double(time3 - time2) / CLOCKS_PER_SEC);
 
         return true;
 

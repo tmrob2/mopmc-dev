@@ -4,8 +4,7 @@
 
 #include "CudaValueIteration.cuh"
 #include "CuFunctions.h"
-//#include <storm/storage/SparseMatrix.h>
-//#include <Eigen/Sparse>
+#include "../solvers/WarmUp.h"
 #include <cuda_runtime.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
@@ -79,6 +78,8 @@ namespace mopmc {
 
             template<typename ValueType>
             int CudaValueIterationHandler<ValueType>::initialize() {
+                //GPU warm up
+                mopmc::kernels::launchWarmupKernel();
                 std::cout << ("____ CUDA INITIALIZING ____\n");
                 // cudaMalloc CONSTANTS -------------------------------------------------------------
                 CHECK_CUDA(cudaMalloc((void **) &dA_csrOffsets, (A_nrows + 1) * sizeof(int)))
