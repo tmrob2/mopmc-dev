@@ -156,7 +156,6 @@ namespace mopmc {
                         CUSPARSE_SPMV_ALG_DEFAULT, &bufferSizeB))
                         */
                 CHECK_CUDA(cudaMalloc(&dBuffer, bufferSize));
-                CHECK_CUDA(cudaMalloc(&dBufferC, bufferSizeC));
 
                 return EXIT_SUCCESS;
             }
@@ -323,66 +322,52 @@ namespace mopmc {
                     thrust::copy_if(thrust::device, dR + obj * A_nrows, dR + (obj + 1) * A_nrows,
                                     dMasking_nrows, dRi, mopmc::functions::cuda::is_not_zero<double>());
 
-
                     iteration = 0;
                     maxEps = 1;
                     do {
-                        // x = ri
-                        //CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dX, 1));
+                        // Z = RPortion
                         CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dZ, 1));
-                        // initialise x' as ri too
+                        // initialise Z' as RPortion too
                         if (iteration == 0) {
-                            //CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dXPrime, 1));
                             CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dZPrime, 1));
                         }
-                        // x = B.x' + ri where x = ri
-                        /*
+                        // Z = B.Z' + Z, where Z = RPortion
                         CHECK_CUSPARSE(cusparseSpMM_bufferSize(
-                                handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matB, matD, &beta, matC,
-                                CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, &bufferSizeC))*/
+                                handle, CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                &alpha, matB, matD, &beta, matC,
+                                CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, &bufferSizeC))
+                        CHECK_CUDA(cudaMalloc(&dBufferC, bufferSizeC))
+                        CHECK_CUSPARSE(cusparseSpMM(
+                                handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                &alpha, matB, matD, &beta, matC,
+                                CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, dBufferC))
 
-                        CHECK_CUSPARSE(cusparseSpMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                                    &alpha, matB, matD, &beta, matC, CUDA_R_64F,
-                                                    CUSPARSE_SPMM_ALG_DEFAULT, &dBufferC))
-
-                        CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                                    &alpha, matB, vecXPrime, &beta, vecX, CUDA_R_64F,
-                                                    CUSPARSE_SPMV_ALG_DEFAULT, dBuffer));
-                        // x' = -1 * x + x'
-                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dX, 1, dXPrime, 1));
-                        //CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dZ, 1, dZPrime, 1));
-                        // max |x'|
-                        CHECK_CUBLAS(cublasIdamax(cublasHandle, B_nrows, dXPrime, 1, &maxInd));
-                        //CHECK_CUBLAS(cublasIdamax(cublasHandle, C_nrows, dZPrime, 1, &maxInd));
+                        // Z' = -1 * Z + Z'
+                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dZ, 1, dZPrime, 1));
+                        // max |Z'|
+                        CHECK_CUBLAS(cublasIdamax(cublasHandle, C_nrows, dZPrime, 1, &maxInd));
                         // to get maxEps, we must reduce also by one since this is FORTRAN based indexing.
-                        CHECK_CUDA(cudaMemcpy(&maxEps, dXPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
-                        //CHECK_CUDA(cudaMemcpy(&maxEps, dZPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
+                        CHECK_CUDA(cudaMemcpy(&maxEps, dZPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
                         maxEps = (maxEps >= 0) ? maxEps : -maxEps;
-                        // x' = x
-                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dX, 1, dXPrime, 1));
-                        //CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dZ, 1, dZPrime, 1));
-
-                        printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
+                        // Z' = Z
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dZ, 1, dZPrime, 1));
+                        //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
                         ++iteration;
 
-                    } while (iteration <5);//(maxEps > 1e-5 && iteration < maxIter);
+                    } while (maxEps > 1e-5 && iteration < maxIter);
                     if (iteration == maxIter) {
                         std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
                     }
                     //std::cout << "objective " << obj  << " terminated after " << iteration << " iterations\n";
                     // copy results
-                    thrust::copy(thrust::device, dX + iniRow_, dX + iniRow_ + 1, dResult + obj);
-                    //thrust::copy(thrust::device, dZ + iniRow_, dZ + iniRow_ + 1, dResult + obj);
-
+                    thrust::copy(thrust::device, dZ + iniRow_, dZ + iniRow_ + 1, dResult + obj);
                 }
 
                 //-------------------------------------------------------------------------
                 CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
                 CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
                 CHECK_CUSPARSE(cusparseDestroySpMat(matB))
-                CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
-                CHECK_CUSPARSE(cusparseDestroyDnMat(matD))
+                CHECK_CUDA(cudaFree(dBufferC))
                 return EXIT_SUCCESS;
             }
 
@@ -520,12 +505,11 @@ namespace mopmc {
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecXPrime))
                 CHECK_CUSPARSE(cusparseDestroyDnVec(vecRw))
                 //CHECK_CUSPARSE(cusparseDestroySpMat(matB))
-                //CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
-                //CHECK_CUSPARSE(cusparseDestroyDnMat(matD))
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matC))
+                CHECK_CUSPARSE(cusparseDestroyDnMat(matD))
                 CHECK_CUSPARSE(cusparseDestroy(handle))
                 // device memory de-allocation
                 CHECK_CUDA(cudaFree(dBuffer))
-                CHECK_CUDA(cudaFree(dBufferC))
                 CHECK_CUDA(cudaFree(dA_csrOffsets))
                 CHECK_CUDA(cudaFree(dA_columns))
                 CHECK_CUDA(cudaFree(dA_values))
