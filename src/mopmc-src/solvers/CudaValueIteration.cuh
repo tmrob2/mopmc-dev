@@ -46,11 +46,11 @@ namespace mopmc {
 
                 int valueIterationPhaseTwo();
 
-                int valueIterationPhaseTwo_dev(int beginObj, int endObj);
+                int valueIterationPhaseTwo_dev();
 
-                int valueIterationPhaseTwo_dev() {
-                    return valueIterationPhaseTwo_dev(0, this->nobjs);
-                }
+                //int valueIterationPhaseTwo_dev() {
+                //    return valueIterationPhaseTwo_dev(0, this->nobjs);
+                //}
 
                 int valueIterationPhaseTwo_v2(int beginObj, int endObj);
 
@@ -78,10 +78,10 @@ namespace mopmc {
                 int *dA_csrOffsets{}, *dA_columns{}, *dA_rows_extra{};
                 int *dB_csrOffsets{}, *dB_columns{}, *dB_rows_extra{};
                 int *dRowGroupIndices{}, *dRow2RowGroupMapping{}, *dPi{};
-                int *dMasking_nnz{}, *dMasking_nrows{}; // this is an array of 0s and 1s
+                int *dMasking_nnz{}, *dMasking_nrows{}, *dMasking_tiled{}; // this is an array of 0s and 1s
                 double *dA_values{}, *dB_values{};
-                double *dR{};
-                double *dW{}, *dRw{}, *dRi{}, *dRj{};
+                double *dR{}, *dRi{}, *dRj{}, *dRPart{};
+                double *dW{}, *dRw{};
                 double *dX{}, *dXPrime{}, *dY{}, *dZ{}, *dZPrime{};
                 double *dResult{};
                 int A_nnz{}, A_ncols{}, A_nrows{};
@@ -89,7 +89,7 @@ namespace mopmc {
                 int C_ncols{}, C_nrows{}, C_ld{};
 
                 double alpha=1.0, alpha2=-1.0, beta=1.0;
-                double eps=1.0, maxEps=0.0;
+                double eps=1.0, maxEps{}, tolerance = 1.0e-6;
                 int maxIter=2000, maxInd = 0;
                 int iteration{};
 

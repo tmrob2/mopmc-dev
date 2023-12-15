@@ -67,7 +67,7 @@ namespace mopmc {
                 B_ncols = A_ncols;
                 B_nrows = B_ncols;
                 C_nrows = B_ncols;
-                C_ncols = 1;// nobjs; //todo just need endObj - beginObj rows
+                C_ncols = nobjs; //todo just need endObj - beginObj rows
                 C_ld = C_nrows;
                 results_.resize(nobjs+1);
                 //Assertions
@@ -104,10 +104,12 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dB_rows_extra, A_nnz * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
+                CHECK_CUDA(cudaMalloc((void **) &dMasking_tiled, C_ncols * A_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double))) // TR TODO: extra allocated mem which we possibly won't use in the hybrid version
                 CHECK_CUDA(cudaMalloc((void **) &dRj, nobjs * B_nrows * sizeof(double))) // TR TODO: ^ 
-                CHECK_CUDA(cudaMalloc((void **) &dZ, C_nrows * C_ncols * sizeof(double)))
-                CHECK_CUDA(cudaMalloc((void **) &dZPrime, C_nrows * C_ncols * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dRPart, C_ncols * C_nrows * sizeof(double))) // TODO to chnage
+                CHECK_CUDA(cudaMalloc((void **) &dZ, C_ncols * C_nrows * sizeof(double)))
+                CHECK_CUDA(cudaMalloc((void **) &dZPrime, C_ncols * C_nrows * sizeof(double)))
                 // cudaMemcpy -------------------------------------------------------------
                 CHECK_CUDA(cudaMemcpy(dA_csrOffsets, transitionMatrix_.outerIndexPtr(), (A_nrows + 1) * sizeof(int),
                                       cudaMemcpyHostToDevice));
@@ -164,8 +166,8 @@ namespace mopmc {
             int CudaValueIterationHandler<ValueType>::valueIteration(const std::vector<double> &w) {
 
                 this->valueIterationPhaseOne(w);
-                //this->valueIterationPhaseTwo_dev();
-                this->valueIterationPhaseTwo();
+                this->valueIterationPhaseTwo_dev();
+                //this->valueIterationPhaseTwo();
             }
 
             template<typename ValueType>
@@ -199,7 +201,7 @@ namespace mopmc {
                     //maxEps = mopmc::kernels::findMaxEps(dXPrime, A_ncols, maxEps);
                     ++iteration;
                     //printf("___ VI PHASE ONE, ITERATION %i, maxEps %f\n", iteration, maxEps);
-                } while (maxEps > 1e-5 && iteration < maxIter);
+                } while (maxEps > tolerance && iteration < maxIter);
 
                 if (iteration == maxIter) {
                     std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
@@ -273,7 +275,7 @@ namespace mopmc {
                         //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
                         ++iteration;
 
-                    } while (maxEps > 1e-5 && iteration < maxIter);
+                    } while (maxEps > tolerance && iteration < maxIter);
                     if (iteration == maxIter) {
                         std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
                     }
@@ -292,7 +294,7 @@ namespace mopmc {
 
             // TODO this one does not work yet
             template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo_dev(int beginObj, int endObj) {
+            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo_dev() {
                 std::cout << "____ VI PHASE TWO ____\n";
                 // generate a DTMC transition matrix as a csr matrix
                 CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_extra,
@@ -316,24 +318,27 @@ namespace mopmc {
                 CHECK_CUSPARSE(cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nnz,
                                                  dB_csrOffsets, dB_columns, dB_values,
                                                  CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-                                                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
+                                                 CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F))
 
-                for (int obj = 0; obj < nobjs; obj++) {
-                    thrust::copy_if(thrust::device, dR + obj * A_nrows, dR + (obj + 1) * A_nrows,
-                                    dMasking_nrows, dRi, mopmc::functions::cuda::is_not_zero<double>());
+                for (uint i = 0; i < nobjs; ++i) {
+                    thrust::copy(thrust::device, dMasking_nrows, dMasking_nrows + A_nrows, dMasking_tiled + i * A_nrows);
+                }
+
+                //for (int obj = 0; obj < nobjs; obj++) {
+                    thrust::copy_if(thrust::device, dR, dR + nobjs * A_nrows,
+                                    dMasking_tiled, dRPart, mopmc::functions::cuda::is_not_zero<double>());
 
                     iteration = 0;
-                    maxEps = 1;
                     do {
                         // Z = RPortion
-                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dZ, 1));
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, C_ncols * C_nrows, dRPart, 1, dZ, 1));
                         // initialise Z' as RPortion too
                         if (iteration == 0) {
-                            CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dRi, 1, dZPrime, 1));
+                            CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, C_ncols * C_nrows, dRPart, 1, dZPrime, 1));
                         }
                         // Z = B.Z' + Z, where Z = RPortion
                         CHECK_CUSPARSE(cusparseSpMM_bufferSize(
-                                handle, CUSPARSE_OPERATION_NON_TRANSPOSE,CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
                                 &alpha, matB, matD, &beta, matC,
                                 CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, &bufferSizeC))
                         CHECK_CUDA(cudaMalloc(&dBufferC, bufferSizeC))
@@ -343,29 +348,34 @@ namespace mopmc {
                                 CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, dBufferC))
 
                         // Z' = -1 * Z + Z'
-                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, B_ncols, &alpha2, dZ, 1, dZPrime, 1));
+                        CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, C_ncols * C_nrows, &alpha2, dZ, 1, dZPrime, 1));
                         // max |Z'|
-                        CHECK_CUBLAS(cublasIdamax(cublasHandle, C_nrows, dZPrime, 1, &maxInd));
+                        CHECK_CUBLAS(cublasIdamax(cublasHandle, C_ncols * C_nrows, dZPrime, 1, &maxInd));
                         // to get maxEps, we must reduce also by one since this is FORTRAN based indexing.
                         CHECK_CUDA(cudaMemcpy(&maxEps, dZPrime + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost));
                         maxEps = (maxEps >= 0) ? maxEps : -maxEps;
                         // Z' = Z
-                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, B_nrows, dZ, 1, dZPrime, 1));
+                        CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, C_ncols * C_nrows, dZ, 1, dZPrime, 1));
                         //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
                         ++iteration;
 
-                    } while (maxEps > 1e-5 && iteration < maxIter);
+                    } while (maxEps > tolerance && iteration < maxIter);
                     if (iteration == maxIter) {
                         std::cout << "[warning] loop exit after reaching maximum iteration number (" << iteration <<")\n";
                     }
                     //std::cout << "objective " << obj  << " terminated after " << iteration << " iterations\n";
                     // copy results
-                    thrust::copy(thrust::device, dZ + iniRow_, dZ + iniRow_ + 1, dResult + obj);
+                    //thrust::copy(thrust::device, dZ + iniRow_ + obj * C_nrows, dZ + iniRow_ + 1 + obj * C_nrows, dResult + obj);
+                //}
+
+                for (int obj = 0; obj < nobjs; obj++) {
+                    thrust::copy(thrust::device, dZ + iniRow_ + obj*C_nrows, dZ + iniRow_ + 1 + obj*C_nrows, dResult + obj);
                 }
 
+
                 //-------------------------------------------------------------------------
-                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost));
-                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(scheduler_.data(), dPi, A_ncols * sizeof(int), cudaMemcpyDeviceToHost))
+                CHECK_CUDA(cudaMemcpy(results_.data(), dResult, (nobjs + 1) * sizeof(double), cudaMemcpyDeviceToHost))
                 CHECK_CUSPARSE(cusparseDestroySpMat(matB))
                 CHECK_CUDA(cudaFree(dBufferC))
                 return EXIT_SUCCESS;
