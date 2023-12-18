@@ -23,6 +23,7 @@
 #include "convex-functions/SignedKLEuclidean.h"
 #include "convex-functions/EuclideanDistance.h"
 #include "convex-functions/KLDistance.h"
+#include "convex-functions/MSE.h"
 #include "optimizers/FrankWolfe.h"
 #include "optimizers/ProjectedGradientDescent.h"
 #include "mopmc-src/storm-wrappers/StormModelCheckingWrapper.h"
@@ -63,38 +64,28 @@ namespace mopmc {
         //threshold
         auto h = Eigen::Map<Vector<ValueType >>(data.thresholds.data(), data.thresholds.size());
         //convex functon
-        mopmc::optimization::convex_functions::EuclideanDistance<ValueType> fn(h);
-        //mopmc::optimization::convex_functions::KLDistance<ValueType> kld(h);
-
-        /*{
-        Eigen::VectorXd v(h.size());
-        v.setConstant(0.15);
-        std::cout << "kld.params: " << kld.params_ << "\n";
-        std::cout << "v: " << v << "\n";
-        std::cout << "ed.value(v): " << ed.value(v) << "\n";
-        std::cout << "kld.value(v): " << kld.value(v) << "\n";
-        return true;
-        }*/
+        //mopmc::optimization::convex_functions::EuclideanDistance<ValueType> eud(h);
+        mopmc::optimization::convex_functions::MSE<ValueType> mse(h, data.objectiveCount);
 
         //optimizers
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::LINOPT,
-                                                                  &fn);
+                                                                  &mse);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw1(mopmc::optimization::optimizers::FWOption::BLENDED,
-                                                                   &fn);
+                                                                   &mse);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw2(
-                mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &fn);
+                mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &mse);
         mopmc::optimization::optimizers::FrankWolfe<ValueType> fw3(mopmc::optimization::optimizers::FWOption::AWAY_STEP,
-                                                                   &fn);
+                                                                   &mse);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
-                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &fn);
+                mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &mse);
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD1(
-                mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &fn);
+                mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &mse);
         //value-iteration solver
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw1, &projectedGD, &cudaVIHandler);
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw2, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw1, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &eud, &fw2, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw3, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);

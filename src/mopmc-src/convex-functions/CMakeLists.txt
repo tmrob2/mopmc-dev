@@ -9,6 +9,8 @@ list(
         "${dir}/EuclideanDistance.h"
         "${dir}/KLDistance.cpp"
         "${dir}/KLDistance.h"
+        "${dir}/MSE.cpp"
+        "${dir}/MSE.h"
         "${dir}/SignedKLEuclidean.cpp"
         "${dir}/SignedKLEuclidean.h"
         "${dir}/TotalReLU.cpp"

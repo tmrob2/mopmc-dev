@@ -53,7 +53,7 @@ namespace mopmc::optimization::optimizers {
         const uint64_t m = Vertices[0].size();
         Vector<V> xCurrent(m), xNew(m), xTemp(m);
         const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, scale1{0.5}, scale2{0.5}, scale3{0.99};
-        const uint64_t maxIter = 2e3;
+        const uint64_t maxIter = 1e2;
         V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
         bool isFw;
 
