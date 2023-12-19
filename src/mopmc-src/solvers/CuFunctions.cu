@@ -4,12 +4,15 @@
 
 
 
+//#include <__clang_cuda_builtin_vars.h>
 #define cudaAssert(condition) \
     {if (!(condition)){ printf("Assertion %s failed!\n", #condition); asm("trap;"); } \
 
-namespace mopmc {
-    namespace functions {
+namespace mopmc{
+    namespace functions{
         namespace cuda {
+    //namespace functions {
+    //    namespace cuda {
 
             __global__ void aggregate(const double *w, const double *x, double *y, int numRows, int numObjs) {
                 // y = x * w
@@ -133,6 +136,25 @@ namespace mopmc {
                 return 0;
             }
 
+            __global__ void tiling(const int* mask, int* tiledMask, const int ncopies, const int n) {
+                // basically just copy the mask ncopies times. 
+                uint tid = threadIdx.x + blockIdx.x * blockDim.x;
+                if (tid < n) {
+                    for (int i = 0; i < ncopies; ++i) {
+                        tiledMask[i * n + tid] = mask[tid];
+                    }
+                }
+            }
+            
+            int tilingLauncher(const int* mask, int* tiledMask, const int ncopies, const int n) {
+                int blockSize, minGridSize, gridSize;                
+
+                cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, tiling, 0, n);
+
+                gridSize = (n + blockSize - 1) / blockSize;
+                tiling<<<gridSize, blockSize>>>(mask, tiledMask, ncopies, n);
+                return 0;
+            }
 
             __global__ void maxValue2(const double *y, double *x, const int *enabledActions,
                                       int *pi, int *bpi, int arrCount) {

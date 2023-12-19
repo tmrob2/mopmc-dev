@@ -6,7 +6,8 @@
 #define MOPMC_CUDAVALUEITERATION_CUH
 
 
-#include <storm/storage/SparseMatrix.h>
+//#include <storm/storage/SparseMatrix.h>
+#include <storm/utility/constants.h>
 #include <Eigen/Sparse>
 #include <cuda_runtime.h>
 #include <cusparse.h>
@@ -40,6 +41,8 @@ namespace mopmc {
                 int valueIterationPhaseOne(const std::vector<double> &w, bool toHost=false);
 
                 int valueIterationPhaseTwo();
+
+                int exampleValueIterationPhaseTwo_v2(int beginObj, int endObj);
 
                 int valueIterationPhaseTwo_v2(int beginObj, int endObj);
 

@@ -41,6 +41,7 @@ namespace hybrid {
     template <typename V>
     bool CLooper<V>::stop() {
         abortAndJoin();
+        //std::cout << "Thread id: " << id << " Thread Spec: " << threadType << "\n";
         return true;
     }
 
@@ -112,7 +113,6 @@ namespace hybrid {
             try {
                 // Do something
                 using namespace std::chrono_literals;
-                //std::cout << "Calling next()\n";
                 boost::optional<ThreadProblem<V>> r = next();
                 if(r && !r.get().isEmpty()) {
                     std::cout << "r: " << r.get().getFirst() << "\n";
@@ -142,9 +142,16 @@ namespace hybrid {
         if (mThread.joinable()) {
             mThread.join();
         }
+        if (threadType == ThreadSpecialisation::GPU) {
+            if (gpuData) {
+                std::cout << "GPU thread exit called\n";
+                gpuData->exit();
+                gpuData.reset();
+            }
+        }
     }
 
-    template <typename V>
+    /*template <typename V>
     bool CLooper<V>::poolAbortAndJoin() {
         mAbortRequested.store(true);
         if (mThread.joinable()) {
@@ -153,11 +160,12 @@ namespace hybrid {
             return false;
         }
         return true;
-    }
+    }*/
 
     template <typename V>
     bool CLooper<V>::solutionsReady() {
         if (solutions.size() == expectedSolutions) {
+            expectedSolutions = 0;
             return true;
         }
         return false;
@@ -258,7 +266,7 @@ namespace hybrid {
     }
 
     template <typename V>
-    void CLooperPool<V>::solve(std::vector<hybrid::ThreadProblem<V>> tasks) {
+    void CLooperPool<V>::solve_(std::vector<hybrid::ThreadProblem<V>> tasks) {
         // implementation of the scheduler solver
 
         auto dispatchers = getDispatchers();
@@ -284,11 +292,30 @@ namespace hybrid {
                     tasks.pop_back();
                 }
             }
-
-            
         }
 
         collectSolutions();
+    }
+
+    template<typename V>
+    void CLooperPool<V>::scheduleProblems(std::vector<V>& w, ThreadSpecialisation spec) {
+        // first create the scheduler problem
+        std::vector<ThreadProblem<V>> problems;
+        ThreadProblem<V> schPr(0, w, spec, Problem::Scheduler);
+        problems.push_back(schPr);
+        solve_(problems);
+        auto s = getSolutions();
+        
+        // TR TODO: Now this is where we would need some sort of resource
+        // scheduling to determine which objectives will get
+        // scheduled to the CPU versus those that will get put on the GPU
+        // The DTMC threadProb takes the thread specialisation as well as a contiguous 
+        // objective range which needs to be computed.
+        ThreadProblem<V> dtmcProb(0, ThreadSpecialisation::GPU, Problem::DTMC, 0, 1);
+        problems.push_back(dtmcProb);
+        solve_(problems);
+        s = getSolutions();
+
     }
 
     template<typename V>

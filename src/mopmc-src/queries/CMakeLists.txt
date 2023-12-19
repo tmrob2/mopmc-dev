@@ -11,6 +11,8 @@ list(
         "${dir}/GpuConvexQueryAlt.h"
         "${dir}/TestingQuery.cpp"
         "${dir}/TestingQuery.h"
+        "${dir}/HybridQuery.h"
+        "${dir}/HybridQuery.cpp"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

@@ -32,7 +32,12 @@ public:
     //! The problem needs to solve a value iteration problem.
     //! Take the inputs for the value iteration problem
     ThreadProblem(uint index_, std::vector<ValueType> w_, ThreadSpecialisation spec_, Problem probType_):
-    w(w_), spec(spec_), probType(probType_), index(index_) {
+    w(w_), spec(spec_), probType(probType_), index(index_), empty(false) {
+        // Intentionally left blank
+    }
+
+    ThreadProblem(uint index_, ThreadSpecialisation spec_, Problem probType_, int start_obj, int end_obj) :
+    spec(spec_), probType(probType_), empty(false), startObj(start_obj), endObj(end_obj) {
         // Intentionally left blank
     }
 
@@ -62,12 +67,14 @@ public:
     // The goal of a scheduler problem is to compute an optimal scheduler. 
     int operator()() const {
         //std::cout << "function called..\n";
+        std::cout << "spec: " << spec << "\n";
         switch (probType) {
             case Problem::Scheduler:
                 if (spec == ThreadSpecialisation::CPU) {
                     // do VI ops on CPU
                 } else {
                     // do VI ops on GPU
+                    std::cout << "starting VI ph 1\n";
                     gpuData->valueIterationPhaseOne(w, true);
                 }
                 break;
@@ -77,6 +84,8 @@ public:
                     // do DTMC ops on the CPU
                 } else {
                     // do DTMC ops on the GPU
+                    std::cout << "starting VI ph 2\n";
+                    gpuData->valueIterationPhaseTwo_v2(this->startObj, this->endObj);
                 }
                 break;
         }
@@ -93,6 +102,9 @@ private:
     std::vector<ValueType> w;
     std::shared_ptr<std::vector<uint64_t>> scheduler;
     Problem probType;
+    int startObj;
+    int endObj;
+    std::vector<double> ObjResults;
 };
 }
 #endif //MOPMC_PROBLEM_H

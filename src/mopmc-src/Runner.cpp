@@ -21,6 +21,7 @@
 #include "mopmc-src/hybrid-computing/Problem.h"
 #include "queries/GpuConvexQuery.h"
 #include "queries/GpuConvexQueryAlt.h"
+#include "queries/HybridQuery.h"
 #include "queries/AchievabilityQuery.h"
 #include "convex-functions/TotalReLU.h"
 #include "convex-functions/SignedKLEuclidean.h"
@@ -55,12 +56,15 @@ namespace mopmc {
         clock_t time1 = clock();
         auto data = mopmc::Transformation<ModelType, ValueType, IndexType>::transform_i32_v2(preprocessedResult, preparedModel);
         clock_t time2 = clock();
-        mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
+        //mopmc::queries::GpuConvexQuery<ValueType, int> q(data);
         //mopmc::queries::GpuConvexQueryAlt<ValueType, int> q(data);
         //mopmc::queries::TestingQuery<ValueType, int> q(data);
-        //mopmc::queries::AchievabilityQuery<ValueType, int> q(data);
+        mopmc::queries::HybridQuery<ValueType, int> q(data, hybrid::ThreadSpecialisation::GPU);
+        //q.query();
+        // TR: To call the statistics around query is possibly inacurate as it includes thread
+        //     overheads which really have nothing to do with the computation of our algorithm
+        //     and possibly says more about the OS scheduler
         q.query();
-        //q.hybridQuery(hybrid::ThreadSpecialisation::GPU);
         clock_t time3 = clock();
 
         std::cout<<"       TIME STATISTICS        \n";

@@ -82,9 +82,7 @@ public:
 
     CLooper(uint id_, ThreadSpecialisation spec, Data<ValueType, int>& model);
 
-
     // Copy denied, move to be implemented
-
     ~CLooper() {
         // called in case the looper goes out of scope.
         abortAndJoin();
@@ -189,7 +187,9 @@ public:
     // TODO The CLooperPool is currently not fit for purpose because we really only need two threads
     //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU
     //  thread dispatcher and with cuda natively on the GPU thread
-    void solve(std::vector<hybrid::ThreadProblem<ValueType>> tasks);
+    void solve_(std::vector<hybrid::ThreadProblem<ValueType>> tasks);
+
+    void scheduleProblems(std::vector<ValueType>& w, ThreadSpecialisation spec);
 
     void collectSolutions();
 
