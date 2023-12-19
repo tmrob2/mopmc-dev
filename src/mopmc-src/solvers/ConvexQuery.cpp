@@ -176,12 +176,12 @@ std::vector<T> projectPointToNearestPlane(std::vector<T> &x,
         dMap r(Phi[i].data(), Phi[i].size());
         Eigen::Matrix<T, Eigen::Dynamic, 1> v = x_ - r;
         T distNew = v.dot(wUnit_);
-        std::cout << "distance: " << distNew << "\n";
+        //std::cout << "distance: " << distNew << "\n";
 
         if (distNew < distance) {
             distance = distNew;
             xProj_ = x_ - distance * wUnit_;
-            std::cout << " xProj: " << xProj_.transpose() << "\n";
+            //std::cout << " xProj: " << xProj_.transpose() << "\n";
         }
     }
     return xProj;
@@ -216,7 +216,7 @@ std::vector<T> projectedGradientDescent(
         std::vector<T> xNew = projectPointToNearestPlane(x, Phi, W, l);
         // compute the error between xnew and xold to determine convergence
         T error = computeError(xNew, xOld);
-        std::cout << "error: " << error << "\n";
+        //std::cout << "error: " << error << "\n";
         if (error < threshold) {
             x = xNew;
             break;

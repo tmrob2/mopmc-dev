@@ -13,7 +13,7 @@ Before starting, make sure that Storm and **all of its dependencies are installe
 This project uses cmake which should be bundled with Ninja. If Ninja is available you will be able
 to make use of the convenient configurations and build script.
 
-This project requires CUDA Toolkit 12.2 and the associated NVIDIA driver 535. 
+This project requires CUDA Toolkit 12.xx and the associated NVIDIA driver 525+. 
 This cuda toolkit is essential as it provides 64bit numeric types for the GPU and provides more modern
 sparse matrix multiplication algorithms from Nvidia CuSparse. If installed correctly, using the command `nvidia-smi`
 you should see something like:
@@ -45,6 +45,14 @@ export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64 ${LD_LIBRARY_PATH:+:${LD_LIBRA
 ```
 
 This avoids errors by the IDE debug compiler relating to setting `CMAKE_CUDA_ARCHITECTURES`.
+
+If your IDE cannot find the Storm header files, you can specify the header search paths so that the Storm source directories
+can be indexed (see [Manage CMake project files](https://www.jetbrains.com/help/clion/managing-cmake-project-files.html#nonprj_files)).
+This can be done by adding the following line into the current [`CMakeList.txt`](./CMakeLists.txt) file:
+```cmake
+set(storm_INCLUDE_DIR, ./storm)
+```
+where `storm` is a symlink to `<YOUR_STORM_ROOT_DIRECTORY>/build/src/storm` created in the project root.
 
 ## Getting Started
 

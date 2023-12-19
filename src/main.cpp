@@ -1,10 +1,10 @@
 #include <storm/api/storm.h>
 #include <storm/utility/initialize.h>
-#include <filesystem>
+//#include <filesystem>
 //#include <storm/settings/
 
-#include "mopmc-src/ExplicitModelBuilder.h"
-
+//#include "mopmc-src/ExplicitModelBuilder.h"
+#include "mopmc-src/Runner.h"
 
 int main (int argc, char *argv[]) {
     if (argc < 3) {
@@ -16,9 +16,9 @@ int main (int argc, char *argv[]) {
     storm::utility::setUp();
     // Set some settings objects.
     storm::settings::initializeAll("storm-starter-project", "storm-starter-project");
-    //storm::settings::
 
     // Accepts Prism file format
-    mopmc::check(argv[1], argv[2]);
+    //mopmc::check(argv[1], argv[2]);
+    mopmc::run(argv[1], argv[2]);
     return 0;
 }

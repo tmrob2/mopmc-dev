@@ -2,27 +2,25 @@
 // Created by thomas on 22/10/23.
 //
 
-#ifndef MOPMC_HYBRIDTHREADLIB_H
-#define MOPMC_HYBRIDTHREADLIB_H
+#ifndef MOPMC_LOOPER_H
+#define MOPMC_LOOPER_H
 
 #include <thread>
 #include <atomic>
 #include <memory>
 #include <functional>
-#include <stdexcept>
 #include <queue>
 #include <mutex>
-#include <storm/utility/constants.h>
-#include <Eigen/Sparse>
 #include <boost/optional.hpp>
 #include <storm/storage/SparseMatrix.h>
-
-namespace mythread {
-
-// Forward declaration
-template <typename ValueType>
-class Problem;
-
+#include <storm/utility/constants.h>
+#include <Eigen/Sparse>
+#include "Problem.h"
+#include "Utilities.h"
+#include "../Data.h"
+#include "mopmc-src/solvers/CudaValueIteration.cuh"
+namespace hybrid {
+using namespace mopmc;
 
 /*!
  * Loopers are objects which contain or are attached to a thread with a conditional infinite loop.
@@ -65,16 +63,26 @@ class Problem;
  */
 using Runnable = std::function<void()>;
 
+// Explanation of general type T
+// We have a problem of type T, as long as that problem is
+// callable and each problem has the same structure then
+// we can insert any problem into the queue. As a problem is a
+// functor it is easy to satisfy the compiler.
 template <typename ValueType>
 class CLooper {
 public:
+    typedef ThreadProblem<ValueType> Sch;
+    typedef Eigen::SparseMatrix<ValueType> SpMat;
+
     CLooper(uint id) : id(id), mRunning(false), mAbortRequested(false), mRunnables(),
                        mRunnablesMutex(), mDispatcher(std::shared_ptr<CDispatcher>(new CDispatcher(*this))),
                        mBusy(false), expectedSolutions(0) {
 
     };
-    // Copy denied, move to be implemented
 
+    CLooper(uint id_, ThreadSpecialisation spec, Data<ValueType, int>& model);
+
+    // Copy denied, move to be implemented
     ~CLooper() {
         // called in case the looper goes out of scope.
         abortAndJoin();
@@ -95,11 +103,14 @@ public:
     // Check if poison pill inserted
     bool getAbortRequested() const;
 
+    // Send data
+    void sendDataGPU(mopmc::Data<ValueType, int>& data);
+
     // Return solutions from the thread
-    std::vector<std::pair<int, double>> getSolution();
+    std::vector<int> getSolution();
 
     // Computes the next problem
-    boost::optional<Problem<ValueType>> next();
+    boost::optional<Sch> next();
 
     // Flag to check if all tasks have been computed by the thread
     bool solutionsReady();
@@ -110,7 +121,9 @@ public:
 
     public:
 
-        bool post(Problem<ValueType> &&aRunnable) {
+        // Idea: make this more generic and send problems of different structures
+        // for example a MDP scheduler generation function vs a DTMC problem
+        bool post(Sch &&aRunnable) {
             return mAssignedLooper.post(std::move(aRunnable));
         }
 
@@ -131,70 +144,26 @@ private:
     // Implements a thread function
     void runFunc();
 
-    bool post(Problem<ValueType> &&aRunnable);
+    bool post(Sch &&aRunnable);
 
 
     std::thread mThread;
     std::atomic_bool mRunning;
     std::atomic_bool mBusy;
     std::atomic_bool mAbortRequested;
-    std::queue<Problem<ValueType>> mRunnables; /* This is just a standard queue it can take anything
+    std::queue<Sch> mRunnables; /* This is just a standard queue it can take anything
                                   * probably the best thing to do is insert a class
                                   * The class could evn be a functor which calls its own
                                   * model checking operation
                                   */
     std::recursive_mutex mRunnablesMutex;
     std::shared_ptr<CDispatcher> mDispatcher;
-    std::vector<std::pair<int, double>> solutions;
+    std::vector<int> solutions;
     uint expectedSolutions;
     uint id;
-};
-
-template <typename ValueType>
-class Problem {
-public:
-    //! The problem needs to solve a value iteration problem.
-    //! Take the inputs for the value iteration problem
-    Problem(uint index,
-            Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &transitionSystem,
-            Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x_,
-            std::vector<ValueType> &r_,
-            std::vector<uint64_t> &pi_,
-            std::vector<typename storm::storage::SparseMatrix<ValueType>::indexType> const& rowGroupIndices_)
-            : index(index), x(x_), matrix(transitionSystem), r(r_), pi(pi_), rowGroupIndices(rowGroupIndices_) {
-        // Intentionally left blank
-    }
-
-    void setEmpty() {
-        this->empty = true;
-    }
-
-    bool &isEmpty() {
-        return this->empty;
-    }
-
-    uint getFirst() const {
-        return index;
-    }
-
-    void getProblemData(uint &index_, double &x_, double &y_);
-
-    std::pair<int, double> operator()() const {
-        using namespace std::chrono_literals;
-        //std::this_thread::sleep_for(5s);
-        std::pair<uint, double> sol;
-        sol.first = index;
-        sol.second = 0.;
-        return sol;
-    }
-
-private:
-    uint index;
-    Eigen::SparseMatrix<ValueType, Eigen::RowMajor> &matrix;
-    Eigen::Map<Eigen::Matrix<ValueType, Eigen::Dynamic, 1>> &x;
-    std::vector<ValueType> &r;
-    std::vector<uint64_t> &pi;
-    std::vector<typename storm::storage::SparseMatrix<ValueType>::indexType> const& rowGroupIndices;
+    std::shared_ptr<Data<ValueType, int>> data;
+    std::shared_ptr<mopmc::value_iteration::gpu::CudaValueIterationHandler<ValueType>> gpuData;
+    hybrid::ThreadSpecialisation threadType;
 };
 
 template <typename ValueType>
@@ -212,17 +181,26 @@ public:
 
     void stop();
 
-    void solve(std::vector<Problem<ValueType>> tasks);
+    template <typename D>
+    void assignGlobalData(mopmc::Data<ValueType, int> const& data);
+
+    // TODO The CLooperPool is currently not fit for purpose because we really only need two threads
+    //  in the thread pool. Essentially we exploit multithreading with the CPU through eigen on the CPU
+    //  thread dispatcher and with cuda natively on the GPU thread
+    void solve_(std::vector<hybrid::ThreadProblem<ValueType>> tasks);
+
+    void scheduleProblems(std::vector<ValueType>& w, ThreadSpecialisation spec);
 
     void collectSolutions();
 
-    std::vector<std::pair<uint, double>>& getSolutions();
+    // Every problem needs to return the same configuration or overload get solutions
+    std::vector<int>& getSolutions();
 
     std::vector<std::shared_ptr<typename CLooper<ValueType>::CDispatcher>> getDispatchers();
 
 private:
     std::vector<std::unique_ptr<CLooper<ValueType>>>&& mLoopers;
-    std::vector<std::pair<uint, double>> solutions;
+    std::vector<int> solutions;
 };
 }
-#endif //MOPMC_HYBRIDTHREADLIB_H
+#endif //MOPMC_LOOPER_H

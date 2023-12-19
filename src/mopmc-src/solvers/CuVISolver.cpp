@@ -2,10 +2,8 @@
 // Created by thomas on 26/09/23.
 //
 #include "CuVISolver.h"
-#include "ActionSelection.h"
-#include <thrust/device_vector.h>
+#include "mopmc-src/solvers/ActionSelection.h"
 #include <thrust/device_ptr.h>
-#include <thrust/extrema.h>
 
 #define CHECK_CUDA(func)                                                       \
 {                                                                              \
@@ -182,6 +180,8 @@ int valueIteration(Eigen::SparseMatrix<ValueType, Eigen::RowMajor>const & transi
             break;
         }*/
         ++iterations;
+
+        printf("Cuda value iteration: %i, maxEps: %f \n", iterations, maxEps);
     } while( maxEps > 1e-5 );
 
     CHECK_CUDA(cudaMemcpy(x.data(), dX, A_ncols * sizeof(double), cudaMemcpyDeviceToHost))

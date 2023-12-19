@@ -1361,10 +1361,10 @@ struct _lprec
   /* Spacer */
   int       *alignmentspacer;
 
-  /* Problem description */
+  /* SchedulerProblem description */
   char      *lp_name;           /* The name of the model */
 
-  /* Problem sizes */
+  /* SchedulerProblem sizes */
   int       sum;                /* The total number of variables, including slacks */
   int       rows;
   int       columns;

@@ -52,6 +52,66 @@ public:
 
     void multiObjectiveSolver(storm::Environment const& env);
 
+    //GS: add public getters. :SG
+public:
+    const std::vector<std::vector<typename SparseModelType::ValueType>> &getObjectiveResults() const {
+        return this->objectiveResults;
+    }
+    uint64_t getInitialState() const {
+        return this->initialState;
+    }
+
+    std::vector<typename SparseModelType::ValueType> getAuxStateValues() {
+        return this->ecQuotient->auxStateValues;
+    }
+
+    std::vector<typename SparseModelType::ValueType> getAuxChoiceValues() {
+        return this->ecQuotient->auxChoiceValues;
+    }
+
+    std::vector<uint64_t> getAuxRowGroupIndices(){
+        return this->ecQuotient->matrix.getRowGroupIndices();
+    }
+
+
+    std::vector<uint_fast64_t> getEcqToOriginalChoiceMapping() {
+        return this->ecQuotient->ecqToOriginalChoiceMapping;
+    }
+
+   boost::optional<typename mopmc::multiobjective::MultiObjectiveModel<SparseModelType>::EcQuotient> getEcQuotient() {
+        return this->ecQuotient;
+    }
+
+    void toEigenSparseMatrixPub() {
+        this->toEigenSparseMatrix();
+    }
+
+    Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> getEigenTransitionMatrix(){
+        //this->toEigenSparseMatrix();
+        return this->eigenTransitionMatrix;
+    }
+
+    void updateEcQuotientPub(std::vector<typename SparseModelType::ValueType> const &weightedRewardVector) {
+        this->updateEcQuotient(weightedRewardVector);
+    }
+
+    storm::storage::SparseMatrix<typename SparseModelType::ValueType> getTransitionMatrix() {
+        return this->transitionMatrix;
+    }
+
+    std::vector<std::vector<typename SparseModelType::ValueType>> getActionRewards() {
+        return this->actionRewards;
+    }
+
+    std::vector<std::vector<typename SparseModelType::ValueType>> getStateRewards() {
+        return this->stateRewards;
+    }
+
+    std::vector<uint64_t > computeValidInitialSchedulerPubNoArg() {
+        return this->computeValidInitialScheduler(this->ecQuotient->matrix, this->ecQuotient->rowsWithSumLessOne);
+    }
+
+
 private:
 
     Eigen::SparseMatrix<typename SparseModelType::ValueType, Eigen::RowMajor> makeEigenIdentityMatrix();
@@ -65,6 +125,7 @@ private:
 
     // Members
     SpMat eigenTransitionMatrix;
+    SpMat dtmcTransitionMatrix;
     std::vector<typename SparseModelType::ValueType> weightedResult;
     // The results for the individual objectives (w.r.t. all states of the model)
 

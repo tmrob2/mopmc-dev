@@ -6,11 +6,11 @@
 #define MOPMC_ACTIONSELECTION_H
 
 namespace mopmc::kernels{
-    int maxValueLauncher(double *y, double *x, int *enabledActions, int* pi, int arrCount);
+int maxValueLauncher(double *y, double *x, int *enabledActions, int* pi, int arrCount);
 
-    double findMaxEps(double* y, int size, double maxDiff);
+double findMaxEps(double* y, int size, double maxDiff);
 
-    int launchPrintKernel(double printVal);
+int launchPrintKernel(double printVal);
 }
 
 
