@@ -52,10 +52,11 @@ namespace mopmc::optimization::optimizers {
         const uint64_t k = Vertices.size();
         const uint64_t m = Vertices[0].size();
         Vector<V> xCurrent(m), xNew(m), xTemp(m);
-        const V epsilon{1.e-12}, gamma0{static_cast<V>(0.1)}, scale1{0.5}, scale2{0.5}, scale3{0.99};
+        const V tolerance{1.e-8}, toleranceCosine = std::cos(89.95 * M_PI / 180);
+        const V gamma0{static_cast<V>(0.1)}, scale1{0.5}, scale2{0.5}, scale3{0.99};
         const uint64_t maxIter = 1e2;
-        V gamma, gammaMax, tolFw, tolAw, stepSize, delta;
-        bool isFw;
+        V gamma, gammaMax, epsFwd, epsAwy, stepSize, delta;
+        bool isFwd;
 
         this->alpha.conservativeResize(k);
         this->alpha(k-1) = static_cast<V>(0.);
@@ -84,43 +85,47 @@ namespace mopmc::optimization::optimizers {
         for (t = 0; t < maxIter; ++t) {
             xCurrent = xNew;
             Vector<V> dXCurrent = this->fn->subgradient(xCurrent);
-            uint64_t fwId = 0;
+            uint64_t fwdInd = 0;
             V dec = std::numeric_limits<V>::max();
             for (uint_fast64_t i = 0; i < k; ++i) {
                 if (Vertices[i].dot(dXCurrent) < dec){
                     dec = Vertices[i].dot(dXCurrent);
-                    fwId = i;
+                    fwdInd = i;
                 }
             }
-            Vector<V> fwVec = (Vertices[fwId] - xCurrent);
+            Vector<V> fwdVec = (Vertices[fwdInd] - xCurrent);
 
-            uint64_t awId = 0;
+            uint64_t awyInd = 0;
             V inc = std::numeric_limits<V>::min();
             for (auto j : this->activeSet) {
                 assert(Vertices[j].size() == dXCurrent.size());
                 if (Vertices[j].dot(dXCurrent) > inc){
                     inc = Vertices[j].dot(dXCurrent);
-                    awId = j;
+                    awyInd = j;
                 }
             }
-            Vector<V> awVec = xCurrent - Vertices[awId];
+            Vector<V> awyVec = xCurrent - Vertices[awyInd];
 
-            tolFw = static_cast<V>(-1.) * dXCurrent.dot(Vertices[fwId] - xCurrent);
-            tolAw = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Vertices[awId]);
-            if (tolFw <= epsilon) {
-                std::cout << "FW loop breaks due to small tol: " << tolFw << "\n";
+            epsFwd = static_cast<V>(-1.) * dXCurrent.dot(Vertices[fwdInd] - xCurrent);
+            epsAwy = static_cast<V>(-1.) * dXCurrent.dot(xCurrent - Vertices[awyInd]);
+            if (epsFwd <= tolerance) {
+                std::cout << "FW loop breaks due to small tol: " << epsFwd << "\n";
+                break;
+            }
+            if (std::abs(cosine(fwdVec, dXCurrent, 0.)) < toleranceCosine) {
+                std::cout << "FW loop breaks due to small cosine: " << std::abs(cosine(fwdVec, dXCurrent, 0.)) << "\n";
                 break;
             }
 
-            if (tolFw + tolAw >= delta) {
-                if (static_cast<V>(-1.) * dXCurrent.dot(fwVec - awVec) >= 0.){
-                    isFw = true;
-                    xTemp = xCurrent + fwVec;
+            if (epsFwd + epsAwy >= delta) {
+                if (static_cast<V>(-1.) * dXCurrent.dot(fwdVec - awyVec) >= 0.){
+                    isFwd = true;
+                    xTemp = xCurrent + fwdVec;
                     gammaMax = static_cast<V>(1.);
                 } else {
-                    isFw = false;
-                    xTemp = xCurrent + awVec;
-                    gammaMax = this->alpha(awId) / (static_cast<V>(1.) - this->alpha(awId));
+                    isFwd = false;
+                    xTemp = xCurrent + awyVec;
+                    gammaMax = this->alpha(awyInd) / (static_cast<V>(1.) - this->alpha(awyInd));
                 }
 
                 if (doLineSearch) {
@@ -129,30 +134,30 @@ namespace mopmc::optimization::optimizers {
                     gamma = gamma0 * static_cast<V>(2) / static_cast<V>(t + 2);
                 }
 
-                if (isFw) {
+                if (isFwd) {
                     if (gamma == gammaMax) {
                         this->activeSet.clear();
-                        this->activeSet.insert(fwId);
+                        this->activeSet.insert(fwdInd);
                     } else {
-                        this->activeSet.insert(fwId);
+                        this->activeSet.insert(fwdInd);
                     }
 
                     for (uint_fast64_t l = 0; l < k; ++l) {
-                        if (l != fwId) {
+                        if (l != fwdInd) {
                             this->alpha(l) = (static_cast<V>(1.) - gamma) * this->alpha(l);
                         }
                     }
-                    this->alpha(fwId) = (static_cast<V>(1.) - gamma) * this->alpha(fwId) + gamma;
+                    this->alpha(fwdInd) = (static_cast<V>(1.) - gamma) * this->alpha(fwdInd) + gamma;
                 } else {
                     if (gamma == gammaMax) {
-                        this->activeSet.erase(awId);
+                        this->activeSet.erase(awyInd);
                     }
                     for (uint_fast64_t l = 0; l < k; ++l) {
-                        if (l != awId) {
+                        if (l != awyInd) {
                             this->alpha(l) = (static_cast<V>(1.) + gamma) * this->alpha(l);
                         }
                     }
-                    this->alpha(awId) = (static_cast<V>(1.) + gamma) * this->alpha(awId) - gamma;
+                    this->alpha(awyInd) = (static_cast<V>(1.) + gamma) * this->alpha(awyInd) - gamma;
                 }
                 xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xTemp;
             }
@@ -183,7 +188,6 @@ namespace mopmc::optimization::optimizers {
                     }
                 }
             }
-
             delta *= scale3;
         }
         std::cout << "*Blended GD* stops at iteration: " << t << ", delta: " << delta << " \n";

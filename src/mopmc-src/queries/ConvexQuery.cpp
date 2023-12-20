@@ -22,9 +22,11 @@ namespace mopmc::queries {
         Vector<T> vertex(n_objs), weightVector(n_objs);
         weightVector.setConstant(static_cast<T>(1.0) / n_objs);
 
-        const double eps{1.e-6}, eps1{1.e-8}, eps2{1.e-6};
+        const T toleranceDistanceToMinimum{1.e-6};
+        const T toleranceSmallGradient{1.e-8};
+        const T toleranceNearestPointImprovement{1.e-6};
         const uint_fast64_t maxIter{100};
-        T tol, tol1, tol2;
+        T epsilonDistanceToMinimum, epsilonSmallGradient, epsilonNearestPointImprovement;
         uint_fast64_t iter = 0;
 
         while (iter < maxIter) {
@@ -35,19 +37,19 @@ namespace mopmc::queries {
 
                 if (Vertices.size() >= 2) {
                     //tol2 = (vPrv - vt).template lpNorm<1>();
-                    tol2 = (innerPointCurrent - innerPointNew).template lpNorm<Eigen::Infinity>();
-                    if (tol2 < eps2) {
+                    epsilonNearestPointImprovement = (innerPointCurrent - innerPointNew).template lpNorm<Eigen::Infinity>();
+                    if (epsilonNearestPointImprovement < toleranceNearestPointImprovement) {
                         std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: "
-                            << tol2 << ")\n";
+                                  << epsilonNearestPointImprovement << ")\n";
                         ++iter;
                         break;
                     }
                 }
 
                 Vector<T> grad = this->fn->subgradient(innerPointNew);
-                tol1 = grad.template lpNorm<1>();
-                if (tol1 < eps1) {
-                    std::cout << "loop exit due to small gradient (tolerance: " << tol1 << ")\n";
+                epsilonSmallGradient = grad.template lpNorm<1>();
+                if (epsilonSmallGradient < toleranceSmallGradient) {
+                    std::cout << "loop exit due to small gradient (tolerance: " << epsilonSmallGradient << ")\n";
                     ++iter;
                     break;
                 }
@@ -73,9 +75,9 @@ namespace mopmc::queries {
                 outerPoint = innerPointCurrent;
                 this->secondaryOptimizer->minimize(outerPoint, Vertices, WeightVectors);
             }
-            tol = std::abs(this->fn->value(innerPointCurrent) - this->fn->value(outerPoint));
-            if (tol < eps) {
-                std::cout << "loop exit due to small distance on threshold (tolerance: " << tol << ")\n";
+            epsilonDistanceToMinimum = std::abs(this->fn->value(innerPointCurrent) - this->fn->value(outerPoint));
+            if (epsilonDistanceToMinimum < toleranceDistanceToMinimum) {
+                std::cout << "loop exit due to small distance on minimum (tolerance: " << epsilonDistanceToMinimum << ")\n";
                 ++iter;
                 break;
             }

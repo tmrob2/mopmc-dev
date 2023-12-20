@@ -322,12 +322,15 @@ namespace mopmc::optimization::optimizers {
             }
             if (!add_constraintex(lp, n_cols, row, col_no, EQ, static_cast<V>(1.)))
                 ret = 3;
+            /*
+             * All variables in lp solve are >=0 by default.
             for (int j = 0; j < n_cols; ++j) {
                 col_no[0] = j + 1;
                 row[0] = static_cast<V>(1.);
                 if (!add_constraintex(lp, 1, row, col_no, GE, static_cast<V>(0.)))
                     ret = 3;
             }
+             */
             for (int i = 0; i < Vertices[0].size(); ++ i) {
                 for (int j = 0; j < n_cols; ++j) {
                     col_no[j] = j + 1;

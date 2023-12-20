@@ -105,9 +105,8 @@ namespace mopmc {
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nrows, A_nrows * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_nnz, A_nnz * sizeof(int)))
                 CHECK_CUDA(cudaMalloc((void **) &dMasking_tiled, Z_ncols * A_nrows * sizeof(double)))
-                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double))) // TR TODO: extra allocated mem which we possibly won't use in the hybrid version
-                //CHECK_CUDA(cudaMalloc((void **) &dRj, nobjs * B_nrows * sizeof(double))) // TR TODO: ^
-                CHECK_CUDA(cudaMalloc((void **) &dRPart, Z_ncols * Z_nrows * sizeof(double))) // TODO to chnage
+                CHECK_CUDA(cudaMalloc((void **) &dRi, B_nrows * sizeof(double))) // this is depreciated, not used in future
+                CHECK_CUDA(cudaMalloc((void **) &dRPart, Z_ncols * Z_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dZ, Z_ncols * Z_nrows * sizeof(double)))
                 CHECK_CUDA(cudaMalloc((void **) &dZ1, Z_ncols * Z_nrows * sizeof(double)))
                 // cudaMemcpy -------------------------------------------------------------
@@ -163,22 +162,22 @@ namespace mopmc {
 
                 iteration = 0;
                 do {
-                    // y = r
+                    // Y = R
                     CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_nrows, dRw, 1, dY, 1))
                     if (iteration == 0) {
                         mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dScheduler, A_ncols + 1, A_nrows);
                     }
-                    // y = A.x + r (r = y)
+                    // Y = A.X + Y (Y = R)
                     CHECK_CUSPARSE(cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
                                                 &alpha, matA, vecX, &beta, vecY, CUDA_R_64F,
                                                 CUSPARSE_SPMV_ALG_DEFAULT, dBuffer))
-                    // x' = x
+                    // X1 = X
                     CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, A_ncols, dX, 1, dX1, 1))
-                    // x(s) = max_{a\in Act(s)} y(s,a), pi(s) = argmax_{a\in Act(s)} pi(s)
+                    // X(s) = max_{a\in Act(s)} Y(s,a), scheduler(s) = argmax_{a\in Act(s)} scheduler(s)
                     mopmc::functions::cuda::maxValueLauncher1(dY, dX, dRowGroupIndices, dScheduler, A_ncols + 1, A_nrows);
-                    // x' = -1 * x + x'
+                    // X1 = -1 * X+ X1
                     CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, A_ncols, &alpha2, dX, 1, dX1, 1))
-                    // max |x'|
+                    // max |X1|
                     CHECK_CUBLAS(cublasIdamax(cublasHandle, A_ncols, dX1, 1, &maxInd))
                     // to get maxEps, we must reduce also by one since this is FORTRAN based indexing.
                     CHECK_CUDA(cudaMemcpy(&maxEps, dX1 + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost))
@@ -245,26 +244,26 @@ namespace mopmc {
 
                 iteration = 0;
                 do {
-                    // Z = RPortion
+                    // Z = R'
                     CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, Z_ncols * Z_nrows, dRPart, 1, dZ, 1))
-                    // initialise Z' as RPortion too
+                    // initialise Z1 as R' too
                     if (iteration == 0) {
                         CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, Z_ncols * Z_nrows, dRPart, 1, dZ1, 1))
                     }
-                    // Z = B.Z' + Z, where Z = RPart
+                    // Z = B.Z1 + Z, where Z = R'
                     CHECK_CUSPARSE(cusparseSpMM(
                             handle, CUSPARSE_OPERATION_NON_TRANSPOSE, CUSPARSE_OPERATION_NON_TRANSPOSE,
                             &alpha, matB, matZ1, &beta, matZ,
                             CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT, dBufferB))
 
-                    // Z' = -1 * Z + Z'
+                    // Z1 = -1 * Z + Z1
                     CHECK_CUBLAS(cublasDaxpy_v2_64(cublasHandle, Z_ncols * Z_nrows, &alpha2, dZ, 1, dZ1, 1))
-                    // max |Z'|
+                    // max |Z1|
                     CHECK_CUBLAS(cublasIdamax(cublasHandle, Z_ncols * Z_nrows, dZ1, 1, &maxInd))
                     // to get maxEps, we must reduce also by one since this is FORTRAN based indexing.
                     CHECK_CUDA(cudaMemcpy(&maxEps, dZ1 + maxInd - 1, sizeof(double), cudaMemcpyDeviceToHost))
                     maxEps = (maxEps >= 0) ? maxEps : -maxEps;
-                    // Z' = Z
+                    // Z1 = Z
                     CHECK_CUBLAS(cublasDcopy_v2_64(cublasHandle, Z_ncols * Z_nrows, dZ, 1, dZ1, 1))
                     //printf("___ VI PHASE TWO, OBJECTIVE %i, ITERATION %i, maxEps %f\n", obj, iteration, maxEps);
                     ++iteration;
@@ -275,7 +274,7 @@ namespace mopmc {
                 }
 
                 // copy results
-                for (int obj = 0; obj < nobjs; obj++) {
+                for (int obj = 0; obj < nobjs; ++obj) {
                     thrust::copy(thrust::device, dZ + iniRow + obj * Z_nrows, dZ + iniRow + 1 + obj * Z_nrows, dResult + obj);
                 }
                 //-------------------------------------------------------------------------
@@ -286,9 +285,8 @@ namespace mopmc {
                 return EXIT_SUCCESS;
             }
 
-            // This version is deprecated.
             template<typename ValueType>
-            int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo_deprecated() {
+            [[deprecated]] int CudaValueIterationHandler<ValueType>::valueIterationPhaseTwo_deprecated() {
                 std::cout << "____ VI PHASE TWO (deprecated) ____\n";
                 // generate a DTMC transition matrix as a csr matrix
                 CHECK_CUSPARSE(cusparseXcsr2coo(handle, dA_csrOffsets, A_nnz, A_nrows, dA_rows_backup,
