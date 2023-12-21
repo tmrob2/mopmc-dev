@@ -10,6 +10,7 @@ set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
 list(
         APPEND Sources
         "${dir}/QueryData.h"
+        "${dir}/QueryOptions.h"
         "${dir}/Runner.cpp"
         "${dir}/Runner.h"
         "${dir}/Transformation.cpp"

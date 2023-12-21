@@ -10,10 +10,13 @@
 #include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
 #include <storm/storage/SparseMatrix.h>
 #include <Eigen/Sparse>
+#include "QueryOptions.h"
 
 namespace mopmc {
 
     bool run(std::string const& path_to_model, std::string const& property_string);
+
+    bool run(std::string const& path_to_model, std::string const& property_string, QueryOptions queryOptionsEnums);
 
 }
 
