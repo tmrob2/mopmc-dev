@@ -83,10 +83,10 @@ namespace mopmc {
         //value-iteration solver
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw, &projectedGD, &cudaVIHandler);
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw1, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &eud, &fw2, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &fw3, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw3, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
         q.query();

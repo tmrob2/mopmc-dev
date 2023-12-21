@@ -11,10 +11,10 @@ namespace mopmc::optimization::optimizers {
     using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
     template<typename V>
-    LineSearch<V>::LineSearch(convex_functions::BaseConvexFunction<V> *f) : f_(f) {}
+    LineSearcher<V>::LineSearcher(convex_functions::BaseConvexFunction<V> *f) : f_(f) {}
 
     template<typename V>
-    V LineSearch<V>::findOptimalDecentDistance(Vector<V> &vLeft, Vector<V> &vRight, V lambdaMax) {
+    V LineSearcher<V>::findOptimalDecentDistance(Vector<V> vLeft, Vector<V> vRight, V lambdaMax) {
 
         const V epsilon2 = 1e-12;
         this->vLeft_ = vLeft;
@@ -43,19 +43,19 @@ namespace mopmc::optimization::optimizers {
     }
 
     template<typename V>
-    V LineSearch<V>::g(V lambda) {
+    V LineSearcher<V>::g(V lambda) {
         assert(lambda >= static_cast<V>(0.) && lambda <= static_cast<V>(1.));
         Vector<V> vOut = (static_cast<V>(1.) - lambda) * this->vLeft_ + lambda * this->vRight_;
         return this->f_->value(vOut);
     }
 
     template<typename V>
-    V LineSearch<V>::dg(V lambda) {
+    V LineSearcher<V>::dg(V lambda) {
         Vector<V> v1 = (static_cast<V>(1.) - lambda) * this->vLeft_ + lambda * this->vRight_;
         Vector<V> v2 = this->vRight_ - this->vLeft_;
         return this->f_->subgradient(v1).dot(v2);
     }
 
-    template class LineSearch<double>;
+    template class LineSearcher<double>;
 
 }

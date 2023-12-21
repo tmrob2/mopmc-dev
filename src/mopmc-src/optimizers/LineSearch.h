@@ -16,12 +16,13 @@ namespace mopmc::optimization::optimizers {
     using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
     template<typename V>
-    class LineSearch {
+    class LineSearcher {
     public:
 
-        explicit LineSearch(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_);
+        explicit LineSearcher() = default;
+        explicit LineSearcher(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_);
 
-        V findOptimalDecentDistance(Vector<V> &vLeft, Vector<V> &vRight, V lambdaMax = static_cast<V>(1.));
+        V findOptimalDecentDistance(Vector<V> vLeft, Vector<V> vRight, V lambdaMax = static_cast<V>(1.));
 
         mopmc::optimization::convex_functions::BaseConvexFunction<V> *f_;
         Vector<V> vLeft_, vRight_;

@@ -305,6 +305,7 @@ namespace mopmc::optimization::optimizers {
             ret = 1; // couldn't construct a new model
 
         set_break_numeric_accuracy(lp, 1e-6);
+        set_scaling(lp, SCALE_CURTISREID);
         if (ret == 0) {
             // create space large enough for one row
             col_no = (int *) malloc(n_cols * sizeof(*col_no));

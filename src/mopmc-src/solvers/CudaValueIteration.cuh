@@ -86,7 +86,7 @@ namespace mopmc {
                 int Z_ncols{}, Z_nrows{}, Z_ld{};
 
                 double alpha=1.0, alpha2=-1.0, beta=1.0;
-                double eps=1.0, maxEps{}, tolerance = 1.0e-6;
+                double eps=1.0, maxEps{}, tolerance = 1.0e-8;
                 int maxIter=2000, maxInd = 0;
                 int iteration{};
 

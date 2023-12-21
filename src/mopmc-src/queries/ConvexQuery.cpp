@@ -39,7 +39,7 @@ namespace mopmc::queries {
                     //tol2 = (vPrv - vt).template lpNorm<1>();
                     epsilonNearestPointImprovement = (innerPointCurrent - innerPointNew).template lpNorm<Eigen::Infinity>();
                     if (epsilonNearestPointImprovement < toleranceNearestPointImprovement) {
-                        std::cout << "loop exit due to small improvement on (estimated) nearest point (tolerance: "
+                        std::cout << "loop exit due to small improvement on (estimated) nearest point ("
                                   << epsilonNearestPointImprovement << ")\n";
                         ++iter;
                         break;
@@ -49,7 +49,7 @@ namespace mopmc::queries {
                 Vector<T> grad = this->fn->subgradient(innerPointNew);
                 epsilonSmallGradient = grad.template lpNorm<1>();
                 if (epsilonSmallGradient < toleranceSmallGradient) {
-                    std::cout << "loop exit due to small gradient (tolerance: " << epsilonSmallGradient << ")\n";
+                    std::cout << "loop exit due to small gradient (" << epsilonSmallGradient << ")\n";
                     ++iter;
                     break;
                 }
@@ -77,7 +77,7 @@ namespace mopmc::queries {
             }
             epsilonDistanceToMinimum = std::abs(this->fn->value(innerPointCurrent) - this->fn->value(outerPoint));
             if (epsilonDistanceToMinimum < toleranceDistanceToMinimum) {
-                std::cout << "loop exit due to small distance on minimum (tolerance: " << epsilonDistanceToMinimum << ")\n";
+                std::cout << "loop exit due to small distance on minimum (" << epsilonDistanceToMinimum << ")\n";
                 ++iter;
                 break;
             }
