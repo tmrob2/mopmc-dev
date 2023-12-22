@@ -16,32 +16,10 @@ namespace mopmc {
         explicit QueryOptions() = default;
 
         enum {MSE, EUCLIDEAN} CONVEX_FUN;
-        enum {BLENDED, BLENDED_STEP_OPT, AWAY_STEP, LINOPT} PRIMARY_OPTIMIZER, SECONDARY_OPTIMIZER;
+        enum {BLENDED, BLENDED_STEP_OPT, AWAY_STEP, LINOPT, PGD} PRIMARY_OPTIMIZER, SECONDARY_OPTIMIZER;
         enum {CUDA_VI} VI;
 
     };
-    /*
-    template<typename V>
-    struct QueryOptions {
-
-        mopmc::optimization::convex_functions::BaseConvexFunction<V> *convexFunction;
-        mopmc::optimization::optimizers::BaseOptimizer<V> *primaryOptimizer;
-        mopmc::optimization::optimizers::BaseOptimizer<V> *secondOptimizer;
-        mopmc::value_iteration::BaseVIHandler<V> *viHandler;
-
-        void initialize(const QueryOptionsEnums &queryOptionsEnums) {
-            switch (queryOptionsEnums.CONVEX_FUN) {
-                case QueryOptionsEnums::MSE:
-                    convexFunction = ;
-                case QueryOptionsEnums::EUCLIDEAN:
-                    break;
-            }
-        }
-
-    };
-
-    template class QueryOptions<double>;
-        */
 }
 
 

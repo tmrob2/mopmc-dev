@@ -47,6 +47,9 @@ namespace mopmc {
         assert (typeid(ValueType) == typeid(double));
         assert (typeid(IndexType) == typeid(uint64_t));
 
+        // Init loggers
+        //storm::utility::setUp();
+        storm::settings::initializeAll("storm-starter-project", "storm-starter-project");
         storm::Environment env;
         clock_t time0 = clock();
         auto preprocessedResult = mopmc::ModelBuilder<ModelType>::preprocess(path_to_model, property_string, env);
@@ -73,12 +76,43 @@ namespace mopmc {
                 break;
             }
         }
-
-        mopmc::optimization::optimizers::FrankWolfe<ValueType> fw(mopmc::optimization::optimizers::FWOption::BLENDED, &*fn);
+        std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>> optimizer;
+        switch (queryOptions.PRIMARY_OPTIMIZER) {
+            case QueryOptions::BLENDED: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::FrankWolfe<ValueType>(
+                                mopmc::optimization::optimizers::FWOption::BLENDED, &*fn));
+                break;
+            }
+            case QueryOptions::BLENDED_STEP_OPT: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::FrankWolfe<ValueType>(
+                                mopmc::optimization::optimizers::FWOption::BLENDED_STEP_OPT, &*fn));
+                break;
+            }
+            case QueryOptions::AWAY_STEP: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::FrankWolfe<ValueType>(
+                                mopmc::optimization::optimizers::FWOption::AWAY_STEP, &*fn));
+                break;
+            }
+            case QueryOptions::LINOPT: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::FrankWolfe<ValueType>(
+                                mopmc::optimization::optimizers::FWOption::LINOPT, &*fn));
+                break;
+            }
+            case QueryOptions::PGD: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType>(
+                                mopmc::optimization::optimizers::ProjectionType::UnitSimplex, &*fn));
+                break;
+            }
+        }
         mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType> projectedGD(
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &*fn);
         mopmc::value_iteration::gpu::CudaValueIterationHandler<ValueType> cudaVIHandler(&data);
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &*fn, &fw, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &*fn, &*optimizer, &projectedGD, &cudaVIHandler);
         q.query();clock_t time3 = clock();
 
         std::cout << "       TIME STATISTICS        \n";
@@ -89,7 +123,7 @@ namespace mopmc {
 
         return true;
     }
-
+    /*
     bool run(std::string const &path_to_model, std::string const &property_string) {
 
         assert (typeid(ValueType) == typeid(double));
@@ -130,10 +164,10 @@ namespace mopmc {
         //value-iteration solver
         mopmc::value_iteration::gpu::CudaValueIterationHandler<double> cudaVIHandler(&data);
 
-        mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw, &projectedGD, &cudaVIHandler);
+        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &eud, &fw2, &projectedGD, &cudaVIHandler);
-        //mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw3, &projectedGD, &cudaVIHandler);
+        mopmc::queries::ConvexQuery<ValueType, int> q(data, &mse, &fw3, &projectedGD, &cudaVIHandler);
         //mopmc::queries::ConvexQuery<ValueType, int> q(data, &fn, &projectedGD1, &projectedGD, &cudaVIHandler);
         //mopmc::queries::AchievabilityQuery<ValueType, int> q(data, &cudaVIHandler);
         q.query();
@@ -148,5 +182,5 @@ namespace mopmc {
 
         return true;
 
-    }
+    }*/
 }

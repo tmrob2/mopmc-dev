@@ -36,5 +36,4 @@ namespace mopmc {
     template struct QueryData<double, uint64_t>;
 }
 
-
 #endif //MOPMC_QUERYDATA_H

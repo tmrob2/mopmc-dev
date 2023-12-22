@@ -50,19 +50,15 @@ namespace mopmc {
                 //    return valueIterationPhaseTwo_dev(0, this->nobjs);
                 //}
 
-                int valueIterationPhaseTwo_v2(int beginObj, int endObj);
-
+                //int valueIterationPhaseTwo_v2(int beginObj, int endObj);
 
                 mopmc::QueryData<ValueType, int> *data;
-
                 Eigen::SparseMatrix<ValueType, Eigen::RowMajor> transitionMatrix;
                 std::vector<ValueType> flattenRewardVector;
                 std::vector<int> scheduler;
                 std::vector<int> rowGroupIndices;
                 std::vector<int> row2RowGroupMapping;
                 std::vector<double> weightedValueVector;
-
-                
                 std::vector<double> results;
                 int iniRow{};
                 int nobjs{};

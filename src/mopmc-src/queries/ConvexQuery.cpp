@@ -36,7 +36,6 @@ namespace mopmc::queries {
                 this->primaryOptimizer->minimize(innerPointNew, Vertices);
 
                 if (Vertices.size() >= 2) {
-                    //tol2 = (vPrv - vt).template lpNorm<1>();
                     epsilonNearestPointImprovement = (innerPointCurrent - innerPointNew).template lpNorm<Eigen::Infinity>();
                     if (epsilonNearestPointImprovement < toleranceNearestPointImprovement) {
                         std::cout << "loop exit due to small improvement on (estimated) nearest point ("
@@ -86,19 +85,18 @@ namespace mopmc::queries {
 
         this->VIhandler->exit();
 
-        {
-            Vector<T> vOut = (outerPoint + innerPointNew) * static_cast<T>(0.5);
-            std::cout << "----------------------------------------------\n"
-                      << "CUDA CONVEX QUERY terminates after " << iter << " iteration(s)\n"
-                      << "Estimated nearest point to threshold : [";
-            for (int i = 0; i < n_objs; ++i) {
-                std::cout << innerPointNew(i) << " ";
-            }
-            std::cout << "]\n"
-                    << "Approximate distance: " << this->fn->value(innerPointNew)
-                      //<< "Approximate distance between " << fn.value(vb) << " and " << fn.value(vt)
-                      << "\n----------------------------------------------\n";
+        //printing results
+        Vector<T> vOut = (outerPoint + innerPointNew) * static_cast<T>(0.5);
+        std::cout << "----------------------------------------------\n"
+                  << "CUDA CONVEX QUERY terminates after " << iter << " iteration(s)\n"
+                  << "Estimated nearest point to threshold : [";
+        for (int i = 0; i < n_objs; ++i) {
+            std::cout << innerPointNew(i) << " ";
         }
+        std::cout << "]\n"
+                  << "Approximate distance: " << this->fn->value(innerPointNew)
+                  //<< "Approximate distance between " << fn.value(vb) << " and " << fn.value(vt)
+                  << "\n----------------------------------------------\n";
     }
 
     template
