@@ -1,0 +1,328 @@
+mdp
+
+//constants
+const int x_max = 199;
+const int x_target = 99;
+const int y_max = 99;
+const double p = 0.65;
+const double q = 0.2;
+
+module Dive_and_Rise
+
+x : [0..x_max] init 0; //step
+y : [0..y_max] init 0; //height
+z : [0..1] init 0; //game on or not
+
+[dive] x < x_max & z = 0 ->
+	 p : (x'= x+1) & (y'= max(y-1, 0)) +
+	 q : (x'= x+1) & (y'= y) +
+	 1-p-q : (x'= x+1) & (y'= min(y+1, y_max)) ;
+[rise]  x < x_max & z = 0 ->
+	 p : (x'= x+1) & (y'= min(y+1, y_max)) +
+	 q : (x'= x+1) & (y'= y) +
+	 1-p-q : (x'= x+1) & (y'= max(y-1, 0)) ;
+[end] x = x_max -> (x'= 0) & (y'= 0) & (z'= 1) ;
+[none] z = 1 -> 1 : true ;
+
+endmodule
+
+rewards "target_0"
+	 (x=x_max)&(y=0)&(z=0): 1 ;
+endrewards
+rewards "target_1"
+	 (x=x_max)&(y=1)&(z=0): 1 ;
+endrewards
+rewards "target_2"
+	 (x=x_max)&(y=2)&(z=0): 1 ;
+endrewards
+rewards "target_3"
+	 (x=x_max)&(y=3)&(z=0): 1 ;
+endrewards
+rewards "target_4"
+	 (x=x_max)&(y=4)&(z=0): 1 ;
+endrewards
+rewards "target_5"
+	 (x=x_max)&(y=5)&(z=0): 1 ;
+endrewards
+rewards "target_6"
+	 (x=x_max)&(y=6)&(z=0): 1 ;
+endrewards
+rewards "target_7"
+	 (x=x_max)&(y=7)&(z=0): 1 ;
+endrewards
+rewards "target_8"
+	 (x=x_max)&(y=8)&(z=0): 1 ;
+endrewards
+rewards "target_9"
+	 (x=x_max)&(y=9)&(z=0): 1 ;
+endrewards
+rewards "target_10"
+	 (x=x_max)&(y=10)&(z=0): 1 ;
+endrewards
+rewards "target_11"
+	 (x=x_max)&(y=11)&(z=0): 1 ;
+endrewards
+rewards "target_12"
+	 (x=x_max)&(y=12)&(z=0): 1 ;
+endrewards
+rewards "target_13"
+	 (x=x_max)&(y=13)&(z=0): 1 ;
+endrewards
+rewards "target_14"
+	 (x=x_max)&(y=14)&(z=0): 1 ;
+endrewards
+rewards "target_15"
+	 (x=x_max)&(y=15)&(z=0): 1 ;
+endrewards
+rewards "target_16"
+	 (x=x_max)&(y=16)&(z=0): 1 ;
+endrewards
+rewards "target_17"
+	 (x=x_max)&(y=17)&(z=0): 1 ;
+endrewards
+rewards "target_18"
+	 (x=x_max)&(y=18)&(z=0): 1 ;
+endrewards
+rewards "target_19"
+	 (x=x_max)&(y=19)&(z=0): 1 ;
+endrewards
+rewards "target_20"
+	 (x=x_max)&(y=20)&(z=0): 1 ;
+endrewards
+rewards "target_21"
+	 (x=x_max)&(y=21)&(z=0): 1 ;
+endrewards
+rewards "target_22"
+	 (x=x_max)&(y=22)&(z=0): 1 ;
+endrewards
+rewards "target_23"
+	 (x=x_max)&(y=23)&(z=0): 1 ;
+endrewards
+rewards "target_24"
+	 (x=x_max)&(y=24)&(z=0): 1 ;
+endrewards
+rewards "target_25"
+	 (x=x_max)&(y=25)&(z=0): 1 ;
+endrewards
+rewards "target_26"
+	 (x=x_max)&(y=26)&(z=0): 1 ;
+endrewards
+rewards "target_27"
+	 (x=x_max)&(y=27)&(z=0): 1 ;
+endrewards
+rewards "target_28"
+	 (x=x_max)&(y=28)&(z=0): 1 ;
+endrewards
+rewards "target_29"
+	 (x=x_max)&(y=29)&(z=0): 1 ;
+endrewards
+rewards "target_30"
+	 (x=x_max)&(y=30)&(z=0): 1 ;
+endrewards
+rewards "target_31"
+	 (x=x_max)&(y=31)&(z=0): 1 ;
+endrewards
+rewards "target_32"
+	 (x=x_max)&(y=32)&(z=0): 1 ;
+endrewards
+rewards "target_33"
+	 (x=x_max)&(y=33)&(z=0): 1 ;
+endrewards
+rewards "target_34"
+	 (x=x_max)&(y=34)&(z=0): 1 ;
+endrewards
+rewards "target_35"
+	 (x=x_max)&(y=35)&(z=0): 1 ;
+endrewards
+rewards "target_36"
+	 (x=x_max)&(y=36)&(z=0): 1 ;
+endrewards
+rewards "target_37"
+	 (x=x_max)&(y=37)&(z=0): 1 ;
+endrewards
+rewards "target_38"
+	 (x=x_max)&(y=38)&(z=0): 1 ;
+endrewards
+rewards "target_39"
+	 (x=x_max)&(y=39)&(z=0): 1 ;
+endrewards
+rewards "target_40"
+	 (x=x_max)&(y=40)&(z=0): 1 ;
+endrewards
+rewards "target_41"
+	 (x=x_max)&(y=41)&(z=0): 1 ;
+endrewards
+rewards "target_42"
+	 (x=x_max)&(y=42)&(z=0): 1 ;
+endrewards
+rewards "target_43"
+	 (x=x_max)&(y=43)&(z=0): 1 ;
+endrewards
+rewards "target_44"
+	 (x=x_max)&(y=44)&(z=0): 1 ;
+endrewards
+rewards "target_45"
+	 (x=x_max)&(y=45)&(z=0): 1 ;
+endrewards
+rewards "target_46"
+	 (x=x_max)&(y=46)&(z=0): 1 ;
+endrewards
+rewards "target_47"
+	 (x=x_max)&(y=47)&(z=0): 1 ;
+endrewards
+rewards "target_48"
+	 (x=x_max)&(y=48)&(z=0): 1 ;
+endrewards
+rewards "target_49"
+	 (x=x_max)&(y=49)&(z=0): 1 ;
+endrewards
+rewards "target_50"
+	 (x=x_max)&(y=50)&(z=0): 1 ;
+endrewards
+rewards "target_51"
+	 (x=x_max)&(y=51)&(z=0): 1 ;
+endrewards
+rewards "target_52"
+	 (x=x_max)&(y=52)&(z=0): 1 ;
+endrewards
+rewards "target_53"
+	 (x=x_max)&(y=53)&(z=0): 1 ;
+endrewards
+rewards "target_54"
+	 (x=x_max)&(y=54)&(z=0): 1 ;
+endrewards
+rewards "target_55"
+	 (x=x_max)&(y=55)&(z=0): 1 ;
+endrewards
+rewards "target_56"
+	 (x=x_max)&(y=56)&(z=0): 1 ;
+endrewards
+rewards "target_57"
+	 (x=x_max)&(y=57)&(z=0): 1 ;
+endrewards
+rewards "target_58"
+	 (x=x_max)&(y=58)&(z=0): 1 ;
+endrewards
+rewards "target_59"
+	 (x=x_max)&(y=59)&(z=0): 1 ;
+endrewards
+rewards "target_60"
+	 (x=x_max)&(y=60)&(z=0): 1 ;
+endrewards
+rewards "target_61"
+	 (x=x_max)&(y=61)&(z=0): 1 ;
+endrewards
+rewards "target_62"
+	 (x=x_max)&(y=62)&(z=0): 1 ;
+endrewards
+rewards "target_63"
+	 (x=x_max)&(y=63)&(z=0): 1 ;
+endrewards
+rewards "target_64"
+	 (x=x_max)&(y=64)&(z=0): 1 ;
+endrewards
+rewards "target_65"
+	 (x=x_max)&(y=65)&(z=0): 1 ;
+endrewards
+rewards "target_66"
+	 (x=x_max)&(y=66)&(z=0): 1 ;
+endrewards
+rewards "target_67"
+	 (x=x_max)&(y=67)&(z=0): 1 ;
+endrewards
+rewards "target_68"
+	 (x=x_max)&(y=68)&(z=0): 1 ;
+endrewards
+rewards "target_69"
+	 (x=x_max)&(y=69)&(z=0): 1 ;
+endrewards
+rewards "target_70"
+	 (x=x_max)&(y=70)&(z=0): 1 ;
+endrewards
+rewards "target_71"
+	 (x=x_max)&(y=71)&(z=0): 1 ;
+endrewards
+rewards "target_72"
+	 (x=x_max)&(y=72)&(z=0): 1 ;
+endrewards
+rewards "target_73"
+	 (x=x_max)&(y=73)&(z=0): 1 ;
+endrewards
+rewards "target_74"
+	 (x=x_max)&(y=74)&(z=0): 1 ;
+endrewards
+rewards "target_75"
+	 (x=x_max)&(y=75)&(z=0): 1 ;
+endrewards
+rewards "target_76"
+	 (x=x_max)&(y=76)&(z=0): 1 ;
+endrewards
+rewards "target_77"
+	 (x=x_max)&(y=77)&(z=0): 1 ;
+endrewards
+rewards "target_78"
+	 (x=x_max)&(y=78)&(z=0): 1 ;
+endrewards
+rewards "target_79"
+	 (x=x_max)&(y=79)&(z=0): 1 ;
+endrewards
+rewards "target_80"
+	 (x=x_max)&(y=80)&(z=0): 1 ;
+endrewards
+rewards "target_81"
+	 (x=x_max)&(y=81)&(z=0): 1 ;
+endrewards
+rewards "target_82"
+	 (x=x_max)&(y=82)&(z=0): 1 ;
+endrewards
+rewards "target_83"
+	 (x=x_max)&(y=83)&(z=0): 1 ;
+endrewards
+rewards "target_84"
+	 (x=x_max)&(y=84)&(z=0): 1 ;
+endrewards
+rewards "target_85"
+	 (x=x_max)&(y=85)&(z=0): 1 ;
+endrewards
+rewards "target_86"
+	 (x=x_max)&(y=86)&(z=0): 1 ;
+endrewards
+rewards "target_87"
+	 (x=x_max)&(y=87)&(z=0): 1 ;
+endrewards
+rewards "target_88"
+	 (x=x_max)&(y=88)&(z=0): 1 ;
+endrewards
+rewards "target_89"
+	 (x=x_max)&(y=89)&(z=0): 1 ;
+endrewards
+rewards "target_90"
+	 (x=x_max)&(y=90)&(z=0): 1 ;
+endrewards
+rewards "target_91"
+	 (x=x_max)&(y=91)&(z=0): 1 ;
+endrewards
+rewards "target_92"
+	 (x=x_max)&(y=92)&(z=0): 1 ;
+endrewards
+rewards "target_93"
+	 (x=x_max)&(y=93)&(z=0): 1 ;
+endrewards
+rewards "target_94"
+	 (x=x_max)&(y=94)&(z=0): 1 ;
+endrewards
+rewards "target_95"
+	 (x=x_max)&(y=95)&(z=0): 1 ;
+endrewards
+rewards "target_96"
+	 (x=x_max)&(y=96)&(z=0): 1 ;
+endrewards
+rewards "target_97"
+	 (x=x_max)&(y=97)&(z=0): 1 ;
+endrewards
+rewards "target_98"
+	 (x=x_max)&(y=98)&(z=0): 1 ;
+endrewards
+rewards "target_99"
+	 (x=x_max)&(y=99)&(z=0): 1 ;
+endrewards

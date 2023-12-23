@@ -1,0 +1,22 @@
+multi(
+R{"target_0"}>=0.4 [ C ],
+R{"target_5"}>=0.4 [ C ],
+R{"target_10"}>=0.4 [ C ],
+R{"target_15"}>=0.4 [ C ],
+R{"target_20"}>=0.4 [ C ],
+R{"target_25"}>=0.4 [ C ],
+R{"target_30"}>=0.4 [ C ],
+R{"target_35"}>=0.4 [ C ],
+R{"target_40"}>=0.4 [ C ],
+R{"target_45"}>=0.4 [ C ],
+R{"target_50"}>=0.4 [ C ],
+R{"target_55"}>=0.4 [ C ],
+R{"target_60"}>=0.4 [ C ],
+R{"target_65"}>=0.4 [ C ],
+R{"target_70"}>=0.4 [ C ],
+R{"target_75"}>=0.4 [ C ],
+R{"target_80"}>=0.4 [ C ],
+R{"target_85"}>=0.4 [ C ],
+R{"target_90"}>=0.4 [ C ],
+R{"target_95"}>=0.4 [ C ]
+)
