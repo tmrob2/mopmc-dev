@@ -15,7 +15,7 @@ namespace mopmc {
 
         explicit QueryOptions() = default;
 
-        enum {MSE, EUCLIDEAN} CONVEX_FUN;
+        enum {MSE, SE, VAR, SD} CONVEX_FUN;
         enum {BLENDED, BLENDED_STEP_OPT, AWAY_STEP, LINOPT, PGD} PRIMARY_OPTIMIZER, SECONDARY_OPTIMIZER;
         enum {CUDA_VI} VI;
 

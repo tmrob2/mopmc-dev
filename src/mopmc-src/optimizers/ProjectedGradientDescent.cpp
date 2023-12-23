@@ -3,12 +3,12 @@
 //
 
 #include "ProjectedGradientDescent.h"
+#include "../convex-functions/auxiliary/Lincom.h"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <algorithm>
 #include <iostream>
 #include <numeric>
-#include "../convex-functions/auxiliary/Lincom.h"
 
 namespace mopmc::optimization::optimizers {
 
@@ -34,7 +34,7 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     ProjectedGradientDescent<V>::ProjectedGradientDescent(ProjectionType type,
                                                           convex_functions::BaseConvexFunction<V> *f)
-            : projectionType(type), BaseOptimizer<V>(f){};
+        : projectionType(type), BaseOptimizer<V>(f) {}
 
 
     template<typename V>
@@ -78,7 +78,7 @@ namespace mopmc::optimization::optimizers {
         uint_fast64_t it;
         for (it = 0; it < maxIter; ++it) {
             grad = this->fn->subgradient(xCurrent);
-            xTemp = xCurrent - gamma * grad; //it + static_cast<V>(1.))
+            xTemp = xCurrent - gamma * grad;//it + static_cast<V>(1.))
             xNew = projectToNearestHyperplane(xTemp, Phi, W);
             V error = (xNew - xCurrent).template lpNorm<1>();
             if (error < epsilon) {
@@ -109,7 +109,7 @@ namespace mopmc::optimization::optimizers {
         for (it = 0; it < maxIter; ++it) {
             this->fn->subgradient(Phi[0]);
             grad = lincom.gradient(alphaCurrent);
-            alphaTemp = alphaCurrent - gamma * grad * 0.5 * std::log(2+it); // * 2.0 / (2 + it);
+            alphaTemp = alphaCurrent - gamma * grad * 0.5 * std::log(2 + it);// * 2.0 / (2 + it);
             alphaNew = projectToUnitSimplex(alphaTemp);
             error = (alphaNew - alphaCurrent).template lpNorm<1>();
             if (error < epsilon) {
@@ -152,32 +152,28 @@ namespace mopmc::optimization::optimizers {
     Vector<V> ProjectedGradientDescent<V>::projectToUnitSimplex(Vector<V> &x) {
         assert(x.size() > 0);
         uint64_t m = x.size();
-        std::vector<V> y(x.data(), x.data() + m);
         std::vector<uint64_t> ids = argsort(x);
         V tmpsum = static_cast<V>(0.), tmax;
         bool bget = false;
         for (uint_fast64_t i = 0; i < m - 1; ++i) {
-            tmpsum += y[ids[i]];
+            tmpsum += x(ids[i]);
             tmax = (tmpsum - static_cast<V>(1.)) / static_cast<V>(i);
-            if (tmax >= y[ids[i + 1]]) {
+            if (tmax >= x(ids[i + 1])) {
                 bget = true;
                 break;
             }
         }
 
         if (!bget) {
-            tmax = (tmpsum + y[ids[m - 1]] - static_cast<V>(1.)) / static_cast<V>(m);
+            tmax = (tmpsum + x(ids[m - 1]) - static_cast<V>(1.)) / static_cast<V>(m);
         }
 
+        Vector<V> xProj(m);
         for (uint_fast64_t j = 0; j < m; ++j) {
-            y[ids[j]] = std::max(y[ids[j]] - tmax, static_cast<V>(0.));
+            xProj(ids[j]) = std::max(x(ids[j]) - tmax, static_cast<V>(0.));
         }
-        Vector<V> xProj = VectorMap<V>(y.data(), m);
-        //std::cout << xProj << "\n" << "---\n";
-
         return xProj;
     }
 
-    template
-    class ProjectedGradientDescent<double>;
-}
+    template class ProjectedGradientDescent<double>;
+}// namespace mopmc::optimization::optimizers

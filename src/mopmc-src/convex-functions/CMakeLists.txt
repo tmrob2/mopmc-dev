@@ -15,6 +15,8 @@ list(
         "${dir}/SignedKLEuclidean.h"
         "${dir}/TotalReLU.cpp"
         "${dir}/TotalReLU.h"
+        "${dir}/Variance.cpp"
+        "${dir}/Variance.h"
 )
 
 set(Sources "${Sources}" PARENT_SCOPE)

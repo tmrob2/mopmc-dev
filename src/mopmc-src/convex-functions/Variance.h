@@ -1,9 +1,9 @@
 //
-// Created by guoxin on 18/12/23.
+// Created by guoxin on 23/12/23.
 //
 
-#ifndef MOPMC_MSE_H
-#define MOPMC_MSE_H
+#ifndef MOPMC_VARIANCE_H
+#define MOPMC_VARIANCE_H
 
 #include "BaseConvexFunction.h"
 #include <Eigen/Dense>
@@ -17,16 +17,21 @@ namespace mopmc::optimization::convex_functions {
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename V>
-    class MSE : public BaseConvexFunction<V> {
+    class Variance : public BaseConvexFunction<V> {
     public:
-        explicit MSE(const Vector<V> &c, const uint64_t &n);
-
+        explicit Variance(uint64_t dim);
         V value(const Vector<V> &x) override;
-
         Vector<V> subgradient(const Vector<V> &x) override;
-
     };
-}// namespace mopmc::optimization::convex_functions
+
+    template<typename V>
+class StandDeviation : public BaseConvexFunction<V> {
+    public:
+        explicit StandDeviation(uint64_t dim);
+        V value(const Vector<V> &x) override;
+        Vector<V> subgradient(const Vector<V> &x) override;
+    };
+}
 
 
-#endif//MOPMC_MSE_H
+#endif//MOPMC_VARIANCE_H

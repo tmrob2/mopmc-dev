@@ -18,6 +18,7 @@ namespace mopmc::optimization::optimizers {
     class BaseOptimizer {
     public:
         explicit BaseOptimizer<V>() = default;
+        virtual ~BaseOptimizer() = default;
         explicit BaseOptimizer<V>(mopmc::optimization::convex_functions::BaseConvexFunction<V> *f) : fn(f){};
 
         virtual int minimize (Vector<V> &point, const std::vector<Vector<V>> &Vertices) { return 1; }

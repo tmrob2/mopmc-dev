@@ -2,10 +2,10 @@
 // Created by guoxin on 24/11/23.
 //
 
-#include <cmath>
-#include <iostream>
 #include "FrankWolfe.h"
 #include "../convex-functions/auxiliary/Lincom.h"
+#include <cmath>
+#include <iostream>
 
 namespace mopmc::optimization::optimizers {
 
@@ -52,8 +52,8 @@ namespace mopmc::optimization::optimizers {
             switch (this->fwOption) {
                 case LINOPT: {
                     PolytopeType polytopeType = PolytopeType::Vertex;
-                    this->linOpt1.optimizeVtx(Vertices, polytopeType, dXCurrent, xNewEx);
-                    gamma = this->lineSearcher1.findOptimalDecentDistance(xCurrent, xNewEx);
+                    this->linOpt.optimizeVtx(Vertices, polytopeType, dXCurrent, xNewEx);
+                    gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx);
                     xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
                     break;
                 }
@@ -64,13 +64,12 @@ namespace mopmc::optimization::optimizers {
                 case BLENDED: {
                     if (epsFwd + epsAwy >= delta) {
                         updateWithForwardOrAwayStep();
-                    }
-                    else {
+                    } else {
                         int feasible = -1;
-                        this->linOpt1.checkPointInConvexHull(Vertices, (xCurrent - dXCurrent * delta), feasible);
+                        this->linOpt.checkPointInConvexHull(Vertices, (xCurrent - dXCurrent * delta), feasible);
                         if (feasible == 0) {
                             xNewEx = xCurrent - dXCurrent * delta;
-                            gamma = this->lineSearcher1.findOptimalDecentDistance(xCurrent, xNewEx, static_cast<V>(1.));
+                            gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx, static_cast<V>(1.));
                             xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
                         } else if (feasible == 2) {
                             delta *= static_cast<V>(0.5);
@@ -84,10 +83,10 @@ namespace mopmc::optimization::optimizers {
                     break;
                 }
                 case BLENDED_STEP_OPT: {
-                    this->linOpt1.findMaximumFeasibleStep(Vertices, dXCurrent, xCurrent, stepSize);
+                    this->linOpt.findMaximumFeasibleStep(Vertices, dXCurrent, xCurrent, stepSize);
                     if (stepSize > delta * scale2) {
                         xNewEx = xCurrent - dXCurrent * stepSize;
-                        gamma = this->lineSearcher1.findOptimalDecentDistance(xCurrent, xNewEx, static_cast<V>(1.));
+                        gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx, static_cast<V>(1.));
                         xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
                     } else {
                         delta *= static_cast<V>(0.5);
@@ -95,7 +94,6 @@ namespace mopmc::optimization::optimizers {
                     break;
                 }
             }
-            //delta *= scale3;
             ++t;
         }
         std::cout << "Frank-Wolfe stops at iteration: " << t << "\n";
@@ -109,10 +107,12 @@ namespace mopmc::optimization::optimizers {
 
         size = Vertices.size();
         dimension = Vertices[0].size();
-        xCurrent.resize(dimension); xNew.resize(dimension); xNewEx.resize(dimension);
+        xCurrent.resize(dimension);
+        xNew.resize(dimension);
+        xNewEx.resize(dimension);
 
         this->alpha.conservativeResize(size);
-        this->alpha(size-1) = static_cast<V>(0.);
+        this->alpha(size - 1) = static_cast<V>(0.);
 
         if (size == 1) {
             this->alpha(0) = static_cast<V>(1.);
@@ -136,8 +136,61 @@ namespace mopmc::optimization::optimizers {
     }
 
     template<typename V>
+    void FrankWolfe<V>::updateWithSimplexGradientDescent(const std::vector<Vector<V>> &Vertices) {
+        uint64_t n = activeSet.size();
+        Vector<V> c = Vector<V>::Zero(n);
+        for (auto i: activeSet) {
+            c(i) += dXCurrent.dot(Vertices[i]);
+        }
+        Vector<V> cProj = c - (c.sum() / this->size) * c;
+        if (cProj.isZero()) {
+            const auto ind_ptr = activeSet.begin();
+            activeSet.clear();
+            activeSet.insert(*ind_ptr);
+            alpha.setZero();
+            alpha(*ind_ptr) = static_cast<V>(1.);
+            xNewEx = Vertices[*ind_ptr];
+            xNew = xNewEx;
+        } else {
+            V e = 0.;
+            uint64_t indMax = n;
+            for (auto i: activeSet) {
+                if (cProj(i) > 0) {
+                    if (alpha(i) / cProj(i) < e) {
+                        e = alpha(i) / cProj(i);
+                        indMax = i;
+                    }
+                }
+            }
+            xNewEx = xCurrent;
+            for (auto i: activeSet) {
+                xNewEx -= e * cProj(i) * Vertices[i];
+            }
+            if (this->fn->value(xCurrent) < this->fn->value(xNewEx)) {
+                xNew = xNewEx;
+                activeSet.erase(indMax);
+                gamma = 1.0;
+            } else {
+                gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx, 1.0);
+                xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
+            }
+            for (uint_fast64_t i = 0; i < this->size; ++i) {
+                if (activeSet.count(i)) {
+                    alpha(i) = (1 - gamma) * alpha(i) + gamma * (alpha(i) - e * cProj(i));
+                } else {
+                    alpha(i) = 0. ;
+                }
+            }
+            const V p = alpha.sum();
+            for (auto i: activeSet) {
+                alpha(i) /= p;
+            }
+        }
+    }
+
+    template<typename V>
     void FrankWolfe<V>::updateWithForwardOrAwayStep() {
-        if (static_cast<V>(-1.) * dXCurrent.dot(fwdVec - awyVec) >= 0.){
+        if (static_cast<V>(-1.) * dXCurrent.dot(fwdVec - awyVec) >= 0.) {
             isFwd = true;
             xNewEx = xCurrent + fwdVec;
             gammaMax = static_cast<V>(1.);
@@ -147,7 +200,7 @@ namespace mopmc::optimization::optimizers {
             gammaMax = this->alpha(awyInd) / (static_cast<V>(1.) - this->alpha(awyInd));
         }
 
-        gamma = this->lineSearcher1.findOptimalDecentDistance(xCurrent, xNewEx, gammaMax);
+        gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx, gammaMax);
 
         if (isFwd) {
             if (gamma == gammaMax) {
@@ -175,16 +228,15 @@ namespace mopmc::optimization::optimizers {
             this->alpha(awyInd) = (static_cast<V>(1.) + gamma) * this->alpha(awyInd) - gamma;
         }
         xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
-
     }
 
     template<typename V>
-    void FrankWolfe<V>::computeAwayStepIndexAndVector (const std::vector<Vector<V>> &Vertices){
+    void FrankWolfe<V>::computeAwayStepIndexAndVector(const std::vector<Vector<V>> &Vertices) {
         awyInd = 0;
         V inc = std::numeric_limits<V>::min();
-        for (auto j : this->activeSet) {
+        for (auto j: this->activeSet) {
             //assert(Vertices[j].size() == dXCurrent.size());
-            if (Vertices[j].dot(dXCurrent) > inc){
+            if (Vertices[j].dot(dXCurrent) > inc) {
                 inc = Vertices[j].dot(dXCurrent);
                 awyInd = j;
             }
@@ -197,7 +249,7 @@ namespace mopmc::optimization::optimizers {
         fwdInd = 0;
         V dec = std::numeric_limits<V>::max();
         for (uint_fast64_t i = 0; i < Vertices.size(); ++i) {
-            if (Vertices[i].dot(dXCurrent) < dec){
+            if (Vertices[i].dot(dXCurrent) < dec) {
                 dec = Vertices[i].dot(dXCurrent);
                 fwdInd = i;
             }
@@ -207,10 +259,9 @@ namespace mopmc::optimization::optimizers {
 
     template<typename V>
     FrankWolfe<V>::FrankWolfe(FWOption option, mopmc::optimization::convex_functions::BaseConvexFunction<V> *f)
-            : fwOption(option), BaseOptimizer<V>(f) {
-                this->lineSearcher1 = mopmc::optimization::optimizers::LineSearcher<V>(f);
-            }
+        : fwOption(option), BaseOptimizer<V>(f) {
+        this->lineSearcher = mopmc::optimization::optimizers::LineSearcher<V>(f);
+    }
 
-    template
-    class FrankWolfe<double>;
-}
+    template class FrankWolfe<double>;
+}// namespace mopmc::optimization::optimizers

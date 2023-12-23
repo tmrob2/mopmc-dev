@@ -14,23 +14,20 @@ namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     SignedKLEuclidean<V>::SignedKLEuclidean(const std::vector<V> &c, const std::vector<bool> &isProb)
-        : c_(c), isProb2_(isProb) {
-        if (c_.size() != isProb2_.size()) {
+        : c_(c), asProbabilities(isProb) {
+        if (c_.size() != asProbabilities.size()) {
             throw std::runtime_error("<to be inserted>");
         }
     }
 
     template<typename V>
     SignedKLEuclidean<V>::SignedKLEuclidean(const std::vector<V> &c) : c_(c) {
-        isProb2_ = std::vector<bool>(c_.size(), false);
+        asProbabilities = std::vector<bool>(c_.size(), false);
     }
 
     template<typename V>
     SignedKLEuclidean<V>::SignedKLEuclidean(const Vector<V> &e, const std::vector<bool> &isProb)
-        : BaseConvexFunction<V>(e, isProb) {
-        if (this->params_.size() != this->probs_.size()) {
-            throw std::runtime_error("<to be inserted>");
-        }
+        : BaseConvexFunction<V>(e) {
     }
 
     template<typename V>
@@ -39,15 +36,15 @@ namespace mopmc::optimization::convex_functions {
     template<typename V>
     V SignedKLEuclidean<V>::value(const Vector<V> &x) {
 
-        if (this->params_.size() != x.size()) {
+        if (this->parameters.size() != x.size()) {
             throw std::runtime_error("input dimension mismatch");
         }
         V out = static_cast<V>(0.);
-        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
-            if (this->probs_[i]) {
-                out += sign_leq(x(i), this->params_(i)) * klDivergence(x(i), this->params_(i));
+        for (uint_fast64_t i = 0; i < this->asProbabilities.size(); ++i) {
+            if (this->asProbabilities[i]) {
+                out += sign_leq(x(i), this->parameters(i)) * klDivergence(x(i), this->parameters(i));
             } else {
-                out += sign_leq(x(i), this->params_(i)) * squaredDiff(x(i), this->params_(i));
+                out += sign_leq(x(i), this->parameters(i)) * squaredDiff(x(i), this->parameters(i));
             }
         }
         return out;
@@ -55,15 +52,15 @@ namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     Vector<V> SignedKLEuclidean<V>::subgradient(const Vector<V> &x) {
-        if (this->params_.size() != x.size()) {
+        if (this->parameters.size() != x.size()) {
             throw std::runtime_error("input dimension mismatch");
         }
         Vector<V> out(x.size());
-        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
-            if (this->probs_[i]) {
-                out(i) = d_klDivergence(x(i), this->params_(i));
+        for (uint_fast64_t i = 0; i < this->asProbabilities.size(); ++i) {
+            if (this->asProbabilities[i]) {
+                out(i) = d_klDivergence(x(i), this->parameters(i));
             } else {
-                out(i) = d_squaredDiff(x(i), this->params_(i));
+                out(i) = d_squaredDiff(x(i), this->parameters(i));
             }
         }
         return out;

@@ -3,9 +3,9 @@
 //
 
 
-#include <iostream>
-#include <Eigen/Dense>
 #include "ConvexQuery.h"
+#include <Eigen/Dense>
+#include <iostream>
 
 namespace mopmc::queries {
 
@@ -15,7 +15,7 @@ namespace mopmc::queries {
         this->VIhandler->initialize();
         const uint64_t n_objs = this->data_.objectiveCount;
         assert(this->data_.rowGroupIndices.size() == this->data_.colCount + 1);
-        Vector<T> threshold = Eigen::Map<Vector<T>> (this->data_.thresholds.data(), n_objs);
+        Vector<T> threshold = Eigen::Map<Vector<T>>(this->data_.thresholds.data(), n_objs);
 
         std::vector<Vector<T>> Vertices, WeightVectors;
         Vector<T> innerPointCurrent(n_objs), innerPointNew(n_objs), outerPoint(n_objs);
@@ -25,7 +25,7 @@ namespace mopmc::queries {
         const T toleranceDistanceToMinimum{1.e-6};
         const T toleranceSmallGradient{1.e-8};
         const T toleranceNearestPointImprovement{1.e-6};
-        const uint_fast64_t maxIter{100};
+        const uint_fast64_t maxIter{200};
         T epsilonDistanceToMinimum, epsilonSmallGradient, epsilonNearestPointImprovement;
         uint_fast64_t iter = 0;
 
@@ -99,6 +99,5 @@ namespace mopmc::queries {
                   << "\n----------------------------------------------\n";
     }
 
-    template
-    class ConvexQuery<double, int>;
-}
+    template class ConvexQuery<double, int>;
+}// namespace mopmc::queries

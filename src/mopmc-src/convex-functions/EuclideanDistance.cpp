@@ -18,7 +18,7 @@ namespace mopmc::optimization::convex_functions {
     Vector<V> EuclideanDistance<V>::subgradient(const Vector<V> &x) {
         Vector<V> y(x.size());
         for (uint_fast64_t i = 0; i < x.size(); ++i) {
-            y(i) = 2 * (x(i) - this->params_(i));
+            y(i) = 2 * (x(i) - this->parameters(i));
         }
         return y;
     }
@@ -27,7 +27,7 @@ namespace mopmc::optimization::convex_functions {
     V EuclideanDistance<V>::value(const Vector<V> &x) {
         V y = static_cast<V>(0.);
         for (uint_fast64_t i = 0; i < x.size(); ++i) {
-            y += std::pow(x(i) - this->params_(i), 2);
+            y += std::pow(x(i) - this->parameters(i), 2);
         }
         return y;
     }

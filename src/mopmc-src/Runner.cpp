@@ -3,52 +3,43 @@
 //
 
 
-#include <storm-parsers/api/storm-parsers.h>
-#include <string>
-#include <iostream>
-#include <storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h>
-#include <storm/environment/Environment.h>
-#include <storm/models/sparse/Mdp.h>
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h>
-#include <storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h>
-#include <storm/modelchecker/multiobjective/pcaa/StandardMdpPcaaWeightVectorChecker.h>
-#include <Eigen/Sparse>
 #include "Runner.h"
-#include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
 #include "Transformation.h"
-#include "mopmc-src/hybrid-computing/Problem.h"
-#include "queries/ConvexQuery.h"
-#include "queries/AchievabilityQuery.h"
-#include "convex-functions/TotalReLU.h"
-#include "convex-functions/SignedKLEuclidean.h"
 #include "convex-functions/EuclideanDistance.h"
-#include "convex-functions/KLDistance.h"
 #include "convex-functions/MSE.h"
+#include "convex-functions/Variance.h"
+#include "mopmc-src/hybrid-computing/Problem.h"
+#include "mopmc-src/storm-wrappers/StormModelBuildingWrapper.h"
+#include "mopmc-src/storm-wrappers/StormModelCheckingWrapper.h"
 #include "optimizers/FrankWolfe.h"
 #include "optimizers/ProjectedGradientDescent.h"
-#include "mopmc-src/storm-wrappers/StormModelCheckingWrapper.h"
+#include "queries/AchievabilityQuery.h"
+#include "queries/ConvexQuery.h"
 #include <Eigen/Dense>
 #include <cstdio>
 #include <ctime>
+#include <iostream>
+#include <storm-parsers/api/storm-parsers.h>
+#include <storm/environment/Environment.h>
+#include <storm/models/sparse/Mdp.h>
+#include <storm/utility/initialize.h>
+#include <string>
 
 namespace mopmc {
 
     typedef storm::models::sparse::Mdp<double> ModelType;
     typedef storm::models::sparse::Mdp<double>::ValueType ValueType;
     typedef storm::storage::sparse::state_type IndexType;
-    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType> PreprocessedType;
-    typedef storm::modelchecker::multiobjective::preprocessing::SparseMultiObjectivePreprocessor<ModelType>::ReturnType PrepReturnType;
-    typedef Eigen::SparseMatrix<ValueType, Eigen::RowMajor> EigenSpMatrix;
 
     template<typename V>
     using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
-    bool run(std::string const &path_to_model, std::string const &property_string, QueryOptions queryOptions){
-        assert (typeid(ValueType) == typeid(double));
-        assert (typeid(IndexType) == typeid(uint64_t));
+    bool run(std::string const &path_to_model, std::string const &property_string, QueryOptions queryOptions) {
+        assert(typeid(ValueType) == typeid(double));
+        assert(typeid(IndexType) == typeid(uint64_t));
 
         // Init loggers
-        //storm::utility::setUp();
+        storm::utility::setUp();
         storm::settings::initializeAll("storm-starter-project", "storm-starter-project");
         storm::Environment env;
         clock_t time0 = clock();
@@ -62,7 +53,7 @@ namespace mopmc {
                                                                                              preparedModel);
         clock_t time2 = clock();
 
-        auto h = Eigen::Map<Vector<ValueType >>(data.thresholds.data(), data.thresholds.size());
+        auto h = Eigen::Map<Vector<ValueType>>(data.thresholds.data(), data.thresholds.size());
         std::unique_ptr<mopmc::optimization::convex_functions::BaseConvexFunction<ValueType>> fn;
         switch (queryOptions.CONVEX_FUN) {
             case QueryOptions::MSE: {
@@ -70,9 +61,20 @@ namespace mopmc {
                         new mopmc::optimization::convex_functions::MSE<ValueType>(h, data.objectiveCount));
                 break;
             }
-            case QueryOptions::EUCLIDEAN: {
+            case QueryOptions::SE: {
                 fn = std::unique_ptr<mopmc::optimization::convex_functions::BaseConvexFunction<ValueType>>(
                         new mopmc::optimization::convex_functions::EuclideanDistance<ValueType>(h));
+                break;
+            }
+
+            case QueryOptions::VAR: {
+                fn = std::unique_ptr<mopmc::optimization::convex_functions::BaseConvexFunction<ValueType>>(
+                        new mopmc::optimization::convex_functions::Variance<ValueType>(h.size()));
+                break;
+            }
+            case QueryOptions::SD: {
+                fn = std::unique_ptr<mopmc::optimization::convex_functions::BaseConvexFunction<ValueType>>(
+                        new mopmc::optimization::convex_functions::StandDeviation<ValueType>(h.size()));
                 break;
             }
         }
@@ -113,7 +115,8 @@ namespace mopmc {
                 mopmc::optimization::optimizers::ProjectionType::NearestHyperplane, &*fn);
         mopmc::value_iteration::gpu::CudaValueIterationHandler<ValueType> cudaVIHandler(&data);
         mopmc::queries::ConvexQuery<ValueType, int> q(data, &*fn, &*optimizer, &projectedGD, &cudaVIHandler);
-        q.query();clock_t time3 = clock();
+        q.query();
+        clock_t time3 = clock();
 
         std::cout << "       TIME STATISTICS        \n";
         printf("Model building stage 1: %.3f seconds.\n", double(time05 - time0) / CLOCKS_PER_SEC);
@@ -183,4 +186,4 @@ namespace mopmc {
         return true;
 
     }*/
-}
+}// namespace mopmc

@@ -11,20 +11,16 @@
 namespace mopmc::optimization::convex_functions {
 
     template<typename V>
-    using Vector =  Eigen::Matrix<V, Eigen::Dynamic, 1>;
+    using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
     template<typename V>
     using VectorMap = Eigen::Map<Eigen::Matrix<V, Eigen::Dynamic, 1>>;
 
     template<typename V>
     class BaseConvexFunction {
     public:
-
         explicit BaseConvexFunction() = default;
-        explicit BaseConvexFunction(const Vector<V> &params) : params_(params){
-            probs_ = std::vector<bool>(false, params_.size());
-        }
-        explicit BaseConvexFunction(const Vector<V> &params, const std::vector<bool> &probs)
-            : params_(params), probs_(probs){}
+        explicit BaseConvexFunction(const Vector<V> &params) : parameters(params), dimension(params.size()) {}
+        explicit BaseConvexFunction(const uint64_t dim) : dimension(dim){}
 
         virtual V value(const Vector<V> &x) = 0;
         virtual Vector<V> subgradient(const Vector<V> &x) = 0;
@@ -34,11 +30,10 @@ namespace mopmc::optimization::convex_functions {
         std::vector<V> subgradient1(const std::vector<V> &x);
         std::vector<V> gradient1(const std::vector<V> &x);
 
-        Vector<V> params_;
-        std::vector<bool> probs_;
+        uint64_t dimension{};
+        Vector<V> parameters;
         bool smooth{};
-
     };
-}
+}// namespace mopmc::optimization::convex_functions
 
-#endif //MOPMC_BASECONVEXFUNCTION_H
+#endif//MOPMC_BASECONVEXFUNCTION_H

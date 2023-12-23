@@ -34,7 +34,7 @@ namespace mopmc::optimization::convex_functions {
         Vector<V> subgradient(const Vector<V> &x) override;
 
         std::vector<V> c_;
-        std::vector<bool> isProb2_;
+        std::vector<bool> asProbabilities;
     };
 
     template<typename V>

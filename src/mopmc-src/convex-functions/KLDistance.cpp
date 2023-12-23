@@ -26,13 +26,13 @@ namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     V KLDistance<V>::value(const Vector<V> &x) {
-        if (this->params_.size() != x.size()) {
+        if (this->parameters.size() != x.size()) {
             throw std::runtime_error("input dimension mismatch");
         }
         V y = static_cast<V>(0.);
         //std::cout << "x: " << x <<"\n";
         for (uint_fast64_t i = 0; i < x.size(); ++i) {
-            y += klDivergence(x(i), this->params_(i));
+            y += klDivergence(x(i), this->parameters(i));
             //std::cout << "klDivergence(): " << klDivergence(x(i), this->params_(i)) <<"\n";
         }
         return y;
@@ -40,12 +40,12 @@ namespace mopmc::optimization::convex_functions {
 
     template<typename V>
     Vector<V> KLDistance<V>::subgradient(const Vector<V> &x) {
-        if (this->params_.size() != x.size()) {
+        if (this->parameters.size() != x.size()) {
             throw std::runtime_error("input dimension mismatch");
         }
         Vector<V> out(x.size());
-        for (uint_fast64_t i = 0; i < this->probs_.size(); ++i) {
-            out(i) = d_klDivergence(x(i), this->params_(i));
+        for (uint_fast64_t i = 0; i < this->parameters.size(); ++i) {
+            out(i) = d_klDivergence(x(i), this->parameters(i));
         }
         return out;
     }
