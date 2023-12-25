@@ -104,6 +104,12 @@ namespace mopmc {
                                 mopmc::optimization::optimizers::FWOption::LINOPT, &*fn));
                 break;
             }
+            case QueryOptions::SIMPLEX_GD: {
+                optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
+                        new mopmc::optimization::optimizers::FrankWolfe<ValueType>(
+                                mopmc::optimization::optimizers::FWOption::SIMPLEX_GD, &*fn));
+                break;
+            }
             case QueryOptions::PGD: {
                 optimizer = std::unique_ptr<mopmc::optimization::optimizers::BaseOptimizer<ValueType>>(
                         new mopmc::optimization::optimizers::ProjectedGradientDescent<ValueType>(

@@ -23,6 +23,7 @@ namespace mopmc::optimization::optimizers {
     using Vector = Eigen::Matrix<V, Eigen::Dynamic, 1>;
 
     enum FWOption {
+        SIMPLEX_GD,
         LINOPT,
         AWAY_STEP,
         BLENDED,

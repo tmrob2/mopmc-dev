@@ -59,6 +59,7 @@ namespace mopmc::optimization::optimizers {
                 }
                 case AWAY_STEP: {
                     updateWithForwardOrAwayStep();
+                    std::cout<< "xNew: " << xNew << "\n";
                     break;
                 }
                 case BLENDED: {
@@ -93,6 +94,11 @@ namespace mopmc::optimization::optimizers {
                     }
                     break;
                 }
+                case SIMPLEX_GD: {
+                    updateWithSimplexGradientDescent(Vertices);
+                    std::cout<< "xNew: " << xNew << "\n";
+                    break;
+                }
             }
             ++t;
         }
@@ -111,12 +117,12 @@ namespace mopmc::optimization::optimizers {
         xNew.resize(dimension);
         xNewEx.resize(dimension);
 
-        this->alpha.conservativeResize(size);
-        this->alpha(size - 1) = static_cast<V>(0.);
+        alpha.conservativeResize(size);
+        alpha(size - 1) = static_cast<V>(0.);
 
         if (size == 1) {
-            this->alpha(0) = static_cast<V>(1.);
-            this->activeSet.insert(0);
+            alpha(0) = static_cast<V>(1.);
+            activeSet.insert(0);
         }
 
         xNew.setZero();
@@ -138,12 +144,17 @@ namespace mopmc::optimization::optimizers {
     template<typename V>
     void FrankWolfe<V>::updateWithSimplexGradientDescent(const std::vector<Vector<V>> &Vertices) {
         uint64_t n = activeSet.size();
-        Vector<V> c = Vector<V>::Zero(n);
+        Vector<V> dAlphaRaw = Vector<V>::Zero(n);
+        //std::cout << "actionSet: {";
         for (auto i: activeSet) {
-            c(i) += dXCurrent.dot(Vertices[i]);
+            dAlphaRaw(i) += dXCurrent.dot(Vertices[i]);
+            //std::cout << i;
         }
-        Vector<V> cProj = c - (c.sum() / this->size) * c;
-        if (cProj.isZero()) {
+        //std::cout <<"}\n";
+        //std::cout << "dAlphaRaw:" << dAlphaRaw <<"\n";
+        Vector<V> dAlpha = dAlphaRaw - (dAlphaRaw.sum() / this->size) * dAlphaRaw;
+        //std::cout << "dAlpha:" << dAlpha <<"\n";
+        if (dAlpha.isZero()) {
             const auto ind_ptr = activeSet.begin();
             activeSet.clear();
             activeSet.insert(*ind_ptr);
@@ -155,16 +166,16 @@ namespace mopmc::optimization::optimizers {
             V e = 0.;
             uint64_t indMax = n;
             for (auto i: activeSet) {
-                if (cProj(i) > 0) {
-                    if (alpha(i) / cProj(i) < e) {
-                        e = alpha(i) / cProj(i);
+                if (dAlpha(i) > 0) {
+                    if (alpha(i) / dAlpha(i) < e) {
+                        e = alpha(i) / dAlpha(i);
                         indMax = i;
                     }
                 }
             }
             xNewEx = xCurrent;
             for (auto i: activeSet) {
-                xNewEx -= e * cProj(i) * Vertices[i];
+                xNewEx -= e * dAlpha(i) * Vertices[i];
             }
             if (this->fn->value(xCurrent) < this->fn->value(xNewEx)) {
                 xNew = xNewEx;
@@ -174,6 +185,10 @@ namespace mopmc::optimization::optimizers {
                 gamma = this->lineSearcher.findOptimalDecentDistance(xCurrent, xNewEx, 1.0);
                 xNew = (static_cast<V>(1.) - gamma) * xCurrent + gamma * xNewEx;
             }
+            for (auto i : activeSet) {
+                alpha(i) = (1 - gamma) * alpha(i) + gamma * (alpha(i) - e * dAlpha(i));
+            }
+            /*
             for (uint_fast64_t i = 0; i < this->size; ++i) {
                 if (activeSet.count(i)) {
                     alpha(i) = (1 - gamma) * alpha(i) + gamma * (alpha(i) - e * cProj(i));
@@ -185,6 +200,7 @@ namespace mopmc::optimization::optimizers {
             for (auto i: activeSet) {
                 alpha(i) /= p;
             }
+             */
         }
     }
 
