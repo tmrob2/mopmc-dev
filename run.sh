@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #/build/mopmc --help
-./build/mopmc --prism examples/dive_and_rise/dive_and_rise.nm --props examples/dive_and_rise/dive_and_rise_prop_100.props --fn mse --popt away-step
+#./build/mopmc --prism examples/dive_and_rise/dive_and_rise.nm --props examples/dive_and_rise/dive_and_rise_prop_100.props --fn mse --popt away-step
 
-#./build/mopmc examples/multiple_targets/multiple_targets.pm examples/multiple_targets/multiple_targets_21c.props
+./build/mopmc --prism examples/multiple_targets/multiple_targets.pm --props examples/multiple_targets/multiple_targets_21c.props --fn mse --popt away-step
 #./build/mopmc examples/multiple_targets/multiple_targets.pm examples/multiple_targets/multiple_targets_prob_4.props
 #/home/guoxin/Downloads/storm/build/bin/storm --prism examples/multiple_targets/multiple_targets.pm --prop examples/multiple_targets/multiple_targets_4.props
 

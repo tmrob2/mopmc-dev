@@ -35,8 +35,8 @@ namespace mopmc::optimization::optimizers {
 
         int minimize(Vector<V> &point, const std::vector<Vector<V>> &Vertices) override;
 
-        mopmc::optimization::optimizers::LinOpt<V> linOpt1;
-        mopmc::optimization::optimizers::LineSearcher<V> lineSearcher1;
+        mopmc::optimization::optimizers::LinOpt<V> linOpt;
+        mopmc::optimization::optimizers::LineSearcher<V> lineSearcher;
         FWOption fwOption{};
         Vector<V> alpha;
         std::set<V> activeSet;
@@ -44,14 +44,11 @@ namespace mopmc::optimization::optimizers {
 
     private:
         Vector<V> argmin(const std::vector<Vector<V>> &Vertices);
-
-        void updateWithForwardOrAwayStep();
-
-        void computeForwardStepIndexAndVector(const std::vector<Vector<V>> &Vertices);
-
-        void computeAwayStepIndexAndVector(const std::vector<Vector<V>> &Vertices);
-
         void initialize(const std::vector<Vector<V>> &Vertices);
+        void updateWithSimplexGradientDescent(const std::vector<Vector<V>> &Vertices);
+        void updateWithForwardOrAwayStep();
+        void computeForwardStepIndexAndVector(const std::vector<Vector<V>> &Vertices);
+        void computeAwayStepIndexAndVector(const std::vector<Vector<V>> &Vertices);
 
         const V tolerance{1.e-8}, toleranceCosine = std::cos(90.01 / 180. * M_PI);
         const V gamma0{static_cast<V>(0.1)}, scale1{0.5}, scale2{0.5}, scale3{0.99};
